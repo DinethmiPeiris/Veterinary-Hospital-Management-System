@@ -31,3 +31,18 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Backend ###
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+### OS ###
+.DS_Store
+Thumbs.db

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { loginDoctor, registerDoctor, formatDoctorDisplayName, requestPasswordReset, resetDoctorPassword } from '../utils/doctorAuth'
 import './LoginPage.css'
 
 const petEmojis = ['🐕','🐈','🐇','🦜','🐠','🐹','🐾','🦮','🐈‍⬛','🦔']
@@ -81,11 +82,109 @@ export default function LoginPage() {
     setTimeout(() => navigate('/'), 2500)
   }
 
-  const handleDoctorLogin = (e) => {
+  const [docMode, setDocMode] = useState('signin')
+  const [docRegName, setDocRegName] = useState('')
+  const [docRegUsername, setDocRegUsername] = useState('')
+  const [docRegEmail, setDocRegEmail] = useState('')
+  const [docRegSpecialty, setDocRegSpecialty] = useState('')
+  const [docRegPass, setDocRegPass] = useState('')
+  const [docRegPassConfirm, setDocRegPassConfirm] = useState('')
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [resetCode, setResetCode] = useState('')
+  const [resetNewPass, setResetNewPass] = useState('')
+  const [resetConfirmPass, setResetConfirmPass] = useState('')
+  const [issuedResetCode, setIssuedResetCode] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+
+  const handleDoctorLogin = async (e) => {
     e.preventDefault()
     if (!docId || !docPass) { showToast('Please fill in all fields.', 'error'); return }
-    showToast('Welcome, Doctor! Redirecting to your portal...', 'info')
-    setTimeout(() => navigate('/'), 2000)
+    setAuthBusy(true)
+    try {
+      const session = await loginDoctor({ identifier: docId, password: docPass })
+      showToast(`Welcome, ${formatDoctorDisplayName(session.name)}! Redirecting...`, 'info')
+      setTimeout(() => navigate('/doctor/dashboard'), 1200)
+    } catch (err) {
+      showToast(err.message || 'Invalid username or Staff ID / password.', 'error')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const handleDoctorRegister = async (e) => {
+    e.preventDefault()
+    if (!docRegName || !docRegUsername || !docRegEmail || !docRegSpecialty || !docRegPass || !docRegPassConfirm) {
+      showToast('Please fill in all required fields.', 'error'); return
+    }
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(docRegUsername)) {
+      showToast('Username must be 3-30 characters (letters, numbers, . _ -).', 'error'); return
+    }
+    if (docRegPass.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return }
+    if (docRegPass !== docRegPassConfirm) { showToast('Passwords do not match.', 'error'); return }
+    setAuthBusy(true)
+    try {
+      const session = await registerDoctor({
+        name: docRegName,
+        username: docRegUsername,
+        email: docRegEmail,
+        specialty: docRegSpecialty,
+        password: docRegPass,
+      })
+      showToast(
+        `Account created. Username: ${session.username} · Staff ID: ${session.staffId}. Redirecting...`,
+        'success'
+      )
+      setTimeout(() => navigate('/doctor/dashboard'), 1500)
+    } catch (err) {
+      showToast(err.message || 'Registration failed.', 'error')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    if (!forgotEmail) { showToast('Enter your registered email.', 'error'); return }
+    setAuthBusy(true)
+    try {
+      const result = await requestPasswordReset(forgotEmail)
+      setIssuedResetCode(result.resetToken || '')
+      showToast('Reset code generated. Enter it below with your new password.', 'info')
+      setDocMode('reset')
+    } catch (err) {
+      showToast(err.message || 'Unable to start password reset.', 'error')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (!forgotEmail || !resetCode || !resetNewPass || !resetConfirmPass) {
+      showToast('Please fill in all reset fields.', 'error'); return
+    }
+    if (resetNewPass.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return }
+    if (resetNewPass !== resetConfirmPass) { showToast('Passwords do not match.', 'error'); return }
+    setAuthBusy(true)
+    try {
+      await resetDoctorPassword({
+        email: forgotEmail,
+        resetToken: resetCode,
+        newPassword: resetNewPass,
+      })
+      showToast('Password updated. Please sign in with your new password.', 'success')
+      setDocMode('signin')
+      setDocId(forgotEmail)
+      setDocPass('')
+      setResetCode('')
+      setResetNewPass('')
+      setResetConfirmPass('')
+      setIssuedResetCode('')
+    } catch (err) {
+      showToast(err.message || 'Password reset failed.', 'error')
+    } finally {
+      setAuthBusy(false)
+    }
   }
 
   const handleAdminLogin = (e) => {
@@ -194,23 +293,109 @@ export default function LoginPage() {
           {/* DOCTOR PANEL */}
           {role === 'doctor' && (
             <div className="role-panel active" id="panel-doctor">
-              <div className="notice-badge notice-blue">
-                <span>&#127973;</span>
-                <div><strong>Staff Accounts Only</strong><p>Doctor accounts are issued by Hospital HR. Contact administration for account creation.</p></div>
+              <div className="owner-toggle" style={{marginBottom: '1rem'}}>
+                <button className={`toggle-btn${docMode === 'signin' ? ' active' : ''}`} onClick={() => setDocMode('signin')}>Sign In</button>
+                <button className={`toggle-btn${docMode === 'register' ? ' active' : ''}`} onClick={() => setDocMode('register')}>New Doctor? Register</button>
               </div>
-              <form className="auth-form" id="form-doctor" onSubmit={handleDoctorLogin} noValidate>
-                <h2 className="form-title">Doctor Login</h2>
-                <p className="form-subtitle">Access your veterinary professional portal.</p>
-                <div className="input-group">
-                  <label htmlFor="doc-id">Staff ID or Email</label>
-                  <div className="input-wrap"><input type="text" id="doc-id" placeholder="e.g. SJAH-DOC-0042" required value={docId} onChange={(e) => setDocId(e.target.value)} /></div>
-                </div>
-                <div className="input-group">
-                  <label htmlFor="doc-pass">Password</label>
-                  <div className="input-wrap"><input type={showPass['doc-pass'] ? 'text' : 'password'} id="doc-pass" placeholder="Enter your password" required value={docPass} onChange={(e) => setDocPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('doc-pass')}>{showPass['doc-pass'] ? '🙈' : '👁'}</button></div>
-                </div>
-                <button type="submit" className="submit-btn btn-doctor">Access Doctor Portal</button>
-              </form>
+
+              {docMode === 'signin' && (
+                <form className="auth-form" id="form-doctor" onSubmit={handleDoctorLogin} noValidate>
+                  <h2 className="form-title">Doctor Login</h2>
+                  <p className="form-subtitle">Sign in with your unique username or Staff ID.</p>
+                  <div className="input-group">
+                    <label htmlFor="doc-id">Username or Staff ID</label>
+                    <div className="input-wrap"><input type="text" id="doc-id" placeholder="e.g. natasha.fdo or SJAH-DOC-001" required value={docId} onChange={(e) => setDocId(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-pass">Password</label>
+                    <div className="input-wrap"><input type={showPass['doc-pass'] ? 'text' : 'password'} id="doc-pass" placeholder="Enter your password" required value={docPass} onChange={(e) => setDocPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('doc-pass')}>{showPass['doc-pass'] ? '🙈' : '👁'}</button></div>
+                  </div>
+                  <div className="form-row" style={{ justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                    <button type="button" className="forgot-link link-btn" onClick={() => { setForgotEmail(docId.includes('@') ? docId : ''); setDocMode('forgot') }}>Forgot password?</button>
+                  </div>
+                  <button type="submit" className="submit-btn btn-doctor" disabled={authBusy}>{authBusy ? 'Signing in...' : 'Access Doctor Portal'}</button>
+                </form>
+              )}
+
+              {docMode === 'register' && (
+                <form className="auth-form" id="form-doctor-register" onSubmit={handleDoctorRegister} noValidate>
+                  <h2 className="form-title">Doctor Registration</h2>
+                  <p className="form-subtitle">Create a unique username. You will log in with username or Staff ID — not your name.</p>
+                  
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-name">Full Name</label>
+                    <div className="input-wrap"><input type="text" id="doc-reg-name" placeholder="Dr. Name" required value={docRegName} onChange={(e) => setDocRegName(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-username">Username</label>
+                    <div className="input-wrap"><input type="text" id="doc-reg-username" placeholder="e.g. natasha.fdo" required value={docRegUsername} onChange={(e) => setDocRegUsername(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-email">Email</label>
+                    <div className="input-wrap"><input type="email" id="doc-reg-email" placeholder="doctor@hospital.com" required value={docRegEmail} onChange={(e) => setDocRegEmail(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-specialty">Specialty</label>
+                    <div className="input-wrap"><input type="text" id="doc-reg-specialty" placeholder="e.g. Surgery, General" required value={docRegSpecialty} onChange={(e) => setDocRegSpecialty(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-pass">Password</label>
+                    <div className="input-wrap"><input type={showPass['doc-reg-pass'] ? 'text' : 'password'} id="doc-reg-pass" placeholder="Min. 8 characters" required value={docRegPass} onChange={(e) => setDocRegPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('doc-reg-pass')}>{showPass['doc-reg-pass'] ? '🙈' : '👁'}</button></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="doc-reg-pass-confirm">Confirm Password</label>
+                    <div className="input-wrap"><input type={showPass['doc-reg-pass-confirm'] ? 'text' : 'password'} id="doc-reg-pass-confirm" placeholder="Re-enter password" required value={docRegPassConfirm} onChange={(e) => setDocRegPassConfirm(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('doc-reg-pass-confirm')}>{showPass['doc-reg-pass-confirm'] ? '🙈' : '👁'}</button></div>
+                  </div>
+                  
+                  <button type="submit" className="submit-btn btn-doctor" disabled={authBusy}>{authBusy ? 'Creating account...' : 'Register as Doctor'}</button>
+                </form>
+              )}
+
+              {docMode === 'forgot' && (
+                <form className="auth-form" onSubmit={handleForgotPassword} noValidate>
+                  <h2 className="form-title">Forgot Password</h2>
+                  <p className="form-subtitle">Enter the email used during doctor registration.</p>
+                  <div className="input-group">
+                    <label htmlFor="forgot-email">Registered Email</label>
+                    <div className="input-wrap"><input type="email" id="forgot-email" placeholder="doctor@hospital.com" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} /></div>
+                  </div>
+                  <button type="submit" className="submit-btn btn-doctor" disabled={authBusy}>{authBusy ? 'Sending...' : 'Get Reset Code'}</button>
+                  <p className="form-switch"><button type="button" className="link-btn" onClick={() => setDocMode('signin')}>Back to Sign In</button></p>
+                </form>
+              )}
+
+              {docMode === 'reset' && (
+                <form className="auth-form" onSubmit={handleResetPassword} noValidate>
+                  <h2 className="form-title">Reset Password</h2>
+                  <p className="form-subtitle">Enter the reset code and choose a new password.</p>
+                  {issuedResetCode && (
+                    <div className="notice-badge" style={{ marginBottom: '1rem' }}>
+                      <div>
+                        <strong>Your reset code</strong>
+                        <p style={{ margin: '0.25rem 0 0' }}>{issuedResetCode}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="input-group">
+                    <label htmlFor="reset-email">Email</label>
+                    <div className="input-wrap"><input type="email" id="reset-email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="reset-code">Reset Code</label>
+                    <div className="input-wrap"><input type="text" id="reset-code" placeholder="6-digit code" required value={resetCode} onChange={(e) => setResetCode(e.target.value)} /></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="reset-new-pass">New Password</label>
+                    <div className="input-wrap"><input type={showPass['reset-new-pass'] ? 'text' : 'password'} id="reset-new-pass" placeholder="Min. 8 characters" required value={resetNewPass} onChange={(e) => setResetNewPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('reset-new-pass')}>{showPass['reset-new-pass'] ? '🙈' : '👁'}</button></div>
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="reset-confirm-pass">Confirm New Password</label>
+                    <div className="input-wrap"><input type={showPass['reset-confirm-pass'] ? 'text' : 'password'} id="reset-confirm-pass" placeholder="Re-enter password" required value={resetConfirmPass} onChange={(e) => setResetConfirmPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('reset-confirm-pass')}>{showPass['reset-confirm-pass'] ? '🙈' : '👁'}</button></div>
+                  </div>
+                  <button type="submit" className="submit-btn btn-doctor" disabled={authBusy}>{authBusy ? 'Updating...' : 'Update Password'}</button>
+                  <p className="form-switch"><button type="button" className="link-btn" onClick={() => setDocMode('signin')}>Back to Sign In</button></p>
+                </form>
+              )}
             </div>
           )}
 

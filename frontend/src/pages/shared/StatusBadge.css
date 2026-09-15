@@ -1,0 +1,39 @@
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-scheduled {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.status-waiting {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.status-in-progress {
+    background-color: #e0e7ff;
+    color: #4f46e5;
+}
+
+.status-completed {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.status-cancelled {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.status-default {
+    background-color: #f1f5f9;
+    color: #475569;
+}

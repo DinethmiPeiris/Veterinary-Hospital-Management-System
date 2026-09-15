@@ -36,8 +36,9 @@ build/
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 
-### Frontend ###
+### Node / Javascript ###
 node_modules/
+**/node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.env
@@ -48,3 +49,5 @@ frontend/.env.production
 .DS_Store
 Thumbs.db
 test_db.js
+seed_db.js
+clear_db.js

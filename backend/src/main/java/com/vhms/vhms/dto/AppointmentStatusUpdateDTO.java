@@ -1,0 +1,10 @@
+package com.vhms.vhms.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class AppointmentStatusUpdateDTO {
+    @NotBlank(message = "Status is required")
+    private String status;
+}

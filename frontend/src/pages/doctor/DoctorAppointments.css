@@ -1,0 +1,155 @@
+.doctor-appointments {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    font-size: 1.8rem;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+}
+
+.appointments-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+
+.appointments-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.date-selector h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #1e293b;
+}
+
+.status-filter {
+    padding: 8px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: #475569;
+    outline: none;
+}
+
+.appointments-table-container {
+    overflow-x: auto;
+}
+
+.appointments-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.appointments-table th {
+    text-align: left;
+    padding: 16px 24px;
+    background-color: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.appointments-table td {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+}
+
+.time-cell strong {
+    color: #1e293b;
+    font-size: 1.05rem;
+}
+
+.patient-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+    color: #0f172a;
+}
+
+.patient-info p {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.patient-info .owner {
+    font-size: 0.85rem;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #475569;
+}
+
+.btn-action {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.start-btn {
+    background-color: #38bdf8;
+    color: white;
+}
+
+.start-btn:hover {
+    background-color: #0284c7;
+}
+
+.resume-btn {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.resume-btn:hover {
+    background-color: #d97706;
+}
+
+.view-btn {
+    background-color: #64748b;
+    color: white;
+}
+
+.view-btn:hover {
+    background-color: #475569;
+}
+
+.action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.emr-btn {
+    background-color: #0f766e;
+    color: white;
+}
+
+.emr-btn:hover {
+    background-color: #0d9488;
+}
+
+.empty-filter-row {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #64748b;
+}

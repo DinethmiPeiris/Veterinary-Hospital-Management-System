@@ -1,0 +1,119 @@
+.doctor-sidebar {
+    width: 250px;
+    height: 100vh;
+    background-color: #1e293b;
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 30px 20px;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #38bdf8;
+    letter-spacing: 2px;
+}
+
+.sidebar-header p {
+    margin: 5px 0 0 0;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 25px;
+    color: #cbd5e1;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.nav-item:hover {
+    background-color: #334155;
+    color: white;
+}
+
+.nav-item.active {
+    background-color: #38bdf8;
+    color: white;
+    border-left: 4px solid #bae6fd;
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid #334155;
+}
+
+.doctor-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.avatar-icon {
+    font-size: 2rem;
+    color: #94a3b8;
+    background: #334155;
+    padding: 10px;
+    border-radius: 50%;
+}
+
+.info-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-text .name {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.info-text .role {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+    padding: 12px;
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.logout-btn:hover {
+    background-color: #ef4444;
+    color: white;
+}

@@ -1,0 +1,12 @@
+.doctor-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f4f7fa;
+}
+
+.doctor-main-content {
+    flex-grow: 1;
+    padding: 30px;
+    margin-left: 250px; /* Sidebar width */
+    overflow-y: auto;
+}

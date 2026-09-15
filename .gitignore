@@ -48,3 +48,5 @@ frontend/.env.production
 .DS_Store
 Thumbs.db
 test_db.js
+seed_db.js
+clear_db.js

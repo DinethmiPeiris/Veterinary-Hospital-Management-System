@@ -47,3 +47,4 @@ frontend/.env.production
 ### OS ###
 .DS_Store
 Thumbs.db
+test_db.js

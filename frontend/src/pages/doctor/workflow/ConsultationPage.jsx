@@ -71,6 +71,12 @@ const ConsultationPage = () => {
 
   const handleSaveDraft = async () => {
     if (isCompleted) return
+
+    if (!formData.diagnosis?.trim()) {
+      alert('Please provide a diagnosis before saving the draft.')
+      return
+    }
+
     setSaving(true)
     try {
       await saveConsultationDraft(appointmentId, formData)
@@ -90,7 +96,7 @@ const ConsultationPage = () => {
       return
     }
 
-    if (!formData.diagnosis || !formData.treatmentPlan) {
+    if (!formData.diagnosis?.trim() || !formData.treatmentPlan?.trim()) {
       alert('Please provide at least a diagnosis and treatment plan to complete the consultation.')
       return
     }

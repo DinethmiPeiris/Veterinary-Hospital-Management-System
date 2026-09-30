@@ -75,7 +75,7 @@ public class DoctorAuthService {
     }
 
     public DoctorAuthResponse forgotPassword(ForgotPasswordRequest request) {
-        Doctor doctor = doctorRepository.findByEmailIgnoreCase(request.getEmail().trim())
+        Doctor doctor = doctorRepository.findFirstByEmailIgnoreCase(request.getEmail().trim())
                 .orElseThrow(() -> new ResourceNotFoundException("No doctor account found for that email."));
 
         String resetToken = String.format("%06d", secureRandom.nextInt(1_000_000));
@@ -92,7 +92,7 @@ public class DoctorAuthService {
     }
 
     public DoctorAuthResponse resetPassword(ResetPasswordRequest request) {
-        Doctor doctor = doctorRepository.findByEmailIgnoreCase(request.getEmail().trim())
+        Doctor doctor = doctorRepository.findFirstByEmailIgnoreCase(request.getEmail().trim())
                 .orElseThrow(() -> new ResourceNotFoundException("No doctor account found for that email."));
 
         if (doctor.getResetToken() == null || doctor.getResetTokenExpiry() == null) {
@@ -119,10 +119,10 @@ public class DoctorAuthService {
     }
 
     private Optional<Doctor> findByIdentifier(String identifier) {
-        Optional<Doctor> byUsername = doctorRepository.findByUsernameIgnoreCase(identifier);
+        Optional<Doctor> byUsername = doctorRepository.findFirstByUsernameIgnoreCase(identifier);
         if (byUsername.isPresent()) return byUsername;
 
-        return doctorRepository.findByStaffIdIgnoreCase(identifier);
+        return doctorRepository.findFirstByStaffIdIgnoreCase(identifier);
     }
 
     private String normalizeUsername(String raw) {

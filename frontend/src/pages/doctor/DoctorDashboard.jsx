@@ -29,24 +29,51 @@ const DoctorDashboard = () => {
     return () => { cancelled = true }
   }, [])
 
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset() * 60000;
+    return new Date(today.getTime() - offset).toISOString().split('T')[0];
+  }, []);
+
+  const todayAppointments = useMemo(() => {
+    return appointments.filter(a => (a.date || todayStr) === todayStr)
+  }, [appointments, todayStr])
+
   const stats = useMemo(() => {
-    const total = appointments.length
-    const waiting = appointments.filter((a) => a.status === 'WAITING' || a.status === 'SCHEDULED').length
-    const inProgress = appointments.filter((a) => a.status === 'IN_PROGRESS').length
-    const completed = appointments.filter((a) => a.status === 'COMPLETED').length
+    const total = todayAppointments.length
+    const waiting = todayAppointments.filter((a) => a.status === 'WAITING' || a.status === 'SCHEDULED').length
+    const inProgress = todayAppointments.filter((a) => a.status === 'IN_PROGRESS').length
+    const completed = todayAppointments.filter((a) => a.status === 'COMPLETED').length
     return { total, waiting, inProgress, completed }
-  }, [appointments])
+  }, [todayAppointments])
 
   const nextAppointment = useMemo(() => {
-    const open = appointments.filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED')
+    const open = todayAppointments.filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED')
     const priority = { IN_PROGRESS: 0, WAITING: 1, SCHEDULED: 2 }
+    
+    const parseDateTime = (dateStr, timeStr) => {
+      try {
+        const dStr = dateStr || todayStr
+        const [time, modifier] = (timeStr || '12:00 AM').split(' ')
+        let [hours, minutes] = time.split(':')
+        if (hours === '12') hours = '00'
+        if (modifier === 'PM') hours = (parseInt(hours, 10) + 12).toString()
+        return new Date(`${dStr}T${hours.toString().padStart(2, '0')}:${minutes}:00`).getTime()
+      } catch {
+        return 0
+      }
+    }
+
     return [...open].sort((a, b) => {
       const pa = priority[a.status] ?? 9
       const pb = priority[b.status] ?? 9
       if (pa !== pb) return pa - pb
-      return String(a.time || '').localeCompare(String(b.time || ''))
+      
+      const timeA = parseDateTime(a.date, a.time)
+      const timeB = parseDateTime(b.date, b.time)
+      return timeA - timeB
     })[0] || null
-  }, [appointments])
+  }, [todayAppointments, todayStr])
 
   return (
     <div className="doctor-dashboard">

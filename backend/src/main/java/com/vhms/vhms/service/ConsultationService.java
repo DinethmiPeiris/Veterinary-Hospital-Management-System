@@ -31,7 +31,7 @@ public class ConsultationService {
     public ConsultationResponseDTO startConsultation(String appointmentId, String doctorId) {
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
         Doctor doctor = doctorRepository.findById(doctorId)
-                .or(() -> doctorRepository.findByStaffIdIgnoreCase(doctorId))
+                .or(() -> doctorRepository.findFirstByStaffIdIgnoreCase(doctorId))
                 .orElse(null);
 
         Consultation consultation = consultationRepository.findByAppointmentId(appointmentId)

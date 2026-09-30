@@ -54,6 +54,7 @@ public class MedicalRecord {
     // ── Medical metadata ────────────────────────────────────────────
     private List<String> allergies = new ArrayList<>();
     private List<String> chronicConditions = new ArrayList<>();
+    private List<Vaccination> vaccinations = new ArrayList<>();
 
     // ── Audit ───────────────────────────────────────────────────────
     @CreatedDate

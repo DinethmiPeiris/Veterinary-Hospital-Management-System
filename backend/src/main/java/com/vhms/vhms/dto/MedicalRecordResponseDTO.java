@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.vhms.vhms.model.Vaccination;
 
 @Data
 public class MedicalRecordResponseDTO {
@@ -20,6 +21,8 @@ public class MedicalRecordResponseDTO {
     
     // The history of consultations for this pet
     private List<ConsultationResponseDTO> pastConsultations;
+    
+    private List<Vaccination> vaccinations;
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

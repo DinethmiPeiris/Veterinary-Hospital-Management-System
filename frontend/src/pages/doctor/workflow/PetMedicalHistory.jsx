@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import StatusBadge from '../../shared/StatusBadge'
-import { getMedicalRecordByPetId, updatePetWeight } from '../../../utils/appointmentStore'
+import { getMedicalRecordByPetId, updatePetWeight, addVaccination } from '../../../utils/appointmentStore'
 import './PetMedicalHistory.css'
 
 const PetMedicalHistory = () => {
@@ -14,6 +14,10 @@ const PetMedicalHistory = () => {
   const [weightInput, setWeightInput] = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [weightMessage, setWeightMessage] = useState('')
+
+  const [vaccineForm, setVaccineForm] = useState({ vaccineName: '', dateAdministered: '', nextDueDate: '', administeredBy: '', notes: '' })
+  const [savingVaccine, setSavingVaccine] = useState(false)
+  const [vaccineMessage, setVaccineMessage] = useState('')
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -54,6 +58,26 @@ const PetMedicalHistory = () => {
       setWeightMessage(err.message || 'Could not update weight.')
     } finally {
       setSavingWeight(false)
+    }
+  }
+
+  const handleAddVaccination = async (e) => {
+    e.preventDefault()
+    if (!vaccineForm.vaccineName.trim() || !vaccineForm.dateAdministered) {
+      setVaccineMessage('Vaccine name and date are required.')
+      return
+    }
+    setSavingVaccine(true)
+    setVaccineMessage('')
+    try {
+      const updated = await addVaccination(record.petId, vaccineForm)
+      setRecord(updated)
+      setVaccineForm({ vaccineName: '', dateAdministered: '', nextDueDate: '', administeredBy: '', notes: '' })
+      setVaccineMessage('Vaccination added successfully.')
+    } catch (err) {
+      setVaccineMessage(err.message || 'Could not add vaccination.')
+    } finally {
+      setSavingVaccine(false)
     }
   }
 
@@ -174,6 +198,89 @@ const PetMedicalHistory = () => {
             ) : (
               <p className="empty-state">No past consultations found. Complete a consultation to build this EMR history.</p>
             )}
+          </div>
+        </div>
+
+        <div className="vaccinations-card">
+          <div className="card-header">
+            <span className="card-icon">💉</span>
+            <h2>Vaccination Records</h2>
+          </div>
+          <div className="card-body">
+            {record.vaccinations && record.vaccinations.length > 0 ? (
+              <ul className="vaccination-list">
+                {record.vaccinations.map((vac, idx) => (
+                  <li key={idx} className="vaccination-item">
+                    <div className="vaccination-header flex-between">
+                      <h4>{vac.vaccineName}</h4>
+                    </div>
+                    <p><strong>Administered:</strong> {new Date(vac.dateAdministered).toLocaleDateString()}</p>
+                    {vac.nextDueDate && <p><strong>Next Due:</strong> {new Date(vac.nextDueDate).toLocaleDateString()}</p>}
+                    {vac.administeredBy && <p><strong>Administered By:</strong> {vac.administeredBy}</p>}
+                    {vac.notes && <p><strong>Notes:</strong> {vac.notes}</p>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">No vaccination records found.</p>
+            )}
+
+            <form className="vaccination-form mt-4" onSubmit={handleAddVaccination}>
+              <h4 className="mb-2">Add Vaccination</h4>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Vaccine Name *"
+                  className="form-input"
+                  value={vaccineForm.vaccineName}
+                  onChange={e => setVaccineForm({...vaccineForm, vaccineName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group grid-2">
+                <div>
+                  <label>Date Administered *</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={vaccineForm.dateAdministered}
+                    onChange={e => setVaccineForm({...vaccineForm, dateAdministered: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <label>Next Due Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={vaccineForm.nextDueDate}
+                    onChange={e => setVaccineForm({...vaccineForm, nextDueDate: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Administered By (Doctor/Staff)"
+                  className="form-input"
+                  value={vaccineForm.administeredBy}
+                  onChange={e => setVaccineForm({...vaccineForm, administeredBy: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <textarea
+                  placeholder="Additional Notes"
+                  className="form-input"
+                  rows="2"
+                  value={vaccineForm.notes}
+                  onChange={e => setVaccineForm({...vaccineForm, notes: e.target.value})}
+                ></textarea>
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingVaccine}>
+                {savingVaccine ? 'Adding...' : '+ Add Record'}
+              </button>
+              {vaccineMessage && <p className="vaccine-message mt-2">{vaccineMessage}</p>}
+            </form>
           </div>
         </div>
       </div>

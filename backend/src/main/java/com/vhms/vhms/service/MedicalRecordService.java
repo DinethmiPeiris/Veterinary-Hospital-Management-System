@@ -50,6 +50,7 @@ public class MedicalRecordService {
         response.setOwnerName(record.getOwnerName());
         response.setCreatedAt(record.getCreatedAt());
         response.setUpdatedAt(record.getUpdatedAt());
+        response.setVaccinations(record.getVaccinations() != null ? record.getVaccinations() : new java.util.ArrayList<>());
         response.setPastConsultations(consultations.stream()
                 .map(this::mapToConsultationDTO)
                 .collect(Collectors.toList()));
@@ -125,6 +126,20 @@ public class MedicalRecordService {
                     appointment.setWeight(weight);
                     appointmentRepository.save(appointment);
                 });
+
+        return getMedicalRecordByPetId(petId);
+    }
+
+    public MedicalRecordResponseDTO addVaccination(String petId, com.vhms.vhms.model.Vaccination vaccination) {
+        MedicalRecord record = medicalRecordRepository.findByPetId(petId)
+                .orElseGet(() -> createFromAppointments(petId));
+
+        if (record.getVaccinations() == null) {
+            record.setVaccinations(new java.util.ArrayList<>());
+        }
+        record.getVaccinations().add(vaccination);
+        record.setUpdatedAt(LocalDateTime.now());
+        medicalRecordRepository.save(record);
 
         return getMedicalRecordByPetId(petId);
     }

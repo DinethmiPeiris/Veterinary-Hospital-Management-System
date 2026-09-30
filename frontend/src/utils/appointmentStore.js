@@ -39,6 +39,13 @@ export async function updatePetWeight(petId, weight) {
   })
 }
 
+export async function addVaccination(petId, vaccinationData) {
+  return apiRequest(`/api/v1/medical-records/pet/${encodeURIComponent(petId)}/vaccinations`, {
+    method: 'POST',
+    body: JSON.stringify(vaccinationData),
+  })
+}
+
 export async function getConsultationByAppointmentId(appointmentId) {
   return apiRequest(`/api/v1/consultations/by-appointment/${encodeURIComponent(appointmentId)}`)
 }
@@ -61,7 +68,7 @@ export async function startAppointmentConsultation(id) {
     clinicalObservations: consultation.observations || '',
     diagnosis: consultation.diagnosis || '',
     treatmentPlan: consultation.treatmentPlan || '',
-    prescription: formatPrescriptions(consultation.prescriptions),
+    prescriptions: Array.isArray(consultation.prescriptions) ? consultation.prescriptions : [],
     status: consultation.status || 'IN_PROGRESS',
   })
 
@@ -76,7 +83,7 @@ export function getConsultationData(appointmentId) {
       clinicalObservations: '',
       diagnosis: '',
       treatmentPlan: '',
-      prescription: '',
+      prescriptions: [],
       status: 'IN_PROGRESS',
     }
   )
@@ -112,7 +119,7 @@ export async function loadConsultationForm(appointmentId) {
       clinicalObservations: consultation.observations || '',
       diagnosis: consultation.diagnosis || '',
       treatmentPlan: consultation.treatmentPlan || '',
-      prescription: formatPrescriptions(consultation.prescriptions) || consultation.notes || '',
+      prescriptions: Array.isArray(consultation.prescriptions) ? consultation.prescriptions : [],
       status: consultation.status || 'IN_PROGRESS',
     }
     saveConsultationData(appointmentId, form)
@@ -134,14 +141,8 @@ async function persistConsultation(appointmentId, formData, isDraft) {
     }
   }
 
-  const prescriptions = formData.prescription?.trim()
-    ? [{
-        medicationName: formData.prescription.trim(),
-        dosage: '',
-        frequency: '',
-        duration: '',
-        instructions: formData.prescription.trim(),
-      }]
+  const prescriptions = Array.isArray(formData.prescriptions) 
+    ? formData.prescriptions.filter(p => p.medicationName?.trim())
     : []
 
   await apiRequest(`/api/v1/consultations/${consultationId}`, {
@@ -152,7 +153,7 @@ async function persistConsultation(appointmentId, formData, isDraft) {
       diagnosis: formData.diagnosis,
       treatmentPlan: formData.treatmentPlan,
       prescriptions,
-      notes: formData.prescription,
+      notes: formData.notes || '',
       draft: isDraft,
       isDraft,
     }),

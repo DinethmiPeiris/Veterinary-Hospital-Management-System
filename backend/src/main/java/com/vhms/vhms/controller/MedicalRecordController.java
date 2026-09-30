@@ -27,4 +27,11 @@ public class MedicalRecordController {
             @Valid @RequestBody WeightUpdateDTO request) {
         return ResponseEntity.ok(medicalRecordService.updateWeight(petId, request.getWeight()));
     }
+
+    @PostMapping("/pet/{petId}/vaccinations")
+    public ResponseEntity<MedicalRecordResponseDTO> addVaccination(
+            @PathVariable String petId,
+            @RequestBody com.vhms.vhms.model.Vaccination vaccination) {
+        return ResponseEntity.ok(medicalRecordService.addVaccination(petId, vaccination));
+    }
 }

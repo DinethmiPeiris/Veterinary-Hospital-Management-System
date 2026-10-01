@@ -1,0 +1,257 @@
+/* Doctor Dashboard - Clinical Hub & SaaS Aesthetics */
+@import './AdminDashboardPage.css';
+
+.doctor-theme .doctor-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 0.76rem;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* Header User Dropdown Menu */
+.admin-user-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 16px 6px 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 100px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.admin-user-pill:hover,
+.admin-user-pill.active {
+    border-color: #10b981;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+    background: #f0fdf4;
+}
+
+.dropdown-caret {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-left: 4px;
+    transition: transform 0.2s ease;
+}
+
+.dropdown-caret.open {
+    transform: rotate(180deg);
+    color: #10b981;
+}
+
+.doctor-user-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 230px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeInDropdown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInDropdown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.dropdown-item.logout:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* Live Availability Badge in Hero Section */
+.live-availability-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    padding: 10px 22px;
+    border-radius: 100px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.live-availability-badge.available {
+    border-color: #a7f3d0;
+    color: #047857;
+    background: #ecfdf5;
+}
+
+.live-availability-badge.busy {
+    border-color: #fde68a;
+    color: #b45309;
+    background: #fffbeb;
+}
+
+.live-availability-badge.unavailable {
+    border-color: #fca5a5;
+    color: #b91c1c;
+    background: #fef2f2;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.live-availability-badge.available .status-dot {
+    background: #10b981;
+    box-shadow: 0 0 10px #10b981;
+}
+
+.live-availability-badge.busy .status-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 10px #f59e0b;
+}
+
+.live-availability-badge.unavailable .status-dot {
+    background: #ef4444;
+    box-shadow: 0 0 10px #ef4444;
+}
+
+/* Doctor Interactive Patient & Owner Buttons */
+.clickable-entity-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    color: #059669;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.15s ease;
+    text-align: left;
+}
+
+.clickable-entity-btn:hover {
+    color: #047857;
+}
+
+.clickable-pet-title {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    text-align: left;
+}
+
+.clickable-pet-title:hover {
+    color: #059669;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Clinical Modals */
+.clinical-modal-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 620px;
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.clinical-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+}
+
+.clinical-modal-close-btn {
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clinical-modal-close-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+/* Patient Card Hover */
+.doc-patient-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.doc-patient-card:hover {
+    transform: translateY(-3px);
+    border-color: #a7f3d0;
+    box-shadow: 0 12px 28px -6px rgba(16, 185, 129, 0.12);
+}

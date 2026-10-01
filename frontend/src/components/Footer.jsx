@@ -7,18 +7,11 @@ export default function Footer() {
             <div className="footer-logo">
               <div className="footer-logo-icon">🐾</div>
               <div className="footer-logo-text">
-                <strong>Sri Jayawardanapura Animal Hospital</strong>
+                <strong>Sri Jayawardenapura Animal Hospital</strong>
                 <span>Compassionate Care for Every Pet</span>
               </div>
             </div>
             <p className="footer-desc">A premier veterinary hospital providing exceptional healthcare for pets across Sri Lanka. Combining compassion, expertise, and technology to serve every pet family.</p>
-            <div className="footer-social">
-              <a href="#" id="footer-fb" aria-label="Facebook">📘</a>
-              <a href="#" id="footer-ig" aria-label="Instagram">📸</a>
-              <a href="#" id="footer-tw" aria-label="Twitter">𝕏</a>
-              <a href="#" id="footer-yt" aria-label="YouTube">📺</a>
-              <a href="#" id="footer-wa" aria-label="WhatsApp">💬</a>
-            </div>
           </div>
           <div className="footer-col">
             <h4>Quick Links</h4>
@@ -53,7 +46,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2025 Sri Jayawardanapura Animal Hospital. All rights reserved.</p>
+          <p>&copy; 2025 Sri Jayawardenapura Animal Hospital. All rights reserved.</p>
           <div className="footer-bottom-links">
             <a href="#">Privacy Policy</a>
             <a href="#">Terms of Service</a>

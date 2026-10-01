@@ -48,3 +48,7 @@ frontend/.env.production
 .DS_Store
 Thumbs.db
 test_db.js
+
+### Diagrams / Temporary Docs ###
+EER_Diagram.*
+

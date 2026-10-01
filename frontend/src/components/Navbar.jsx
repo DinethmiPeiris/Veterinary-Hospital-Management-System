@@ -26,7 +26,7 @@ export default function Navbar() {
             <a className="nav-logo" id="nav-logo-link" aria-label="Home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <div className="nav-logo-icon">🐾</div>
               <div className="nav-logo-text">
-                <strong>Sri Jayawardanapura</strong>
+                <strong>Sri Jayawardenapura</strong>
                 <span>Animal Hospital</span>
               </div>
             </a>
@@ -37,7 +37,8 @@ export default function Navbar() {
               <a onClick={() => scrollTo('contact')}>Contact</a>
             </div>
             <div className="nav-cta">
-              <button className="btn btn-secondary" id="nav-login-btn" onClick={() => navigate('/login')}>Login</button>
+              <button className="btn btn-secondary" id="nav-login-btn" onClick={() => navigate('/login', { state: { mode: 'signin' } })}>Login</button>
+              <button className="btn btn-primary" id="nav-register-btn" onClick={() => navigate('/login', { state: { mode: 'register' } })}>Register</button>
             </div>
             <button className="hamburger" id="hamburger" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}>
               <span></span><span></span><span></span>
@@ -52,8 +53,9 @@ export default function Navbar() {
         <a onClick={() => scrollTo('services')}>Services</a>
         <a onClick={() => scrollTo('why')}>Why Us</a>
         <a onClick={() => scrollTo('contact')}>Contact</a>
-        <div className="mobile-menu-cta">
-          <button className="btn btn-secondary" id="mobile-login-btn" onClick={() => { setMobileOpen(false); navigate('/login') }}>Login</button>
+        <div className="mobile-menu-cta" style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn btn-secondary" id="mobile-login-btn" onClick={() => { setMobileOpen(false); navigate('/login', { state: { mode: 'signin' } }) }}>Login</button>
+          <button className="btn btn-primary" id="mobile-register-btn" onClick={() => { setMobileOpen(false); navigate('/login', { state: { mode: 'register' } }) }}>Register</button>
         </div>
       </div>
     </>

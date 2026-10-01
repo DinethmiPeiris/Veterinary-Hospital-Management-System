@@ -53,7 +53,10 @@ export default function WhyUs() {
         <div className="why-inner">
           <div className="reveal-left why-left" ref={leftRef}>
             <span className="section-label">⭐ Why Choose Us</span>
-            <h2 className="section-title" id="why-title">The Smart Choice for<br/><span>Your Pet's Health</span></h2>
+            <h2 className="section-title" id="why-title" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', fontSize: 'clamp(1.3rem, 2.5vw, 2.05rem)', lineHeight: 1.25 }}>
+              <div style={{ whiteSpace: 'nowrap' }}>The Smart Choice for</div>
+              <span style={{ whiteSpace: 'nowrap' }}>Your Pet's Health</span>
+            </h2>
             <p className="section-subtitle">We combine decades of veterinary expertise with modern technology to deliver healthcare that is accessible, transparent, and truly caring.</p>
             <div className="why-grid">
               <div className="why-card">
@@ -85,7 +88,7 @@ export default function WhyUs() {
           </div>
           <div className="why-right reveal-right" ref={rightRef}>
             <div className="why-quote">
-              <p className="why-quote-text">"Sri Jayawardanapura Animal Hospital saved my dog Buddy's life last year. The doctors were incredibly skilled, the facility was spotless, and the online system made everything so easy. I would not trust any other hospital with my pets."</p>
+              <p className="why-quote-text">"Sri Jayawardenapura Animal Hospital saved my dog Buddy's life last year. The doctors were incredibly skilled, the facility was spotless, and the online system made everything so easy. I would not trust any other hospital with my pets."</p>
               <div className="why-quote-author">
                 <div className="wqa-avatar">🧑</div>
                 <div className="wqa-info">
@@ -95,19 +98,19 @@ export default function WhyUs() {
               </div>
             </div>
             <div className="why-numbers">
-              <div className="wn-card"><strong><CountUp target={1200} />+</strong><span>Patients Treated</span></div>
-              <div className="wn-card"><strong><CountUp target={98} />%</strong><span>Satisfaction Rate</span></div>
-              <div className="wn-card"><strong><CountUp target={18} />+</strong><span>Specialist Vets</span></div>
+              <div className="wn-card"><strong><CountUp target={1200} />+</strong><span className="wn-card-label">Patients Treated</span></div>
+              <div className="wn-card"><strong><CountUp target={98} />%</strong><span className="wn-card-label">Satisfaction Rate</span></div>
+              <div className="wn-card"><strong><CountUp target={5} /></strong><span className="wn-card-label">Specialist Vets</span></div>
             </div>
-            <div className="why-quote" style={{padding:'28px 36px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'}}>
-                <div style={{width:'48px',height:'48px',background:'rgba(249,168,37,.2)',borderRadius:'14px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px'}}>🏆</div>
+            <div className="why-quote" style={{ padding: '28px 36px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ width: '48px', height: '48px', background: 'rgba(249,168,37,.2)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>🏆</div>
                 <div>
-                  <div style={{fontWeight:800,color:'white',fontSize:'.95rem'}}>ISO 9001:2015 Certified</div>
-                  <div style={{fontSize:'.78rem',color:'rgba(255,255,255,.6)'}}>International Quality Standard</div>
+                  <div style={{ fontWeight: 800, color: 'white', fontSize: '.95rem' }}>ISO 9001:2015 Certified</div>
+                  <div style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.6)' }}>International Quality Standard</div>
                 </div>
               </div>
-              <p style={{fontSize:'.85rem',color:'rgba(255,255,255,.75)',lineHeight:1.6}}>Our commitment to quality is recognized at an international level. We maintain rigorous standards in every aspect of veterinary care and hospital management.</p>
+              <p style={{ fontSize: '.85rem', color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>Our commitment to quality is recognized at an international level. We maintain rigorous standards in every aspect of veterinary care and hospital management.</p>
             </div>
           </div>
         </div>

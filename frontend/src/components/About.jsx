@@ -1,68 +1,104 @@
-import { useEffect, useRef } from 'react'
+package com.vhms.vhms.service;
 
-export default function About() {
-  const leftRef = useRef(null)
-  const rightRef = useRef(null)
+import com.vhms.vhms.dto.PetRequest;
+import com.vhms.vhms.model.Pet;
+import com.vhms.vhms.repository.PetRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) entry.target.classList.add('visible')
-      })
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' })
+import java.util.List;
+import java.util.Optional;
 
-    if (leftRef.current) observer.observe(leftRef.current)
-    if (rightRef.current) observer.observe(rightRef.current)
-    return () => observer.disconnect()
-  }, [])
+@Service
+public class PetService {
 
-  return (
-    <section className="about" id="about" aria-labelledby="about-title">
-      <div className="paw-bg" aria-hidden="true"></div>
-      <div className="container">
-        <div className="about-inner">
-          <div className="about-img-block reveal-left" ref={leftRef}>
-            <img src="/dog_and_cat.jpg" alt="Happy Dog and Cat Sitting Together" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%',boxShadow:'0 12px 36px rgba(0,0,0,0.15)'}} />
-            <div className="about-badge-float">
-              <div className="abf-icon">🏆</div>
-              <div className="abf-text">
-                <strong>15+</strong>
-                <span>Years of Trusted Care</span>
-              </div>
-            </div>
-            <div className="about-badge-float-2">
-              <div className="abf2-text">
-                <strong>ISO Certified</strong>
-                Veterinary Excellence
-              </div>
-            </div>
-          </div>
-          <div className="reveal-right" ref={rightRef}>
-            <span className="section-label">🏥 About Us</span>
-            <h2 className="section-title" id="about-title">Where Pets Receive the<br/><span>Best Care Possible</span></h2>
-            <p className="section-subtitle">Sri Jayawardanapura Animal Hospital is Sri Lanka's premier veterinary facility, combining cutting-edge medical technology with warm, compassionate care for every pet.</p>
-            <p className="section-subtitle" style={{marginTop:'14px'}}>Our state-of-the-art digital management system ensures seamless coordination between pet owners, doctors, and hospital administrators &mdash; making pet healthcare easier, faster, and more transparent than ever before.</p>
-            <div className="about-features">
-              <div className="about-feat">
-                <div className="about-feat-icon">🩺</div>
-                <div><p>Specialist Veterinarians</p><small>Board-certified experts in every discipline</small></div>
-              </div>
-              <div className="about-feat">
-                <div className="about-feat-icon">💻</div>
-                <div><p>Digital Health Records</p><small>Complete pet health history at your fingertips</small></div>
-              </div>
-              <div className="about-feat">
-                <div className="about-feat-icon">🔬</div>
-                <div><p>Advanced Diagnostics</p><small>In-house lab, imaging &amp; pathology</small></div>
-              </div>
-              <div className="about-feat">
-                <div className="about-feat-icon">📱</div>
-                <div><p>Online Appointments</p><small>Book &amp; manage visits from anywhere</small></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
+    @Autowired
+    private PetRepository petRepository;
+
+    public List<Pet> getPetsByOwner(String ownerId) {
+        return petRepository.findByOwnerId(ownerId);
+    }
+
+    public List<Pet> getAllPets() {
+        return petRepository.findAll();
+    }
+
+    public Optional<Pet> getPetById(String id) {
+        return petRepository.findById(id);
+    }
+
+    private void validatePetRequest(PetRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Pet data cannot be empty!");
+        }
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Pet name is required.");
+        }
+        if (request.getName().trim().length() < 2 || request.getName().trim().length() > 30) {
+            throw new IllegalArgumentException("Pet name must be between 2 and 30 characters.");
+        }
+        if (request.getWeight() <= 0) {
+            throw new IllegalArgumentException("Pet weight must be greater than 0 kg.");
+        }
+        if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
+            try {
+                java.time.LocalDate dob = java.time.LocalDate.parse(request.getDateOfBirth());
+                if (dob.isAfter(java.time.LocalDate.now())) {
+                    throw new IllegalArgumentException("Date of birth cannot be in the future.");
+                }
+            } catch (java.time.format.DateTimeParseException ignored) {
+            }
+        }
+    }
+
+    public Pet addPet(PetRequest request) {
+        validatePetRequest(request);
+        Pet pet = new Pet(
+                request.getOwnerId(),
+                request.getName().trim(),
+                request.getSpecies(),
+                request.getBreed(),
+                request.getAge(),
+                request.getWeight(),
+                request.getGender(),
+                request.getPhotoUrl(),
+                request.getDateOfBirth());
+        return petRepository.save(pet);
+    }
+
+    public Pet updatePet(String id, PetRequest request) {
+        validatePetRequest(request);
+        Optional<Pet> petOpt = petRepository.findById(id);
+        if (petOpt.isEmpty()) {
+            throw new RuntimeException("Pet not found!");
+        }
+
+        Pet pet = petOpt.get();
+        if (request.getName() != null)
+            pet.setName(request.getName());
+        if (request.getSpecies() != null)
+            pet.setSpecies(request.getSpecies());
+        if (request.getBreed() != null)
+            pet.setBreed(request.getBreed());
+        if (request.getAge() > 0)
+            pet.setAge(request.getAge());
+        if (request.getWeight() > 0)
+            pet.setWeight(request.getWeight());
+        if (request.getGender() != null)
+            pet.setGender(request.getGender());
+        if (request.getPhotoUrl() != null)
+            pet.setPhotoUrl(request.getPhotoUrl());
+        if (request.getDateOfBirth() != null)
+            pet.setDateOfBirth(request.getDateOfBirth());
+
+        return petRepository.save(pet);
+    }
+
+    public boolean deletePet(String id) {
+        if (!petRepository.existsById(id)) {
+            return false;
+        }
+        petRepository.deleteById(id);
+        return true;
+    }
 }

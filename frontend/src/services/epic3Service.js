@@ -1,0 +1,248 @@
+const API_BASE_URL = 'http://localhost:8080/api/epic3'
+
+async function handleResponse(response) {
+  if (!response.ok) {
+    let errorMsg = `Server error (${response.status})`
+    try {
+      const data = await response.json()
+      if (data.message) {
+        errorMsg = data.message
+      } else if (data.details) {
+        errorMsg = Object.values(data.details).join(', ')
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+    throw new Error(errorMsg)
+  }
+  if (response.status === 204) return null
+  return await response.json()
+}
+
+export const epic3Service = {
+  // ── Admissions ─────────────────────────────────────────────────────────────
+  // Doctor Recommend
+  async recommendAdmission(data) {
+    const res = await fetch(`${API_BASE_URL}/admissions/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // Pet Owner Request
+  async requestAdmission(admissionId) {
+    const res = await fetch(`${API_BASE_URL}/admissions/${admissionId}/request`, {
+      method: 'PATCH',
+    })
+    return handleResponse(res)
+  },
+
+  // Admissions list
+  async getAdmissions(status = '') {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    const res = await fetch(`${API_BASE_URL}/admissions${query}`)
+    return handleResponse(res)
+  },
+
+  // Admissions for a specific Pet Owner
+  // TODO [EPIC 1 INTEGRATION]: Replace petOwnerId with value from auth context/JWT
+  async getAdmissionsByOwner(petOwnerId, status = '') {
+    const params = new URLSearchParams()
+    if (petOwnerId) params.append('petOwnerId', petOwnerId)
+    if (status) params.append('status', status)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    const res = await fetch(`${API_BASE_URL}/admissions${queryString}`)
+    return handleResponse(res)
+  },
+
+  // Process Admission (Admin)
+  async processAdmission(admissionId, cageWardId) {
+    const res = await fetch(`${API_BASE_URL}/admissions/${admissionId}/process`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cageWardId }),
+    })
+    return handleResponse(res)
+  },
+
+  // Reject Admission (Admin)
+  async rejectAdmission(admissionId, rejectionReason) {
+    const res = await fetch(`${API_BASE_URL}/admissions/${admissionId}/reject`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rejectionReason }),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Cages & Wards ──────────────────────────────────────────────────────────
+  async getCages() {
+    const res = await fetch(`${API_BASE_URL}/cages`)
+    return handleResponse(res)
+  },
+
+  async getAvailableCages() {
+    const res = await fetch(`${API_BASE_URL}/cages/available`)
+    return handleResponse(res)
+  },
+
+  async updateCageStatus(cageId, status) {
+    const res = await fetch(`${API_BASE_URL}/cages/${cageId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Hospitalizations ───────────────────────────────────────────────────────
+  async getAllHospitalizations() {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations`)
+    return handleResponse(res)
+  },
+
+  async getActiveHospitalizations() {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/active`)
+    return handleResponse(res)
+  },
+
+  async getHospitalizationById(id) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${id}`)
+    return handleResponse(res)
+  },
+
+  async getHospitalizationByAdmissionId(admissionId) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/admission/${admissionId}`)
+    return handleResponse(res)
+  },
+
+  // Daily Treatment Notes
+  async addTreatmentNote(hospitalizationId, data) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${hospitalizationId}/treatment-notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // Recovery Progress
+  async updateRecoveryProgress(hospitalizationId, data) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${hospitalizationId}/recovery`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // Medication Instructions
+  async addMedicationInstruction(hospitalizationId, data) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${hospitalizationId}/medication-instructions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // Discharge Recommendation (Doctor)
+  async recommendDischarge(hospitalizationId, data) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${hospitalizationId}/recommend-discharge`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // Confirm Discharge (Admin)
+  async confirmDischarge(hospitalizationId, data = {}) {
+    const res = await fetch(`${API_BASE_URL}/hospitalizations/${hospitalizationId}/confirm-discharge`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Medicine & Supply Requests ─────────────────────────────────────────────
+  async createMedicineRequest(data) {
+    const res = await fetch(`${API_BASE_URL}/medicine-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  async getMedicineRequests(status = '') {
+    const query = status && status !== 'ALL' ? `?status=${encodeURIComponent(status)}` : ''
+    const res = await fetch(`${API_BASE_URL}/medicine-requests${query}`)
+    return handleResponse(res)
+  },
+
+  async getMedicineRequestsByHospitalization(hospitalizationId) {
+    const res = await fetch(`${API_BASE_URL}/medicine-requests/hospitalization/${hospitalizationId}`)
+    return handleResponse(res)
+  },
+
+  async issueMedicineRequest(id, adminId = 'ADMIN-01') {
+    const query = adminId ? `?adminId=${encodeURIComponent(adminId)}` : ''
+    const res = await fetch(`${API_BASE_URL}/medicine-requests/${id}/issue${query}`, {
+      method: 'PATCH',
+    })
+    return handleResponse(res)
+  },
+
+  async markMedicineRequestUnavailable(id, data = {}) {
+    const res = await fetch(`${API_BASE_URL}/medicine-requests/${id}/unavailable`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Inventory CRUD ─────────────────────────────────────────────────────────
+  async getInventoryItems(category = 'ALL', search = '') {
+    const params = new URLSearchParams()
+    if (category && category !== 'ALL') params.append('category', category)
+    if (search) params.append('search', search)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    const res = await fetch(`${API_BASE_URL}/inventory${queryString}`)
+    return handleResponse(res)
+  },
+
+  async getInventoryItemById(id) {
+    const res = await fetch(`${API_BASE_URL}/inventory/${id}`)
+    return handleResponse(res)
+  },
+
+  async createInventoryItem(data) {
+    const res = await fetch(`${API_BASE_URL}/inventory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  async updateInventoryItem(id, data) {
+    const res = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  async deleteInventoryItem(id) {
+    const res = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+      method: 'DELETE',
+    })
+    return handleResponse(res)
+  },
+}

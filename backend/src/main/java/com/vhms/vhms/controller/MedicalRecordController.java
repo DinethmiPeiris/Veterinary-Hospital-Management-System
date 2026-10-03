@@ -34,4 +34,11 @@ public class MedicalRecordController {
             @RequestBody com.vhms.vhms.model.Vaccination vaccination) {
         return ResponseEntity.ok(medicalRecordService.addVaccination(petId, vaccination));
     }
+
+    @PostMapping("/pet/{petId}/documents")
+    public ResponseEntity<MedicalRecordResponseDTO> addDocument(
+            @PathVariable String petId,
+            @RequestBody com.vhms.vhms.model.MedicalDocument document) {
+        return ResponseEntity.ok(medicalRecordService.addDocument(petId, document));
+    }
 }

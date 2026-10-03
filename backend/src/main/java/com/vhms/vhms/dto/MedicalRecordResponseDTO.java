@@ -23,6 +23,7 @@ public class MedicalRecordResponseDTO {
     private List<ConsultationResponseDTO> pastConsultations;
     
     private List<Vaccination> vaccinations;
+    private List<com.vhms.vhms.model.MedicalDocument> documents;
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

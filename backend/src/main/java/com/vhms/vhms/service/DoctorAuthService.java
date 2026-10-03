@@ -25,6 +25,7 @@ public class DoctorAuthService {
 
     private final DoctorRepository doctorRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public DoctorAuthResponse register(DoctorRegisterRequest request) {
@@ -83,11 +84,18 @@ public class DoctorAuthService {
         doctor.setResetTokenExpiry(Instant.now().plusSeconds(15 * 60));
         doctorRepository.save(doctor);
 
+        // Send reset code privately via email — never expose it in the API response
+        emailService.sendPasswordResetEmail(
+                doctor.getEmail(),
+                doctor.getFullName(),
+                resetToken
+        );
+
         return DoctorAuthResponse.builder()
                 .email(doctor.getEmail())
                 .fullName(doctor.getFullName())
-                .resetToken(resetToken)
-                .message("Reset code generated. Use it within 15 minutes to set a new password.")
+                // resetToken intentionally omitted from response
+                .message("A 6-digit reset code has been sent to your email. Check your inbox.")
                 .build();
     }
 

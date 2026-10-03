@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import StatusBadge from '../../shared/StatusBadge'
-import { getMedicalRecordByPetId, updatePetWeight, addVaccination } from '../../../utils/appointmentStore'
+import { getMedicalRecordByPetId, updatePetWeight, addVaccination, addDocument } from '../../../utils/appointmentStore'
 import './PetMedicalHistory.css'
 
 const PetMedicalHistory = () => {
@@ -18,6 +18,10 @@ const PetMedicalHistory = () => {
   const [vaccineForm, setVaccineForm] = useState({ vaccineName: '', dateAdministered: '', nextDueDate: '', administeredBy: '', notes: '' })
   const [savingVaccine, setSavingVaccine] = useState(false)
   const [vaccineMessage, setVaccineMessage] = useState('')
+
+  const [documentForm, setDocumentForm] = useState({ fileName: '', fileType: '', base64Data: '', description: '' })
+  const [savingDocument, setSavingDocument] = useState(false)
+  const [documentMessage, setDocumentMessage] = useState('')
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -78,6 +82,46 @@ const PetMedicalHistory = () => {
       setVaccineMessage(err.message || 'Could not add vaccination.')
     } finally {
       setSavingVaccine(false)
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setDocumentForm(prev => ({
+          ...prev,
+          fileName: file.name,
+          fileType: file.type,
+          base64Data: reader.result
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleAddDocument = async (e) => {
+    e.preventDefault()
+    if (!documentForm.base64Data) {
+      setDocumentMessage('Please select a file to upload.')
+      return
+    }
+    setSavingDocument(true)
+    setDocumentMessage('')
+    try {
+      const updated = await addDocument(record.petId, documentForm)
+      setRecord(updated)
+      setDocumentForm({ fileName: '', fileType: '', base64Data: '', description: '' })
+      setDocumentMessage('Document uploaded successfully.')
+      // Reset file input
+      if (document.getElementById('document-file')) {
+        document.getElementById('document-file').value = ''
+      }
+    } catch (err) {
+      setDocumentMessage(err.message || 'Could not upload document.')
+    } finally {
+      setSavingDocument(false)
     }
   }
 
@@ -280,6 +324,58 @@ const PetMedicalHistory = () => {
                 {savingVaccine ? 'Adding...' : '+ Add Record'}
               </button>
               {vaccineMessage && <p className="vaccine-message mt-2">{vaccineMessage}</p>}
+            </form>
+          </div>
+        </div>
+
+        <div className="documents-card">
+          <div className="card-header">
+            <span className="card-icon">📁</span>
+            <h2>Attachments & Documents</h2>
+          </div>
+          <div className="card-body">
+            {record.documents && record.documents.length > 0 ? (
+              <ul className="document-list">
+                {record.documents.map((doc, idx) => (
+                  <li key={idx} className="document-item">
+                    <div className="document-header flex-between">
+                      <h4>{doc.fileName}</h4>
+                      <a href={doc.base64Data} download={doc.fileName} className="btn btn-sm">Download</a>
+                    </div>
+                    <p><strong>Type:</strong> {doc.fileType}</p>
+                    <p><strong>Uploaded:</strong> {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                    {doc.description && <p><strong>Description:</strong> {doc.description}</p>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">No documents attached.</p>
+            )}
+
+            <form className="document-form mt-4" onSubmit={handleAddDocument}>
+              <h4 className="mb-2">Upload Document</h4>
+              <div className="form-group">
+                <input
+                  type="file"
+                  id="document-file"
+                  className="form-input"
+                  onChange={handleFileChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <textarea
+                  placeholder="Document Description"
+                  className="form-input"
+                  rows="2"
+                  value={documentForm.description}
+                  onChange={e => setDocumentForm({...documentForm, description: e.target.value})}
+                ></textarea>
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingDocument || !documentForm.base64Data}>
+                {savingDocument ? 'Uploading...' : 'Upload Document'}
+              </button>
+              {documentMessage && <p className="document-message mt-2">{documentMessage}</p>}
             </form>
           </div>
         </div>

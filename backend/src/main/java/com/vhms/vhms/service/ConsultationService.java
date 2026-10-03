@@ -185,6 +185,13 @@ public class ConsultationService {
         return mapToConsultationDTO(consultation);
     }
 
+    public java.util.List<ConsultationResponseDTO> getConsultationsByPetId(String petId) {
+        return consultationRepository.findByPetIdOrderByConsultationDateDesc(petId)
+                .stream()
+                .map(this::mapToConsultationDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public ConsultationResponseDTO updateStatus(String id, StatusUpdateDTO statusUpdate) {
         Consultation consultation = consultationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation not found with id: " + id));

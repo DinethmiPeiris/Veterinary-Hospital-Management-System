@@ -46,6 +46,13 @@ export async function addVaccination(petId, vaccinationData) {
   })
 }
 
+export async function addDocument(petId, documentData) {
+  return apiRequest(`/api/v1/medical-records/pet/${encodeURIComponent(petId)}/documents`, {
+    method: 'POST',
+    body: JSON.stringify(documentData),
+  })
+}
+
 export async function getConsultationByAppointmentId(appointmentId) {
   return apiRequest(`/api/v1/consultations/by-appointment/${encodeURIComponent(appointmentId)}`)
 }

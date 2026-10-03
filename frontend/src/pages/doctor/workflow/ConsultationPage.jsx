@@ -23,7 +23,7 @@ const ConsultationPage = () => {
     clinicalObservations: '',
     diagnosis: '',
     treatmentPlan: '',
-    prescription: '',
+    prescriptions: [],
     status: 'IN_PROGRESS',
   })
 
@@ -49,7 +49,7 @@ const ConsultationPage = () => {
           clinicalObservations: form.clinicalObservations || '',
           diagnosis: form.diagnosis || '',
           treatmentPlan: form.treatmentPlan || '',
-          prescription: form.prescription || '',
+          prescriptions: Array.isArray(form.prescriptions) ? form.prescriptions : [],
           status: appt.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
         })
         setIsCompleted(appt.status === 'COMPLETED')
@@ -69,8 +69,39 @@ const ConsultationPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleAddPrescription = () => {
+    setFormData(prev => ({
+      ...prev,
+      prescriptions: [
+        ...prev.prescriptions,
+        { medicationName: '', dosage: '', frequency: '', duration: '', route: '', instructions: '' }
+      ]
+    }))
+  }
+
+  const handleUpdatePrescription = (index, field, value) => {
+    setFormData(prev => {
+      const newPrescriptions = [...prev.prescriptions]
+      newPrescriptions[index] = { ...newPrescriptions[index], [field]: value }
+      return { ...prev, prescriptions: newPrescriptions }
+    })
+  }
+
+  const handleRemovePrescription = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      prescriptions: prev.prescriptions.filter((_, i) => i !== index)
+    }))
+  }
+
   const handleSaveDraft = async () => {
     if (isCompleted) return
+
+    if (!formData.diagnosis?.trim()) {
+      alert('Please provide a diagnosis before saving the draft.')
+      return
+    }
+
     setSaving(true)
     try {
       await saveConsultationDraft(appointmentId, formData)
@@ -90,7 +121,7 @@ const ConsultationPage = () => {
       return
     }
 
-    if (!formData.diagnosis || !formData.treatmentPlan) {
+    if (!formData.diagnosis?.trim() || !formData.treatmentPlan?.trim()) {
       alert('Please provide at least a diagnosis and treatment plan to complete the consultation.')
       return
     }
@@ -223,17 +254,80 @@ const ConsultationPage = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="prescription">Digital Prescription (Optional)</label>
-            <textarea
-              id="prescription"
-              name="prescription"
-              value={formData.prescription}
-              onChange={handleInputChange}
-              placeholder="Medication name, dosage, frequency, duration..."
-              rows={3}
-              disabled={isCompleted}
-            />
+          <div className="form-group prescriptions-section">
+            <div className="flex-between">
+              <label>Digital Prescriptions</label>
+              {!isCompleted && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddPrescription}>
+                  + Add Medication
+                </button>
+              )}
+            </div>
+            
+            {formData.prescriptions.length === 0 ? (
+              <p className="empty-state-text">No prescriptions added.</p>
+            ) : (
+              <div className="prescriptions-list">
+                {formData.prescriptions.map((prescription, index) => (
+                  <div key={index} className="prescription-card">
+                    <div className="prescription-header flex-between">
+                      <h4>Medication #{index + 1}</h4>
+                      {!isCompleted && (
+                        <button 
+                          type="button" 
+                          className="btn-text text-danger" 
+                          onClick={() => handleRemovePrescription(index)}
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="prescription-grid">
+                      <input
+                        type="text"
+                        placeholder="Medication Name *"
+                        value={prescription.medicationName}
+                        onChange={(e) => handleUpdatePrescription(index, 'medicationName', e.target.value)}
+                        disabled={isCompleted}
+                        className="form-input"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Dosage (e.g. 250mg)"
+                        value={prescription.dosage}
+                        onChange={(e) => handleUpdatePrescription(index, 'dosage', e.target.value)}
+                        disabled={isCompleted}
+                        className="form-input"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Frequency (e.g. Twice a day)"
+                        value={prescription.frequency}
+                        onChange={(e) => handleUpdatePrescription(index, 'frequency', e.target.value)}
+                        disabled={isCompleted}
+                        className="form-input"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Duration (e.g. 5 days)"
+                        value={prescription.duration}
+                        onChange={(e) => handleUpdatePrescription(index, 'duration', e.target.value)}
+                        disabled={isCompleted}
+                        className="form-input"
+                      />
+                    </div>
+                    <textarea
+                      placeholder="Additional instructions (e.g. Take with food)..."
+                      value={prescription.instructions}
+                      onChange={(e) => handleUpdatePrescription(index, 'instructions', e.target.value)}
+                      disabled={isCompleted}
+                      rows={2}
+                      className="form-input mt-2"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

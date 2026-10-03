@@ -1,0 +1,154 @@
+.pet-owner-medical-history {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.medical-record-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.metric-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.metric-icon {
+    font-size: 2rem;
+    background: #f1f5f9;
+    padding: 15px;
+    border-radius: 50%;
+}
+
+.metric-info h5 {
+    margin: 0 0 5px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-info p {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.record-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .record-sections {
+        grid-template-columns: 1fr;
+    }
+}
+
+.record-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.record-section h3 {
+    margin: 0 0 20px 0;
+    color: #1e293b;
+    font-size: 1.2rem;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.vaccination-list, .document-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.vaccination-item, .document-item {
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vac-info, .doc-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vac-info strong, .doc-info strong {
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.vac-date, .doc-date {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.vac-next-due {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.doc-type {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-top: 4px;
+}
+
+.btn-download {
+    background: #38bdf8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-download:hover {
+    background: #0284c7;
+}
+
+.no-data {
+    color: #94a3b8;
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+}

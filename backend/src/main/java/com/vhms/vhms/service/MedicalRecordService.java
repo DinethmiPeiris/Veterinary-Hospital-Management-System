@@ -50,6 +50,8 @@ public class MedicalRecordService {
         response.setOwnerName(record.getOwnerName());
         response.setCreatedAt(record.getCreatedAt());
         response.setUpdatedAt(record.getUpdatedAt());
+        response.setVaccinations(record.getVaccinations() != null ? record.getVaccinations() : new java.util.ArrayList<>());
+        response.setDocuments(record.getDocuments() != null ? record.getDocuments() : new java.util.ArrayList<>());
         response.setPastConsultations(consultations.stream()
                 .map(this::mapToConsultationDTO)
                 .collect(Collectors.toList()));
@@ -127,6 +129,55 @@ public class MedicalRecordService {
                 });
 
         return getMedicalRecordByPetId(petId);
+    }
+
+    public MedicalRecordResponseDTO addVaccination(String petId, com.vhms.vhms.model.Vaccination vaccination) {
+        MedicalRecord record = medicalRecordRepository.findByPetId(petId)
+                .orElseGet(() -> createFromAppointments(petId));
+
+        if (record.getVaccinations() == null) {
+            record.setVaccinations(new java.util.ArrayList<>());
+        }
+        record.getVaccinations().add(vaccination);
+        record.setUpdatedAt(LocalDateTime.now());
+        medicalRecordRepository.save(record);
+
+        return getMedicalRecordByPetId(petId);
+    }
+
+    public MedicalRecordResponseDTO addDocument(String petId, com.vhms.vhms.model.MedicalDocument document) {
+        MedicalRecord record = medicalRecordRepository.findByPetId(petId)
+                .orElseGet(() -> createFromAppointments(petId));
+
+        if (record.getDocuments() == null) {
+            record.setDocuments(new java.util.ArrayList<>());
+        }
+        
+        if (document.getDocumentId() == null) {
+            document.setDocumentId(java.util.UUID.randomUUID().toString());
+        }
+        if (document.getUploadedAt() == null) {
+            document.setUploadedAt(LocalDateTime.now());
+        }
+        
+        record.getDocuments().add(document);
+        record.setUpdatedAt(LocalDateTime.now());
+        medicalRecordRepository.save(record);
+
+        return getMedicalRecordByPetId(petId);
+    }
+
+    public void deleteDocument(String petId, String documentId) {
+        MedicalRecord record = medicalRecordRepository.findByPetId(petId)
+                .orElseThrow(() -> new ResourceNotFoundException("Medical record not found for petId: " + petId));
+
+        if (record.getDocuments() != null) {
+            boolean removed = record.getDocuments().removeIf(doc -> documentId.equals(doc.getDocumentId()));
+            if (removed) {
+                record.setUpdatedAt(LocalDateTime.now());
+                medicalRecordRepository.save(record);
+            }
+        }
     }
 
     private MedicalRecord fillMissingDemographics(MedicalRecord record, String petId) {

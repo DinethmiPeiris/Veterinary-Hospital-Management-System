@@ -34,6 +34,11 @@ public class ConsultationController {
         return ResponseEntity.ok(consultationService.getConsultationByAppointmentId(appointmentId));
     }
 
+    @GetMapping("/pet/{petId}")
+    public ResponseEntity<java.util.List<ConsultationResponseDTO>> getConsultationsByPetId(@PathVariable String petId) {
+        return ResponseEntity.ok(consultationService.getConsultationsByPetId(petId));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ConsultationResponseDTO> updateConsultation(
             @PathVariable String id,

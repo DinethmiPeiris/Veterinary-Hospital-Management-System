@@ -93,7 +93,6 @@ export default function LoginPage() {
   const [resetCode, setResetCode] = useState('')
   const [resetNewPass, setResetNewPass] = useState('')
   const [resetConfirmPass, setResetConfirmPass] = useState('')
-  const [issuedResetCode, setIssuedResetCode] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
 
   const handleDoctorLogin = async (e) => {
@@ -147,9 +146,8 @@ export default function LoginPage() {
     if (!forgotEmail) { showToast('Enter your registered email.', 'error'); return }
     setAuthBusy(true)
     try {
-      const result = await requestPasswordReset(forgotEmail)
-      setIssuedResetCode(result.resetToken || '')
-      showToast('Reset code generated. Enter it below with your new password.', 'info')
+      await requestPasswordReset(forgotEmail)
+      showToast('Reset code sent! Check your email inbox.', 'info')
       setDocMode('reset')
     } catch (err) {
       showToast(err.message || 'Unable to start password reset.', 'error')
@@ -179,7 +177,6 @@ export default function LoginPage() {
       setResetCode('')
       setResetNewPass('')
       setResetConfirmPass('')
-      setIssuedResetCode('')
     } catch (err) {
       showToast(err.message || 'Password reset failed.', 'error')
     } finally {
@@ -368,14 +365,12 @@ export default function LoginPage() {
                 <form className="auth-form" onSubmit={handleResetPassword} noValidate>
                   <h2 className="form-title">Reset Password</h2>
                   <p className="form-subtitle">Enter the reset code and choose a new password.</p>
-                  {issuedResetCode && (
-                    <div className="notice-badge" style={{ marginBottom: '1rem' }}>
-                      <div>
-                        <strong>Your reset code</strong>
-                        <p style={{ margin: '0.25rem 0 0' }}>{issuedResetCode}</p>
-                      </div>
+                  <div className="notice-badge" style={{ marginBottom: '1rem', background: '#f0fdf4', borderColor: '#1a7a5e' }}>
+                    <div>
+                      <strong>📧 Check your email</strong>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>A 6-digit reset code was sent to <strong>{forgotEmail}</strong></p>
                     </div>
-                  )}
+                  </div>
                   <div className="input-group">
                     <label htmlFor="reset-email">Email</label>
                     <div className="input-wrap"><input type="email" id="reset-email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} /></div>

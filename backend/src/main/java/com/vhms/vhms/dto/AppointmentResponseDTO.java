@@ -15,4 +15,5 @@ public class AppointmentResponseDTO {
     private String petId;
     private String doctorId;
     private String doctorName;
+    private String date;
 }

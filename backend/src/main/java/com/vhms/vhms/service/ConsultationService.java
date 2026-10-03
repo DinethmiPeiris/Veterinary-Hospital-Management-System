@@ -31,7 +31,7 @@ public class ConsultationService {
     public ConsultationResponseDTO startConsultation(String appointmentId, String doctorId) {
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
         Doctor doctor = doctorRepository.findById(doctorId)
-                .or(() -> doctorRepository.findByStaffIdIgnoreCase(doctorId))
+                .or(() -> doctorRepository.findFirstByStaffIdIgnoreCase(doctorId))
                 .orElse(null);
 
         Consultation consultation = consultationRepository.findByAppointmentId(appointmentId)
@@ -183,6 +183,13 @@ public class ConsultationService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Consultation not found for appointment: " + appointmentId));
         return mapToConsultationDTO(consultation);
+    }
+
+    public java.util.List<ConsultationResponseDTO> getConsultationsByPetId(String petId) {
+        return consultationRepository.findByPetIdOrderByConsultationDateDesc(petId)
+                .stream()
+                .map(this::mapToConsultationDTO)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public ConsultationResponseDTO updateStatus(String id, StatusUpdateDTO statusUpdate) {

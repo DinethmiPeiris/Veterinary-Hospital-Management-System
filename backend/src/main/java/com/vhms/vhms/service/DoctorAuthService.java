@@ -25,6 +25,7 @@ public class DoctorAuthService {
 
     private final DoctorRepository doctorRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public DoctorAuthResponse register(DoctorRegisterRequest request) {
@@ -75,7 +76,7 @@ public class DoctorAuthService {
     }
 
     public DoctorAuthResponse forgotPassword(ForgotPasswordRequest request) {
-        Doctor doctor = doctorRepository.findByEmailIgnoreCase(request.getEmail().trim())
+        Doctor doctor = doctorRepository.findFirstByEmailIgnoreCase(request.getEmail().trim())
                 .orElseThrow(() -> new ResourceNotFoundException("No doctor account found for that email."));
 
         String resetToken = String.format("%06d", secureRandom.nextInt(1_000_000));
@@ -83,16 +84,23 @@ public class DoctorAuthService {
         doctor.setResetTokenExpiry(Instant.now().plusSeconds(15 * 60));
         doctorRepository.save(doctor);
 
+        // Send reset code privately via email — never expose it in the API response
+        emailService.sendPasswordResetEmail(
+                doctor.getEmail(),
+                doctor.getFullName(),
+                resetToken
+        );
+
         return DoctorAuthResponse.builder()
                 .email(doctor.getEmail())
                 .fullName(doctor.getFullName())
-                .resetToken(resetToken)
-                .message("Reset code generated. Use it within 15 minutes to set a new password.")
+                // resetToken intentionally omitted from response
+                .message("A 6-digit reset code has been sent to your email. Check your inbox.")
                 .build();
     }
 
     public DoctorAuthResponse resetPassword(ResetPasswordRequest request) {
-        Doctor doctor = doctorRepository.findByEmailIgnoreCase(request.getEmail().trim())
+        Doctor doctor = doctorRepository.findFirstByEmailIgnoreCase(request.getEmail().trim())
                 .orElseThrow(() -> new ResourceNotFoundException("No doctor account found for that email."));
 
         if (doctor.getResetToken() == null || doctor.getResetTokenExpiry() == null) {
@@ -119,10 +127,10 @@ public class DoctorAuthService {
     }
 
     private Optional<Doctor> findByIdentifier(String identifier) {
-        Optional<Doctor> byUsername = doctorRepository.findByUsernameIgnoreCase(identifier);
+        Optional<Doctor> byUsername = doctorRepository.findFirstByUsernameIgnoreCase(identifier);
         if (byUsername.isPresent()) return byUsername;
 
-        return doctorRepository.findByStaffIdIgnoreCase(identifier);
+        return doctorRepository.findFirstByStaffIdIgnoreCase(identifier);
     }
 
     private String normalizeUsername(String raw) {

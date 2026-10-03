@@ -8,11 +8,11 @@ import com.vhms.vhms.model.Doctor;
 
 public interface DoctorRepository extends MongoRepository<Doctor, String> {
 
-    Optional<Doctor> findByEmailIgnoreCase(String email);
+    Optional<Doctor> findFirstByEmailIgnoreCase(String email);
 
-    Optional<Doctor> findByStaffIdIgnoreCase(String staffId);
+    Optional<Doctor> findFirstByStaffIdIgnoreCase(String staffId);
 
-    Optional<Doctor> findByUsernameIgnoreCase(String username);
+    Optional<Doctor> findFirstByUsernameIgnoreCase(String username);
 
     boolean existsByEmailIgnoreCase(String email);
 

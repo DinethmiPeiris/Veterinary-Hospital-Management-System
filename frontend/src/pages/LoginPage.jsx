@@ -67,7 +67,7 @@ export default function LoginPage() {
     e.preventDefault()
     if (!ownerEmail || !ownerPass) { showToast('Please fill in all fields.', 'error'); return }
     showToast('🐾 Welcome back! Redirecting to Pet Owner Dashboard...', 'success')
-    setTimeout(() => navigate('/'), 2000)
+    setTimeout(() => navigate('/portal/owner'), 1500)
   }
 
   const handleOwnerRegister = (e) => {
@@ -78,14 +78,14 @@ export default function LoginPage() {
     if (regPass.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return }
     if (regPass !== regPassConfirm) { showToast('Passwords do not match. Please try again.', 'error'); return }
     showToast('Account created! Welcome, ' + regName + '! Redirecting...', 'success')
-    setTimeout(() => navigate('/'), 2500)
+    setTimeout(() => navigate('/portal/owner'), 1500)
   }
 
   const handleDoctorLogin = (e) => {
     e.preventDefault()
     if (!docId || !docPass) { showToast('Please fill in all fields.', 'error'); return }
     showToast('Welcome, Doctor! Redirecting to your portal...', 'info')
-    setTimeout(() => navigate('/'), 2000)
+    setTimeout(() => navigate('/portal/doctor'), 1500)
   }
 
   const handleAdminLogin = (e) => {
@@ -93,7 +93,7 @@ export default function LoginPage() {
     if (!adminId || !adminPass || !adminPin) { showToast('Please fill in all fields.', 'error'); return }
     if (!/^\d{6}$/.test(adminPin)) { showToast('Security PIN must be 6 digits.', 'error'); return }
     showToast('🔐 Admin authenticated. Redirecting to Admin Portal...', 'info')
-    setTimeout(() => navigate('/'), 2000)
+    setTimeout(() => navigate('/portal/admin'), 1500)
   }
 
   return (

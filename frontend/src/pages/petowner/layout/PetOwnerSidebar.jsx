@@ -36,6 +36,12 @@ const PetOwnerSidebar = () => {
                 >
                     ❤️ Medical History
                 </Link>
+                <Link
+                    to="/pet-owner/admissions"
+                    className={`nav-item ${location.pathname.includes('/admissions') ? 'active' : ''}`}
+                >
+                    🏥 Admissions
+                </Link>
                 <Link 
                     to="/pets" 
                     className="nav-item"

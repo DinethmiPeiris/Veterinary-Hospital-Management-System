@@ -35,6 +35,18 @@ const DoctorSidebar = () => {
                 >
                     📅 Appointments
                 </Link>
+                <Link
+                    to="/doctor/recommend-admission"
+                    className={`nav-item ${location.pathname.includes('/recommend-admission') ? 'active' : ''}`}
+                >
+                    🏥 Recommend Admission
+                </Link>
+                <Link
+                    to="/doctor/hospitalized-pets"
+                    className={`nav-item ${location.pathname.includes('/hospitalized-pets') ? 'active' : ''}`}
+                >
+                    🩺 Hospitalized Pets
+                </Link>
                 <Link 
                     to="/doctor-portal" 
                     className="nav-item"

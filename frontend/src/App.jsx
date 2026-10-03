@@ -19,6 +19,14 @@ import PetManagementPage from './pages/PetManagementPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import DoctorDashboardPage from './pages/DoctorDashboardPage'
 import PortalSwitch from './components/PortalSwitch'
+import DoctorRecommendPage from './pages/DoctorRecommendPage'
+import DoctorHospitalizedPetsPage from './pages/DoctorHospitalizedPetsPage'
+import PetOwnerAdmissionsPage from './pages/PetOwnerAdmissionsPage'
+import AdminAdmissionRequestsPage from './pages/AdminAdmissionRequestsPage'
+import AdminHospitalizedPetsPage from './pages/AdminHospitalizedPetsPage'
+import AdminMedicineRequestsPage from './pages/AdminMedicineRequestsPage'
+import AdminInventoryPage from './pages/AdminInventoryPage'
+import AdminCageOccupancyPage from './pages/AdminCageOccupancyPage'
 import './App.css'
 
 function App() {
@@ -33,6 +41,8 @@ function App() {
         <Route path="appointments" element={<DoctorAppointments />} />
         <Route path="pet/:petId/history" element={<PetMedicalHistory />} />
         <Route path="consultation/:appointmentId" element={<ConsultationPage />} />
+        <Route path="recommend-admission" element={<DoctorRecommendPage />} />
+        <Route path="hospitalized-pets" element={<DoctorHospitalizedPetsPage />} />
       </Route>
 
       {/* Pet Owner Routes */}
@@ -40,6 +50,7 @@ function App() {
         <Route path="dashboard" element={<PetOwnerDashboard />} />
         <Route path="consultations" element={<PetOwnerConsultations />} />
         <Route path="medical-history" element={<PetOwnerMedicalHistory />} />
+        <Route path="admissions" element={<PetOwnerAdmissionsPage />} />
       </Route>
 
       {/* Admin Routes */}
@@ -48,6 +59,11 @@ function App() {
         <Route path="consultations" element={<AdminConsultationList />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="services" element={<AdminServiceManagement />} />
+        <Route path="admission-requests" element={<AdminAdmissionRequestsPage />} />
+        <Route path="hospitalized-pets" element={<AdminHospitalizedPetsPage />} />
+        <Route path="medicine-requests" element={<AdminMedicineRequestsPage />} />
+        <Route path="inventory" element={<AdminInventoryPage />} />
+        <Route path="cage-occupancy" element={<AdminCageOccupancyPage />} />
       </Route>
 
       {/* Booking / approval portals (pet owner, doctor, admin) */}

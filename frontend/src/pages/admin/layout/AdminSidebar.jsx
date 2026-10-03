@@ -42,6 +42,36 @@ const AdminSidebar = () => {
                 >
                     🛎️ Services
                 </Link>
+                <Link
+                    to="/admin/admission-requests"
+                    className={`nav-item ${location.pathname.includes('/admission-requests') ? 'active' : ''}`}
+                >
+                    📥 Admission Requests
+                </Link>
+                <Link
+                    to="/admin/hospitalized-pets"
+                    className={`nav-item ${location.pathname.includes('/hospitalized-pets') ? 'active' : ''}`}
+                >
+                    🏥 Hospitalized Pets
+                </Link>
+                <Link
+                    to="/admin/medicine-requests"
+                    className={`nav-item ${location.pathname.includes('/medicine-requests') ? 'active' : ''}`}
+                >
+                    💊 Medicine Requests
+                </Link>
+                <Link
+                    to="/admin/inventory"
+                    className={`nav-item ${location.pathname.includes('/inventory') ? 'active' : ''}`}
+                >
+                    📦 Inventory
+                </Link>
+                <Link
+                    to="/admin/cage-occupancy"
+                    className={`nav-item ${location.pathname.includes('/cage-occupancy') ? 'active' : ''}`}
+                >
+                    🛏️ Cage Occupancy
+                </Link>
                 <Link 
                     to="/admin-portal" 
                     className="nav-item"

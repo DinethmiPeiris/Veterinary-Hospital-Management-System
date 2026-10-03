@@ -1,0 +1,27 @@
+.portal-switch {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1a7a5e, #0f5c47);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(15, 92, 71, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portal-switch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(15, 92, 71, 0.45);
+}
+
+.portal-switch-icon {
+  font-size: 1rem;
+}

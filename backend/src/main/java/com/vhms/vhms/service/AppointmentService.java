@@ -22,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 public class AppointmentService {
 
     private static final Set<String> ALLOWED_STATUSES = Set.of(
-            "SCHEDULED", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+            "SCHEDULED", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED",
+            // Pet-owner booking / approval flow (IT24101204)
+            "PENDING", "APPROVED", "REJECTED"
     );
 
     private final AppointmentRepository appointmentRepository;

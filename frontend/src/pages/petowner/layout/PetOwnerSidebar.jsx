@@ -36,6 +36,12 @@ const PetOwnerSidebar = () => {
                 >
                     ❤️ Medical History
                 </Link>
+                <Link 
+                    to="/pets" 
+                    className="nav-item"
+                >
+                    🐶 My Pets & Bookings
+                </Link>
             </nav>
             <div className="sidebar-footer">
                 <div className="user-info">

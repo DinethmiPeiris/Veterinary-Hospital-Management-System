@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function CTA() {
   const ref = useRef(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -14,9 +16,8 @@ export default function CTA() {
     return () => observer.disconnect()
   }, [])
 
-  const scrollToContact = () => {
-    const el = document.getElementById('contact')
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  const handleBookAppointment = () => {
+    navigate('/login')
   }
 
   const scrollToAbout = () => {
@@ -30,10 +31,10 @@ export default function CTA() {
       <div className="container">
         <div className="cta-inner reveal" ref={ref}>
           <span className="section-label">🚀 Get Started Today</span>
-          <h2 className="section-title" id="cta-title">Ready to Give Your Pet the<br/><span>Best Healthcare?</span></h2>
-          <p className="section-subtitle">Join thousands of pet families who trust Sri Jayawardanapura Animal Hospital for all their veterinary needs.</p>
+          <h2 className="section-title" id="cta-title">Ready to Give Your Pet the<br /><span>Best Healthcare?</span></h2>
+          <p className="section-subtitle">Join thousands of pet families who trust Sri Jayawardenapura Animal Hospital for all their veterinary needs.</p>
           <div className="cta-btns">
-            <button className="btn btn-primary" id="cta-book-btn" onClick={scrollToContact}>🐾 Book an Appointment</button>
+            <button className="btn btn-primary" id="cta-book-btn" onClick={handleBookAppointment}>🐾 Book an Appointment</button>
             <button className="btn btn-secondary" id="cta-learn-btn" onClick={scrollToAbout}>Learn More About Us</button>
           </div>
         </div>

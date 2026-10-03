@@ -35,6 +35,12 @@ const DoctorSidebar = () => {
                 >
                     📅 Appointments
                 </Link>
+                <Link 
+                    to="/doctor-portal" 
+                    className="nav-item"
+                >
+                    🗓️ Booking Requests
+                </Link>
             </nav>
             <div className="sidebar-footer">
                 <div className="doctor-info">

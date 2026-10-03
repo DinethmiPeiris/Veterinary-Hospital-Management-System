@@ -42,6 +42,12 @@ const AdminSidebar = () => {
                 >
                     🛎️ Services
                 </Link>
+                <Link 
+                    to="/admin-portal" 
+                    className="nav-item"
+                >
+                    👥 Users & Appointments
+                </Link>
             </nav>
             <div className="sidebar-footer">
                 <div className="user-info">

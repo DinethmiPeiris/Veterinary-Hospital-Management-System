@@ -10,6 +10,9 @@ const STATUS_FILTERS = [
   { label: 'Waiting', value: 'WAITING' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
   { label: 'Completed', value: 'COMPLETED' },
+  { label: 'Pending Approval', value: 'PENDING' },
+  { label: 'Approved', value: 'APPROVED' },
+  { label: 'Rejected', value: 'REJECTED' },
 ]
 
 const DoctorAppointments = () => {
@@ -89,9 +92,14 @@ const DoctorAppointments = () => {
     }
   }
 
+  // Pet-owner bookings must be approved before a consultation can start
+  const isBlocked = (status) => ['PENDING', 'PENDING_APPROVAL', 'REJECTED'].includes(status)
+
   const actionLabel = (status) => {
     if (status === 'COMPLETED') return 'View'
     if (status === 'IN_PROGRESS') return 'Resume'
+    if (status === 'PENDING' || status === 'PENDING_APPROVAL') return 'Awaiting Approval'
+    if (status === 'REJECTED') return 'Declined'
     return 'Start Consultation'
   }
 
@@ -178,6 +186,7 @@ const DoctorAppointments = () => {
                             <button
                               type="button"
                               className={actionClass(app.status)}
+                              disabled={isBlocked(app.status)}
                               onClick={() => openConsultation(app.id, app.status)}
                             >
                               {actionLabel(app.status)}

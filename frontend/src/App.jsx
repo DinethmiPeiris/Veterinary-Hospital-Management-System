@@ -15,6 +15,10 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminConsultationList from './pages/admin/AdminConsultationList'
 import AdminReports from './pages/admin/AdminReports'
 import AdminServiceManagement from './pages/admin/AdminServiceManagement'
+import PetManagementPage from './pages/PetManagementPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import DoctorDashboardPage from './pages/DoctorDashboardPage'
+import PortalSwitch from './components/PortalSwitch'
 import './App.css'
 
 function App() {
@@ -45,6 +49,11 @@ function App() {
         <Route path="reports" element={<AdminReports />} />
         <Route path="services" element={<AdminServiceManagement />} />
       </Route>
+
+      {/* Booking / approval portals (pet owner, doctor, admin) */}
+      <Route path="/pets" element={<><PetManagementPage /><PortalSwitch to="/pet-owner/dashboard" label="Consultations & Medical History" icon="📋" /></>} />
+      <Route path="/doctor-portal" element={<><DoctorDashboardPage /><PortalSwitch to="/doctor/dashboard" label="Consultation Workspace" icon="🩺" /></>} />
+      <Route path="/admin-portal" element={<><AdminDashboardPage /><PortalSwitch to="/admin/dashboard" label="Reports & Consultations" icon="📊" /></>} />
     </Routes>
   )
 }

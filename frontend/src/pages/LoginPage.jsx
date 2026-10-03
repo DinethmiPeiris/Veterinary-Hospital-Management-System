@@ -244,8 +244,7 @@ export default function LoginPage() {
 
   const handleAdminLogin = async (e) => {
     e.preventDefault()
-    if (!adminId || !adminPass || !adminPin) { showToast('Please fill in all fields.', 'error'); return }
-    if (!/^\d{6}$/.test(adminPin)) { showToast('Security PIN must be 6 digits.', 'error'); return }
+    if (!adminId || !adminPass) { showToast('Please fill in Admin ID and Password.', 'error'); return }
     const success = await performLogin(adminId, adminPass, 'ADMIN')
     if (!success) {
       showToast('❌ Invalid credentials for Admin.', 'error')
@@ -589,8 +588,8 @@ export default function LoginPage() {
                   <div className="input-wrap"><input type={showPass['admin-pass'] ? 'text' : 'password'} id="admin-pass" placeholder="Enter your password" required value={adminPass} onChange={(e) => setAdminPass(e.target.value)} /><button type="button" className="eye-btn" onClick={() => togglePass('admin-pass')}>{showPass['admin-pass'] ? '🙈' : '👁'}</button></div>
                 </div>
                 <div className="input-group">
-                  <label htmlFor="admin-pin">Security PIN / 2FA Code</label>
-                  <div className="input-wrap"><input type="text" id="admin-pin" placeholder="6-digit security code" maxLength="6" required value={adminPin} onChange={(e) => setAdminPin(e.target.value)} /></div>
+                  <label htmlFor="admin-pin">Security PIN / 2FA Code (Optional)</label>
+                  <div className="input-wrap"><input type="text" id="admin-pin" placeholder="6-digit security code" maxLength="6" value={adminPin} onChange={(e) => setAdminPin(e.target.value)} /></div>
                 </div>
                 <button type="submit" className="submit-btn btn-admin">Access Admin Portal</button>
               </form>

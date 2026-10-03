@@ -22,7 +22,7 @@ public class PetController {
         if (ownerId != null && !ownerId.isEmpty()) {
             return ResponseEntity.ok(petService.getPetsByOwner(ownerId));
         }
-        return ResponseEntity.ok(petService.getAllPets());
+        return ResponseEntity.ok(petService.getAllPetsExcludePhoto());
     }
 
     @GetMapping("/{id}")

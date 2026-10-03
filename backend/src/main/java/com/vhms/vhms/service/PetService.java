@@ -23,6 +23,10 @@ public class PetService {
         return petRepository.findAll();
     }
 
+    public List<Pet> getAllPetsExcludePhoto() {
+        return petRepository.findAllExcludePhoto();
+    }
+
     public Optional<Pet> getPetById(String id) {
         return petRepository.findById(id);
     }

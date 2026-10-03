@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface PetRepository extends MongoRepository<Pet, String> {
     List<Pet> findByOwnerId(String ownerId);
+
+    @org.springframework.data.mongodb.repository.Query(value = "{}", fields = "{ 'photoUrl' : 0 }")
+    List<Pet> findAllExcludePhoto();
 }

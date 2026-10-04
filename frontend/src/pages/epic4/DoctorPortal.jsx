@@ -476,6 +476,12 @@ export default function DoctorPortal() {
         >
           📋 Full Consultation History ({allAssigned.length})
         </button>
+        <button
+          className={`epic-tab-btn ${activeTab === 'workload' ? 'active' : ''}`}
+          onClick={() => setActiveTab('workload')}
+        >
+          📊 Workload Report
+        </button>
       </div>
 
       {/* TAB 0: NEW & UPCOMING APPOINTMENTS */}
@@ -685,12 +691,36 @@ export default function DoctorPortal() {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
+              <button
+                type="button"
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #3b82f6',
+                  background: selectedDate === new Date().toISOString().split('T')[0] ? '#3b82f6' : '#eff6ff',
+                  color: selectedDate === new Date().toISOString().split('T')[0] ? '#fff' : '#3b82f6',
+                  fontWeight: '600',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                📅 Today
+              </button>
             </div>
           </div>
 
           {agenda.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8' }}>
-              <p style={{ margin: '0 0 0.5rem 0' }}>No appointments scheduled for {selectedDate}.</p>
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📭</div>
+              <p style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', fontWeight: '600', color: '#64748b' }}>
+                No appointments scheduled for this day
+              </p>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+                {selectedDate}
+              </p>
               {allAssigned.filter((a) => a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && a.status !== 'EXPIRED' && a.appointmentDate !== selectedDate).length > 0 && (
                 <div style={{ marginTop: '1.25rem', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px', padding: '1rem', display: 'inline-block' }}>
                   <div style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '0.65rem', fontWeight: '500' }}>
@@ -1036,6 +1066,183 @@ export default function DoctorPortal() {
           </div>
         </div>
       )}
+
+      {/* TAB 3: WORKLOAD REPORT (US 4.34) */}
+      {activeTab === 'workload' && (() => {
+        const total = allAssigned.length;
+        const completed = allAssigned.filter(a => a.status === 'COMPLETED').length;
+        const confirmed = allAssigned.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING').length;
+        const cancelled = allAssigned.filter(a => a.status === 'CANCELLED' || a.status === 'REJECTED').length;
+        const expired = allAssigned.filter(a => a.status === 'EXPIRED' || a.status === 'NO_SHOW').length;
+        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const typeCount = {};
+        allAssigned.forEach(a => { const t = a.appointmentType || 'OTHER'; typeCount[t] = (typeCount[t] || 0) + 1; });
+        const monthMap = {};
+        allAssigned.forEach(a => {
+          if (!a.appointmentDate) return;
+          const m = a.appointmentDate.substring(0, 7);
+          if (!monthMap[m]) monthMap[m] = { total: 0, completed: 0, cancelled: 0, expired: 0 };
+          monthMap[m].total++;
+          if (a.status === 'COMPLETED') monthMap[m].completed++;
+          if (a.status === 'CANCELLED' || a.status === 'REJECTED') monthMap[m].cancelled++;
+          if (a.status === 'EXPIRED' || a.status === 'NO_SHOW') monthMap[m].expired++;
+        });
+        const months = Object.keys(monthMap).sort().reverse();
+        return (
+          <div className="epic-card print-report-container">
+            <div className="epic-card-header no-print">
+              <div>
+                <h2>📊 Appointment Workload Report</h2>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>Monitor your appointment workload, completion performance, and monthly trends.</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', background: '#f0fdf4', color: '#16a34a', padding: '0.35rem 0.75rem', borderRadius: '8px', fontWeight: '600' }}>{total} Total Appointments</span>
+                <button
+                  onClick={() => window.print()}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    background: '#1d4ed8', color: '#fff',
+                    border: 'none', borderRadius: '8px',
+                    padding: '0.45rem 0.9rem',
+                    fontWeight: '700', fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🖨️ Print / Export Report
+                </button>
+              </div>
+            </div>
+
+            {/* Hospital Letterhead - Print Only */}
+            <div className="print-only" style={{ display: 'none', marginBottom: '1.25rem', paddingBottom: '0.85rem' }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                borderBottom: '2px solid #e2e8f0', paddingBottom: '1rem', gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                  <div style={{
+                    width: '68px', height: '68px', borderRadius: '50%',
+                    border: '3px solid #5682b1', padding: '2px',
+                    background: '#fff', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden'
+                  }}>
+                    <img src="/dog_and_cat.jpg" alt="Hospital Logo" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.35rem', color: '#0f172a', fontWeight: '800', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
+                      Sri Jayawardenapura<br />Animal Hospital
+                    </h3>
+                    <div style={{ margin: '0.3rem 0', fontSize: '0.78rem', color: '#64748b', lineHeight: '1.35' }}>
+                      No. 34, Parliament Road, Perakumba Mawatha, Ethul Kotte,<br />Sri Jayawardenepura Kotte
+                    </div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.7rem', borderRadius: '6px', fontSize: '0.76rem', fontWeight: '700' }}>
+                      Hotline: 0112 888 291
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  background: '#eff6ff', border: '1px solid #bfdbfe',
+                  padding: '0.85rem 1.3rem', borderRadius: '12px',
+                  textAlign: 'left', minWidth: '175px', flexShrink: 0
+                }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#2563eb', letterSpacing: '0.04em', textTransform: 'uppercase' }}>WORKLOAD REPORT</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: '0.15rem 0' }}>{doctorName}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: '600' }}>{specialization}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.25rem' }}>Generated: {new Date().toLocaleDateString()}</div>
+                </div>
+              </div>
+            </div>
+            {/* Completion Rate */}
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#374151' }}>Overall Completion Rate</span>
+                <span style={{ fontWeight: '800', fontSize: '1.1rem', color: completionRate >= 70 ? '#16a34a' : completionRate >= 40 ? '#d97706' : '#dc2626' }}>{completionRate}%</span>
+              </div>
+              <div style={{ background: '#e2e8f0', borderRadius: '999px', height: '10px', overflow: 'hidden' }}>
+                <div style={{ width: `${completionRate}%`, height: '100%', borderRadius: '999px', background: completionRate >= 70 ? '#16a34a' : completionRate >= 40 ? '#d97706' : '#dc2626', transition: 'width 0.6s ease' }} />
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>{completed} completed out of {total} total appointments</div>
+            </div>
+            {/* Status Breakdown Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+              {[
+                { label: 'Completed', count: completed, color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: '✅' },
+                { label: 'Active / Upcoming', count: confirmed, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', icon: '📅' },
+                { label: 'Cancelled / Rejected', count: cancelled, color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: '🚫' },
+                { label: 'Expired / No-Show', count: expired, color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '⌛' },
+              ].map(s => (
+                <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '10px', padding: '0.85rem 1rem' }}>
+                  <div style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{s.icon}</div>
+                  <div style={{ fontWeight: '800', fontSize: '1.4rem', color: s.color }}>{s.count}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>{s.label}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{total > 0 ? Math.round((s.count / total) * 100) : 0}% of total</div>
+                </div>
+              ))}
+            </div>
+            {/* Appointment Type Breakdown */}
+            {Object.keys(typeCount).length > 0 && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem' }}>
+                <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#374151', marginBottom: '0.85rem' }}>📋 Appointment Type Breakdown</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {Object.entries(typeCount).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                    <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ minWidth: '130px', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>{type.replace('_', ' ')}</div>
+                      <div style={{ flex: 1, background: '#e2e8f0', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.round((count / total) * 100)}%`, height: '100%', background: '#6366f1', borderRadius: '999px' }} />
+                      </div>
+                      <div style={{ minWidth: '60px', textAlign: 'right', fontSize: '0.82rem', fontWeight: '700', color: '#6366f1' }}>{count} ({Math.round((count / total) * 100)}%)</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Month-wise Table */}
+            {months.length > 0 && (
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#374151', marginBottom: '0.75rem' }}>📆 Month-wise Performance</div>
+                <div className="epic-table-wrapper">
+                  <table className="epic-table">
+                    <thead>
+                      <tr>
+                        <th>Month</th><th>Total</th><th>Completed</th><th>Cancelled</th><th>Expired</th><th>Completion Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {months.map(m => {
+                        const d = monthMap[m];
+                        const rate = d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0;
+                        return (
+                          <tr key={m}>
+                            <td><strong>{m}</strong></td>
+                            <td>{d.total}</td>
+                            <td style={{ color: '#16a34a', fontWeight: '700' }}>{d.completed}</td>
+                            <td style={{ color: '#dc2626', fontWeight: '700' }}>{d.cancelled}</td>
+                            <td style={{ color: '#d97706', fontWeight: '700' }}>{d.expired}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ flex: 1, background: '#e2e8f0', borderRadius: '999px', height: '6px', minWidth: '60px' }}>
+                                  <div style={{ width: `${rate}%`, height: '100%', background: rate >= 70 ? '#16a34a' : rate >= 40 ? '#d97706' : '#dc2626', borderRadius: '999px' }} />
+                                </div>
+                                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: rate >= 70 ? '#16a34a' : rate >= 40 ? '#d97706' : '#dc2626' }}>{rate}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {total === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📊</div>
+                <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>No appointment data available yet.</p>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>Workload statistics will appear once appointments are assigned to you.</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* MODAL 1: COMPLETE APPOINTMENT (US 4.31) */}
       {showCompleteModal && selectedAppt && (

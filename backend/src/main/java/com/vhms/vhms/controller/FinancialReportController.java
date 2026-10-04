@@ -25,8 +25,9 @@ public class FinancialReportController {
 
     // US 4.25: Admin financial reports
     @GetMapping("/financial")
-    public ResponseEntity<ApiResponse<FinancialSummaryResponse>> getFinancialSummary() {
-        return ResponseEntity.ok(ApiResponse.ok(financialReportService.generateFinancialSummary()));
+    public ResponseEntity<ApiResponse<FinancialSummaryResponse>> getFinancialSummary(
+            @RequestParam(required = false) String month) {
+        return ResponseEntity.ok(ApiResponse.ok(financialReportService.generateFinancialSummary(month)));
     }
 
     // US 4.34: Doctor workload report

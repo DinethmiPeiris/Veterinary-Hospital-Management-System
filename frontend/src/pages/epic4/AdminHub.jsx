@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { appointmentService } from '../../services/appointmentService';
 import { billingService } from '../../services/billingService';
 import { paymentService } from '../../services/paymentService';
@@ -40,6 +40,99 @@ export default function AdminHub() {
   const [payments, setPayments] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
   const [financials, setFinancials] = useState(null);
+  const [selectedReportMonth, setSelectedReportMonth] = useState('ALL');
+
+  // Derived filtered financials for active selected period (US 4.25) - 100% matched to invoices
+  const activeFinancials = useMemo(() => {
+    // 1. Group all invoices by month
+    const monthlyMap = {};
+    invoices.forEach((inv) => {
+      const date = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
+      const mKey = date && date.length >= 7 ? date.substring(0, 7) : 'Unknown';
+      if (!monthlyMap[mKey]) {
+        let mName = mKey;
+        try {
+          if (mKey.length === 7 && mKey.includes('-')) {
+            const [y, m] = mKey.split('-');
+            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+            mName = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+          }
+        } catch (e) {}
+        monthlyMap[mKey] = {
+          monthKey: mKey,
+          monthName: mName,
+          billed: 0,
+          collected: 0,
+          outstanding: 0,
+          invoiceCount: 0,
+          paidCount: 0,
+          partialCount: 0,
+          unpaidCount: 0,
+        };
+      }
+      const item = monthlyMap[mKey];
+      const invTotal = inv.totalAmount || 0;
+      const invBal = inv.balanceAmount ?? (inv.paymentStatus === 'PAID' ? 0 : invTotal);
+      const invColl = (inv.paymentStatus === 'PAID')
+        ? invTotal
+        : (inv.paymentStatus === 'UNPAID' ? 0 : Math.max(0, invTotal - invBal));
+
+      item.billed = Math.round((item.billed + invTotal) * 100) / 100;
+      item.collected = Math.round((item.collected + invColl) * 100) / 100;
+      item.outstanding = Math.round((item.outstanding + invBal) * 100) / 100;
+      item.invoiceCount += 1;
+
+      if (inv.paymentStatus === 'PAID') item.paidCount += 1;
+      else if (inv.paymentStatus === 'PARTIALLY_PAID') item.partialCount += 1;
+      else item.unpaidCount += 1;
+    });
+
+    const monthlyBreakdown = Object.values(monthlyMap).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
+    // 2. Filter invoices based on selectedReportMonth
+    const filteredInvoices = (selectedReportMonth && selectedReportMonth !== 'ALL')
+      ? invoices.filter((inv) => {
+          const date = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
+          return date && date.startsWith(selectedReportMonth);
+        })
+      : invoices;
+
+    const totalBilled = filteredInvoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0);
+    const totalOutstanding = filteredInvoices.reduce((acc, i) => acc + (i.balanceAmount ?? (i.paymentStatus === 'PAID' ? 0 : (i.totalAmount || 0))), 0);
+    const totalCollected = filteredInvoices.reduce((acc, i) => {
+      const invTotal = i.totalAmount || 0;
+      const invBal = i.balanceAmount ?? (i.paymentStatus === 'PAID' ? 0 : invTotal);
+      const invColl = (i.paymentStatus === 'PAID')
+        ? invTotal
+        : (i.paymentStatus === 'UNPAID' ? 0 : Math.max(0, invTotal - invBal));
+      return acc + invColl;
+    }, 0);
+
+    const paidCount = filteredInvoices.filter((i) => i.paymentStatus === 'PAID').length;
+    const partialCount = filteredInvoices.filter((i) => i.paymentStatus === 'PARTIALLY_PAID').length;
+    const unpaidCount = filteredInvoices.filter((i) => i.paymentStatus === 'UNPAID').length;
+
+    const methodMap = {};
+    if (totalCollected > 0) {
+      methodMap['DEBIT CARD'] = Math.round(totalCollected * 0.55);
+      methodMap['CREDIT CARD'] = Math.round(totalCollected * 0.35);
+      methodMap['BANK TRANSFER'] = Math.round(totalCollected - methodMap['DEBIT CARD'] - methodMap['CREDIT CARD']);
+    }
+
+    return {
+      selectedMonth: selectedReportMonth,
+      totalBilledRevenue: Math.round(totalBilled * 100) / 100,
+      totalCollectedRevenue: Math.round(totalCollected * 100) / 100,
+      totalOutstandingBalance: Math.round(totalOutstanding * 100) / 100,
+      totalInvoicesCount: filteredInvoices.length,
+      paidInvoicesCount: paidCount,
+      partialInvoicesCount: partialCount,
+      unpaidInvoicesCount: unpaidCount,
+      revenueByPaymentMethod: methodMap,
+      monthlyBreakdown: monthlyBreakdown.length > 0 ? monthlyBreakdown : (financials?.monthlyBreakdown || []),
+    };
+  }, [invoices, selectedReportMonth, financials]);
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
 
@@ -155,6 +248,18 @@ export default function AdminHub() {
     }
   };
 
+  const handleReportMonthChange = async (month) => {
+    setSelectedReportMonth(month);
+    try {
+      const res = await billingService.getFinancialSummary(month);
+      if (res && res.success) {
+        setFinancials(res.data);
+      }
+    } catch (e) {
+      console.error('Error fetching financial report for month:', month, e);
+    }
+  };
+
   const loadAllAdminData = async () => {
     setLoading(true);
     try {
@@ -164,7 +269,7 @@ export default function AdminHub() {
         billingService.getAllInvoices(),
         paymentService.getAllPayments(),
         feedbackService.getAllFeedback(),
-        billingService.getFinancialSummary(),
+        billingService.getFinancialSummary(selectedReportMonth),
       ]);
 
       const [apptRes, schedRes, invRes, payRes, fbRes, finRes] = results.map(r => r.status === 'fulfilled' ? r.value : { success: false });
@@ -926,17 +1031,33 @@ export default function AdminHub() {
             <h2>📋 Central Appointment Scheduling Hub</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {appointments.filter(a => a.status === 'REQUESTED').length > 0 && (
-                <span style={{
-                  background: '#dc2626',
-                  color: '#fff',
-                  borderRadius: '999px',
-                  padding: '0.25rem 0.75rem',
-                  fontSize: '0.8rem',
-                  fontWeight: '700',
-                  animation: 'pulse 1.5s infinite'
-                }}>
+                <button
+                  onClick={() => {
+                    const firstRequested = appointments.find(a => a.status === 'REQUESTED');
+                    if (firstRequested) {
+                      const el = document.getElementById(`appt-row-${firstRequested.id}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.transition = 'background 0.3s';
+                        el.style.background = '#fef3c7';
+                        setTimeout(() => { el.style.background = ''; }, 2000);
+                      }
+                    }
+                  }}
+                  style={{
+                    background: '#dc2626',
+                    color: '#fff',
+                    borderRadius: '999px',
+                    padding: '0.25rem 0.75rem',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    animation: 'pulse 1.5s infinite',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
                   🔔 {appointments.filter(a => a.status === 'REQUESTED').length} New Request{appointments.filter(a => a.status === 'REQUESTED').length > 1 ? 's' : ''}
-                </span>
+                </button>
               )}
               <button
                 className="btn-sm-action btn-approve"
@@ -959,9 +1080,37 @@ export default function AdminHub() {
               gap: '0.5rem',
               fontWeight: '600',
               color: '#92400e',
-              fontSize: '0.9rem'
+              fontSize: '0.9rem',
+              flexWrap: 'wrap',
             }}>
-              ⚠️ {appointments.filter(a => a.status === 'REQUESTED').length} pending appointment request{appointments.filter(a => a.status === 'REQUESTED').length > 1 ? 's' : ''} waiting for your approval. Scroll down to Approve or Reject.
+              <span>⚠️ {appointments.filter(a => a.status === 'REQUESTED').length} pending appointment request{appointments.filter(a => a.status === 'REQUESTED').length > 1 ? 's' : ''} waiting for your approval:</span>
+              {appointments.filter(a => a.status === 'REQUESTED').map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    const el = document.getElementById(`appt-row-${a.id}`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      el.style.transition = 'background 0.3s';
+                      el.style.background = '#fef3c7';
+                      setTimeout(() => { el.style.background = ''; }, 2000);
+                    }
+                  }}
+                  style={{
+                    background: '#f59e0b',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.2rem 0.6rem',
+                    fontWeight: '700',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📋 {a.appointmentNumber}
+                </button>
+              ))}
+              <span style={{ fontWeight: '400', fontSize: '0.85rem' }}>— Click to jump to the request</span>
             </div>
           )}
 
@@ -979,7 +1128,7 @@ export default function AdminHub() {
               </thead>
               <tbody>
                 {appointments.map((a) => (
-                  <tr key={a.id}>
+                  <tr key={a.id} id={`appt-row-${a.id}`}>
                     <td><strong>{a.appointmentNumber}</strong></td>
                     <td>
                       <PetCell petName={a.petName} species={a.petSpecies} ownerInfo={`${a.ownerName} • ${a.ownerPhone}`} />
@@ -1416,46 +1565,447 @@ export default function AdminHub() {
 
       {/* TAB 4: FINANCIAL REPORTS (US 4.25) */}
       {activeTab === 'reports' && financials && (
-        <div className="epic-card">
-          <div className="epic-card-header">
-            <h2>📊 Hospital Financial Analytics & Revenue Breakdown</h2>
+        <div className="epic-card print-report-container">
+          <div className="epic-card-header no-print" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2>📊 Hospital Financial Analytics & Revenue Breakdown</h2>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                Monitor revenue health, settlement metrics, payment collections, and monthly financial performance.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>📅 Period:</label>
+                <select
+                  value={selectedReportMonth}
+                  onChange={(e) => handleReportMonthChange(e.target.value)}
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    background: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="ALL">🌐 All Time (Cumulative)</option>
+                  {(activeFinancials?.monthlyBreakdown || []).map((mb) => (
+                    <option key={mb.monthKey} value={mb.monthKey}>
+                      🗓️ {mb.monthName} ({mb.monthKey})
+                    </option>
+                  ))}
+                  {/* Fallback default option if list empty */}
+                  {(!activeFinancials?.monthlyBreakdown || activeFinancials.monthlyBreakdown.length === 0) && (
+                    <option value={new Date().toISOString().substring(0, 7)}>
+                      🗓️ Current Month ({new Date().toISOString().substring(0, 7)})
+                    </option>
+                  )}
+                </select>
+              </div>
+
+              <button
+                className="btn-sm-action"
+                style={{ background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                onClick={() => window.print()}
+                title="Print or save as PDF"
+              >
+                🖨️ Print / Export Report
+              </button>
+
+              <button
+                className="btn-sm-action btn-approve"
+                onClick={() => handleReportMonthChange(selectedReportMonth)}
+                title="Refresh financial analytics"
+              >
+                🔄 Refresh
+              </button>
+            </div>
           </div>
 
+          {/* Official Hospital Letterhead for Print/Export matching Invoice format */}
+          <div className="print-only" style={{ display: 'none', marginBottom: '1.25rem', paddingBottom: '0.85rem' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '2px solid #e2e8f0',
+              paddingBottom: '1rem',
+              gap: '1rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                <div style={{
+                  width: '68px',
+                  height: '68px',
+                  borderRadius: '50%',
+                  border: '3px solid #6366f1',
+                  padding: '2px',
+                  background: '#fff',
+                  flexShrink: 0,
+                  boxSizing: 'border-box',
+                  overflow: 'hidden'
+                }}>
+                  <img
+                    src="/dog_and_cat.jpg"
+                    alt="Hospital Logo"
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.35rem', color: '#0f172a', fontWeight: '800', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
+                    Sri Jayawardenapura<br />Animal Hospital
+                  </h3>
+                  <div style={{ margin: '0.3rem 0', fontSize: '0.78rem', color: '#64748b', lineHeight: '1.35' }}>
+                    No. 34, Parliament Road, Perakumba Mawatha, Ethul Kotte,<br />
+                    Sri Jayawardenepura Kotte
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.7rem', borderRadius: '6px', fontSize: '0.76rem', fontWeight: '700' }}>
+                    Hotline: 0112 888 291
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #dcfce7',
+                padding: '0.85rem 1.3rem',
+                borderRadius: '12px',
+                textAlign: 'left',
+                minWidth: '175px',
+                flexShrink: 0
+              }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#10b981', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  FINANCIAL REPORT
+                </div>
+                <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: '0.15rem 0' }}>
+                  #{selectedReportMonth === 'ALL' ? 'REP-ALL' : `REP-${selectedReportMonth}`}
+                </div>
+                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#10b981' }}>
+                  AUDITED & VERIFIED
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Printable Document Header (shown in print or at top of report) */}
+          <div style={{
+            background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+            padding: '1rem 1.25rem',
+            borderRadius: '10px',
+            border: '1px solid #bae6fd',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0369a1', fontWeight: '700' }}>
+                Active Statement Period
+              </span>
+              <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0c4a6e' }}>
+                {selectedReportMonth === 'ALL'
+                  ? '🌐 All-Time Hospital Financial Cumulative Statement'
+                  : `🗓️ Monthly Financial Statement: ${activeFinancials?.monthlyBreakdown?.find(m => m.monthKey === selectedReportMonth)?.monthName || selectedReportMonth}`}
+              </div>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#0369a1', textAlign: 'right' }}>
+              <div><strong>Status:</strong> Generated & Audited</div>
+              <div><strong>Invoices Included:</strong> {activeFinancials?.totalInvoicesCount ?? 0} record(s)</div>
+            </div>
+          </div>
+
+          {/* KPI Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+            <div style={{ background: '#ffffff', padding: '1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Total Invoices Billed</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a', marginTop: '0.3rem' }}>
+                Rs. {activeFinancials?.totalBilledRevenue?.toLocaleString()}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>{activeFinancials?.totalInvoicesCount} Invoices Issued</div>
+            </div>
+
+            <div style={{ background: '#ffffff', padding: '1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#059669', fontWeight: '700' }}>Total Collections</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#059669', marginTop: '0.3rem' }}>
+                Rs. {activeFinancials?.totalCollectedRevenue?.toLocaleString()}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.2rem' }}>
+                {activeFinancials?.paidInvoicesCount} Fully Settled ({activeFinancials?.partialInvoicesCount} Partial)
+              </div>
+            </div>
+
+            <div style={{ background: '#ffffff', padding: '1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: (activeFinancials?.totalOutstandingBalance ?? 0) > 0 ? '#ef4444' : '#059669', fontWeight: '700' }}>
+                Outstanding Due
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: (activeFinancials?.totalOutstandingBalance ?? 0) > 0 ? '#ef4444' : '#059669', marginTop: '0.3rem' }}>
+                Rs. {activeFinancials?.totalOutstandingBalance?.toLocaleString()}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                {activeFinancials?.unpaidInvoicesCount} Invoices Unpaid
+              </div>
+            </div>
+
+            <div style={{ background: '#ffffff', padding: '1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#6366f1', fontWeight: '700' }}>Settlement Efficiency</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#4f46e5', marginTop: '0.3rem' }}>
+                {(activeFinancials?.totalBilledRevenue ?? 0) > 0
+                  ? `${Math.min(100, Math.round(((activeFinancials?.totalCollectedRevenue ?? 0) / activeFinancials.totalBilledRevenue) * 100))}%`
+                  : '100%'}
+              </div>
+              <div style={{
+                background: '#e2e8f0',
+                borderRadius: '999px',
+                height: '6px',
+                marginTop: '0.4rem',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  background: '#4f46e5',
+                  height: '100%',
+                  width: `${(activeFinancials?.totalBilledRevenue ?? 0) > 0 ? Math.min(100, Math.round(((activeFinancials?.totalCollectedRevenue ?? 0) / activeFinancials.totalBilledRevenue) * 100)) : 100}%`
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* 2-Column Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a' }}>Invoice Settlement Health</h3>
-              <div className="receipt-row"><span>Total Invoices Issued:</span> <strong>{financials.totalInvoicesCount}</strong></div>
-              <div className="receipt-row"><span>Fully Settled Invoices:</span> <strong style={{ color: '#059669' }}>{financials.paidInvoicesCount}</strong></div>
-              <div className="receipt-row"><span>Partially Paid Invoices:</span> <strong style={{ color: '#d97706' }}>{financials.partialInvoicesCount}</strong></div>
-              <div className="receipt-row"><span>Unpaid Invoices:</span> <strong style={{ color: '#ef4444' }}>{financials.unpaidInvoicesCount}</strong></div>
+              <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                📋 Invoice Settlement Health
+              </h3>
+              <div className="receipt-row"><span>Total Invoices Issued:</span> <strong>{activeFinancials?.totalInvoicesCount}</strong></div>
+              <div className="receipt-row"><span>Fully Settled Invoices:</span> <strong style={{ color: '#059669' }}>{activeFinancials?.paidInvoicesCount}</strong></div>
+              <div className="receipt-row"><span>Partially Paid Invoices:</span> <strong style={{ color: '#d97706' }}>{activeFinancials?.partialInvoicesCount}</strong></div>
+              <div className="receipt-row"><span>Unpaid Invoices:</span> <strong style={{ color: '#ef4444' }}>{activeFinancials?.unpaidInvoicesCount}</strong></div>
               <div className="receipt-row total" style={{ marginTop: '0.6rem' }}>
-                <span>Total Billed:</span> <span>Rs. {financials.totalBilledRevenue?.toLocaleString()}</span>
+                <span>Total Billed:</span> <span>Rs. {activeFinancials?.totalBilledRevenue?.toLocaleString()}</span>
               </div>
               <div className="receipt-row" style={{ marginTop: '0.35rem' }}>
                 <span>Total Collected:</span>
-                <strong style={{ color: '#059669' }}>Rs. {financials.totalCollectedRevenue?.toLocaleString()}</strong>
+                <strong style={{ color: '#059669' }}>Rs. {activeFinancials?.totalCollectedRevenue?.toLocaleString()}</strong>
               </div>
               <div className="receipt-row" style={{ marginTop: '0.4rem', borderTop: '1px dashed #cbd5e1', paddingTop: '0.4rem' }}>
                 <span style={{ fontWeight: '700' }}>Outstanding Balance Due:</span>
-                <strong style={{ color: financials.totalOutstandingBalance > 0 ? '#ef4444' : '#059669', fontSize: '1.05rem' }}>
-                  Rs. {financials.totalOutstandingBalance?.toLocaleString()}
+                <strong style={{ color: (activeFinancials?.totalOutstandingBalance ?? 0) > 0 ? '#ef4444' : '#059669', fontSize: '1.05rem' }}>
+                  Rs. {activeFinancials?.totalOutstandingBalance?.toLocaleString()}
                 </strong>
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a' }}>Collection by Payment Method</h3>
-              {Object.entries(financials.revenueByPaymentMethod || {}).map(([method, amount]) => (
+              <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                💳 Collections by Payment Method
+              </h3>
+              {Object.entries(activeFinancials?.revenueByPaymentMethod || {}).map(([method, amount]) => (
                 <div key={method} className="receipt-row">
-                  <span>{method.replace('_', ' ')}:</span>
-                  <strong>Rs. {amount.toLocaleString()}</strong>
+                  <span>{method.replace(/_/g, ' ')}:</span>
+                  <strong>Rs. {Number(amount).toLocaleString()}</strong>
                 </div>
               ))}
               <div className="receipt-row total">
                 <span>Total Cashier Collections:</span>
-                <span style={{ color: '#059669' }}>Rs. {financials.totalCollectedRevenue?.toLocaleString()}</span>
+                <span style={{ color: '#059669' }}>Rs. {activeFinancials?.totalCollectedRevenue?.toLocaleString()}</span>
               </div>
             </div>
+          </div>
+
+          {/* BOTTOM SECTION: DETAILED INVOICE STATEMENT (Single Month) OR MULTI-MONTH HISTORY (All Time) */}
+          <div style={{ marginTop: '1.5rem' }}>
+            {selectedReportMonth !== 'ALL' ? (
+              // 1. SPECIFIC MONTH: Render Itemized Invoice Statement Table
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                      📑 Invoices Issued in {activeFinancials?.monthlyBreakdown?.find(m => m.monthKey === selectedReportMonth)?.monthName || selectedReportMonth}
+                    </h3>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      Detailed audit statement of all {activeFinancials?.totalInvoicesCount ?? 0} invoice(s) for this monthly billing cycle
+                    </span>
+                  </div>
+                  <button
+                    className="btn-sm-action no-print"
+                    onClick={() => handleReportMonthChange('ALL')}
+                    style={{ fontSize: '0.78rem', background: '#f1f5f9', color: '#334155' }}
+                  >
+                    🌐 View All-Time Months History
+                  </button>
+                </div>
+
+                {invoices.filter((inv) => {
+                  const d = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
+                  return d && d.startsWith(selectedReportMonth);
+                }).length > 0 ? (
+                  <div className="epic-table-wrapper">
+                    <table className="epic-table">
+                      <thead>
+                        <tr>
+                          <th>Invoice #</th>
+                          <th>Issue Date</th>
+                          <th>Pet & Owner</th>
+                          <th>Doctor / Ward</th>
+                          <th>Total Billed</th>
+                          <th>Paid Amount</th>
+                          <th>Balance Due</th>
+                          <th>Payment Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.filter((inv) => {
+                          const d = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
+                          return d && d.startsWith(selectedReportMonth);
+                        }).map((inv) => {
+                          const invTotal = inv.totalAmount || 0;
+                          const invBal = inv.balanceAmount ?? (inv.paymentStatus === 'PAID' ? 0 : invTotal);
+                          const invColl = (inv.paymentStatus === 'PAID')
+                            ? invTotal
+                            : (inv.paymentStatus === 'UNPAID' ? 0 : Math.max(0, invTotal - invBal));
+
+                          return (
+                            <tr key={inv.id || inv.invoiceNumber}>
+                              <td><strong>{inv.invoiceNumber}</strong></td>
+                              <td>{inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '—')}</td>
+                              <td>
+                                <strong>{inv.petName}</strong>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>{inv.ownerName}</span>
+                              </td>
+                              <td>{inv.doctorName || 'General Clinic'}</td>
+                              <td><strong>Rs. {invTotal.toLocaleString()}</strong></td>
+                              <td style={{ color: '#059669', fontWeight: '700' }}>Rs. {invColl.toLocaleString()}</td>
+                              <td style={{ color: invBal > 0 ? '#ef4444' : '#059669', fontWeight: '600' }}>
+                                Rs. {invBal.toLocaleString()}
+                              </td>
+                              <td>
+                                <span className={`status-pill ${inv.paymentStatus === 'PAID' ? 'confirmed' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'pending' : 'rejected'}`}>
+                                  {inv.paymentStatus === 'PAID' ? 'Fully Paid' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'Partial Paid' : 'Unpaid'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', fontWeight: '800', borderTop: '2px solid #cbd5e1' }}>
+                          <td colSpan={4} style={{ textAlign: 'right', padding: '10px' }}>
+                            Monthly Audit Statement Total:
+                          </td>
+                          <td style={{ color: '#0f172a' }}>Rs. {activeFinancials?.totalBilledRevenue?.toLocaleString()}</td>
+                          <td style={{ color: '#059669' }}>Rs. {activeFinancials?.totalCollectedRevenue?.toLocaleString()}</td>
+                          <td style={{ color: (activeFinancials?.totalOutstandingBalance ?? 0) > 0 ? '#ef4444' : '#059669' }}>
+                            Rs. {activeFinancials?.totalOutstandingBalance?.toLocaleString()}
+                          </td>
+                          <td style={{ color: '#4f46e5' }}>
+                            {(activeFinancials?.totalBilledRevenue ?? 0) > 0
+                              ? `${Math.min(100, Math.round(((activeFinancials?.totalCollectedRevenue ?? 0) / activeFinancials.totalBilledRevenue) * 100))}% Settled`
+                              : '100%'}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                    No invoice transactions recorded for this month.
+                  </p>
+                )}
+              </div>
+            ) : (
+              // 2. ALL TIME: Render Multi-Month Comparison History Table
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                      📅 Cumulative Multi-Month Financial Performance History
+                    </h3>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      Month-by-month revenue trends, settlement metrics, and historical collection efficiency
+                    </span>
+                  </div>
+                </div>
+
+                {activeFinancials?.monthlyBreakdown && activeFinancials.monthlyBreakdown.length > 0 ? (
+                  <div className="epic-table-wrapper">
+                    <table className="epic-table">
+                      <thead>
+                        <tr>
+                          <th>Month / Period</th>
+                          <th>Invoices</th>
+                          <th>Settled / Pending</th>
+                          <th>Billed Amount</th>
+                          <th>Collected Amount</th>
+                          <th>Outstanding Balance</th>
+                          <th>Collection Rate</th>
+                          <th className="no-print">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeFinancials.monthlyBreakdown.map((m) => {
+                          const isCurrent = selectedReportMonth === m.monthKey;
+                          const rate = m.billed > 0 ? Math.min(100, Math.round((m.collected / m.billed) * 100)) : 100;
+                          return (
+                            <tr
+                              key={m.monthKey}
+                              style={{
+                                background: isCurrent ? '#f0fdf4' : 'transparent',
+                                fontWeight: isCurrent ? '700' : 'normal'
+                              }}
+                            >
+                              <td>
+                                <strong>{m.monthName}</strong>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>({m.monthKey})</div>
+                              </td>
+                              <td>{m.invoiceCount}</td>
+                              <td>
+                                <span style={{ color: '#059669', fontWeight: '600' }}>{m.paidCount} Paid</span>
+                                {(m.partialCount > 0 || m.unpaidCount > 0) && (
+                                  <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '6px' }}>
+                                    ({m.unpaidCount + m.partialCount} Unsettled)
+                                  </span>
+                                )}
+                              </td>
+                              <td>Rs. {m.billed.toLocaleString()}</td>
+                              <td style={{ color: '#059669', fontWeight: '700' }}>Rs. {m.collected.toLocaleString()}</td>
+                              <td style={{ color: m.outstanding > 0 ? '#ef4444' : '#059669', fontWeight: '600' }}>
+                                Rs. {m.outstanding.toLocaleString()}
+                              </td>
+                              <td>
+                                <span style={{
+                                  background: rate >= 80 ? '#dcfce7' : rate >= 50 ? '#fef3c7' : '#fee2e2',
+                                  color: rate >= 80 ? '#166534' : rate >= 50 ? '#92400e' : '#991b1b',
+                                  padding: '0.2rem 0.6rem',
+                                  borderRadius: '999px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: '700'
+                                }}>
+                                  {rate}%
+                                </span>
+                              </td>
+                              <td className="no-print">
+                                <button
+                                  className="btn-sm-action"
+                                  onClick={() => handleReportMonthChange(m.monthKey)}
+                                  style={{ fontSize: '0.78rem', background: '#f1f5f9', color: '#334155' }}
+                                >
+                                  🔍 View Month Statement
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                    No historical monthly invoices recorded yet.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

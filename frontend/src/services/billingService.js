@@ -332,13 +332,18 @@ export const billingService = {
   },
 
   // Financial summary (US 4.25)
-  async getFinancialSummary() {
+  async getFinancialSummary(month = '') {
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/reports/financial`);
+      const url = month && month !== 'ALL' ? `${API_BASE_URL}/reports/financial?month=${encodeURIComponent(month)}` : `${API_BASE_URL}/reports/financial`;
+      const res = await fetchWithTimeout(url);
       if (res.ok) return await res.json();
     } catch (e) {}
 
-    const invoices = getLocalInvoices();
+    let invoices = getLocalInvoices();
+    if (month && month !== 'ALL') {
+      invoices = invoices.filter(i => (i.issueDate && i.issueDate.startsWith(month)) || (i.createdAt && i.createdAt.startsWith(month)));
+    }
+
     const totalBilled = invoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0);
     const totalCollected = invoices.reduce((acc, i) => acc + (i.paidAmount || 0), 0);
     const totalOutstanding = invoices.reduce((acc, i) => acc + (i.balanceAmount || 0), 0);
@@ -346,6 +351,7 @@ export const billingService = {
     return {
       success: true,
       data: {
+        selectedMonth: month || 'ALL',
         totalBilledRevenue: totalBilled,
         totalCollectedRevenue: totalCollected,
         totalOutstandingBalance: totalOutstanding,
@@ -358,6 +364,7 @@ export const billingService = {
           CASH: totalCollected * 0.3,
           BANK_TRANSFER: totalCollected * 0.1,
         },
+        monthlyBreakdown: [],
       },
     };
   },

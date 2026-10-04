@@ -189,7 +189,7 @@ public class AppointmentService {
                 null,
                 NotificationType.APPOINTMENT_ASSIGNED,
                 "New Confirmed Appointment Assigned",
-                "An appointment for " + saved.getPetName() + " on " + saved.getAppointmentDate()
+                "An appointment for " + saved.getPetName() + " (" + saved.getAppointmentNumber() + ") on " + saved.getAppointmentDate()
                         + " (" + saved.getTimeSlot() + ") has been confirmed by Admin and assigned to your schedule.",
                 "APPOINTMENT",
                 saved.getId()
@@ -287,7 +287,7 @@ public class AppointmentService {
                 null,
                 NotificationType.APPOINTMENT_ASSIGNED,
                 "Reassigned Appointment Added",
-                "An appointment for " + saved.getPetName() + " on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") was assigned to you.",
+                "An appointment for " + saved.getPetName() + " (" + saved.getAppointmentNumber() + ") on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") was assigned to you.",
                 "APPOINTMENT",
                 saved.getId()
         );

@@ -1,5 +1,6 @@
 package com.vhms.vhms.dto.report;
 
+import java.util.List;
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
@@ -12,6 +13,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FinancialSummaryResponse {
+
+    private String selectedMonth; // e.g. "ALL" or "2026-10"
 
     private double totalBilledRevenue;
     private double totalCollectedRevenue;
@@ -26,4 +29,23 @@ public class FinancialSummaryResponse {
 
     // Daily breakdown for charts
     private Map<String, Double> dailyRevenue;
+
+    // Monthly breakdown list for monthly reports
+    private List<MonthlyRevenueItem> monthlyBreakdown;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MonthlyRevenueItem {
+        private String monthKey;    // e.g. "2026-10"
+        private String monthName;   // e.g. "October 2026"
+        private double billed;
+        private double collected;
+        private double outstanding;
+        private long invoiceCount;
+        private long paidCount;
+        private long partialCount;
+        private long unpaidCount;
+    }
 }

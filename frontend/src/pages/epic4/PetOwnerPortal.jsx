@@ -2276,7 +2276,10 @@ export default function PetOwnerPortal() {
                     onChange={(e) => {
                       const doc = doctorsList.find((d) => d.id === e.target.value);
                       setReselectDoctorId(e.target.value);
-                      if (doc) setReselectDoctorName(doc.name);
+                      if (doc) {
+                        setReselectDoctorName(doc.name);
+                        setReselectReason(`Selected alternative doctor (${doc.name})`);
+                      }
                     }}
                   >
                     {doctorsList.map((d) => (

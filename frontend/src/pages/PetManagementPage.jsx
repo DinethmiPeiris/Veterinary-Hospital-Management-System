@@ -1597,6 +1597,24 @@ export default function PetManagementPage() {
                                         <span className="link-text">View Appointments Roster →</span>
                                     </div>
                                 </div>
+
+                                {/* CARD 5: HOSPITAL ADMISSIONS (Epic 3) */}
+                                <div className="portal-card appointments-portal-card" id="admissions-portal-card" onClick={() => navigate('/pet-owner/admissions')}>
+                                    <div className="portal-card-top">
+                                        <div className="portal-icon-box icon-blue-box">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"></path><path d="M12 9v6"></path><path d="M9 12h6"></path><path d="M3 21h18"></path></svg>
+                                        </div>
+                                        <span className="portal-badge badge-info">Hospitalization</span>
+                                    </div>
+                                    <h3 className="portal-card-title">Hospital Admissions</h3>
+                                    <p className="portal-card-desc">
+                                        Review doctor admission recommendations, request admission, and follow your pet's treatment and recovery.
+                                    </p>
+                                    <div className="portal-card-footer">
+                                        <span className="link-text">View Admissions →</span>
+                                    </div>
+                                </div>
+
                             </div>
                         </section>
                     </>

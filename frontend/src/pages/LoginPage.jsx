@@ -211,7 +211,11 @@ export default function LoginPage() {
     if (expectedRole === 'PET_OWNER' || expectedRole === 'ANY') {
       const ownerName = loginId.includes('@') ? loginId.split('@')[0].replace(/[^a-zA-Z]/g, ' ') : loginId
       const formattedName = ownerName ? ownerName.charAt(0).toUpperCase() + ownerName.slice(1) : 'Pet Owner'
-      const ownerSession = { success: true, id: `PO-${Date.now().toString().slice(-4)}`, name: formattedName, email: loginId.includes('@') ? loginId : `${loginId}@gmail.com`, phone: '0771234567', role: 'PET_OWNER', status: 'ACTIVE' }
+      // Stable ID per email so pets registered under this login are still found next time (was time-based => changed every login)
+      const stableKey = (loginId.includes('@') ? loginId : `${loginId}@gmail.com`).trim().toLowerCase()
+      let stableHash = 0
+      for (let i = 0; i < stableKey.length; i++) stableHash = (stableHash * 31 + stableKey.charCodeAt(i)) % 10000
+      const ownerSession = { success: true, id: `PO-${String(stableHash).padStart(4, '0')}`, name: formattedName, email: loginId.includes('@') ? loginId : `${loginId}@gmail.com`, phone: '0771234567', role: 'PET_OWNER', status: 'ACTIVE' }
       localStorage.setItem('vhms_user', JSON.stringify(ownerSession))
       localStorage.setItem('vhms_pet_view', 'OVERVIEW')
       showToast(`🐾 Welcome back, ${formattedName}! Redirecting to Pet Owner Dashboard...`, 'success')

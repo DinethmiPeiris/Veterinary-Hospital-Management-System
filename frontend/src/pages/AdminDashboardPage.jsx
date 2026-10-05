@@ -1722,6 +1722,55 @@ export default function AdminDashboardPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Group 3: Hospitalization & Wards (Epic 3) */}
+                            <div className="portal-group-clean">
+                                <div className="clean-group-label">
+                                    <span className="dot-indicator purple"></span>
+                                    <span>HOSPITALIZATION & WARD MANAGEMENT</span>
+                                </div>
+                                <div className="nav-cards-grid">
+                                    <div className="feature-nav-card card-purple-hover" onClick={() => navigate('/admin/admission-requests')}>
+                                        <div className="nav-card-icon-badge purple">
+                                            <IconCheck size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Admission Requests</h3>
+                                            <span className="nav-card-sub">Review & approve admissions</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="feature-nav-card card-amber-hover" onClick={() => navigate('/admin/hospitalized-pets')}>
+                                        <div className="nav-card-icon-badge amber">
+                                            <IconPaw size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Hospitalized Pets</h3>
+                                            <span className="nav-card-sub">Monitor admitted patients</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="feature-nav-card card-emerald-hover" onClick={() => navigate('/admin/cage-occupancy')}>
+                                        <div className="nav-card-icon-badge emerald">
+                                            <IconGrid size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Cage Occupancy</h3>
+                                            <span className="nav-card-sub">Manage ward availability</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="feature-nav-card card-blue-hover" onClick={() => navigate('/admin/inventory')}>
+                                        <div className="nav-card-icon-badge blue">
+                                            <IconFolder size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Pharmacy & Stock</h3>
+                                            <span className="nav-card-sub">Manage medical inventory</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </section>
                     </>
                 )}

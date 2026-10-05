@@ -14,7 +14,7 @@
 	<name>VHMS Backend</name>
 	<description>Veterinary Hospital Management System - Spring Boot Backend</description>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<dependency>

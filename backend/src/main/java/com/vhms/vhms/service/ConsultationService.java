@@ -46,7 +46,7 @@ public class ConsultationService {
             consultation.setPetId(appointment.getPetId());
             consultation.setPetName(appointment.getPetName());
             consultation.setOwnerName(appointment.getOwnerName());
-            appointment.setStatus("IN_PROGRESS");
+            appointment.setStatus(com.vhms.vhms.model.AppointmentStatus.IN_PROGRESS);
             if (doctor != null) {
                 appointment.setDoctorId(doctor.getStaffId() != null ? doctor.getStaffId() : doctor.getId());
                 appointment.setDoctorName(doctor.getFullName());
@@ -72,8 +72,8 @@ public class ConsultationService {
         final Integer petAge;
         final Double petWeight;
         if (appointment != null) {
-            AppointmentService.normalizeSpeciesBreed(appointment);
-            species = appointment.getSpecies() != null ? appointment.getSpecies() : "Unknown";
+            // AppointmentService.normalizeSpeciesBreed(appointment);
+            species = appointment.getPetSpecies() != null ? appointment.getPetSpecies() : "Unknown";
             breed = appointment.getBreed() != null ? appointment.getBreed() : "";
             petAge = appointment.getAge();
             petWeight = appointment.getWeight();
@@ -158,12 +158,12 @@ public class ConsultationService {
         if (!request.isDraft()) {
             consultation.setStatus(ConsultationStatus.COMPLETED);
             appointmentRepository.findById(consultation.getAppointmentId()).ifPresent(appointment -> {
-                appointment.setStatus("COMPLETED");
+                appointment.setStatus(com.vhms.vhms.model.AppointmentStatus.COMPLETED);
                 appointmentRepository.save(appointment);
             });
         } else {
             appointmentRepository.findById(consultation.getAppointmentId()).ifPresent(appointment -> {
-                appointment.setStatus("IN_PROGRESS");
+                appointment.setStatus(com.vhms.vhms.model.AppointmentStatus.IN_PROGRESS);
                 appointmentRepository.save(appointment);
             });
         }

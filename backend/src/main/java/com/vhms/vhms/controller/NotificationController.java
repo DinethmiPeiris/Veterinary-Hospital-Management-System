@@ -1,82 +1,67 @@
 package com.vhms.vhms.controller;
 
-import com.vhms.vhms.model.Notification;
-import com.vhms.vhms.repository.NotificationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
-import java.util.Optional;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.vhms.vhms.dto.ApiResponse;
+import com.vhms.vhms.model.NotificationLog;
+import com.vhms.vhms.model.NotificationType;
+import com.vhms.vhms.service.NotificationService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/notifications")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class NotificationController {
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
-    @GetMapping
-    public List<Notification> getNotifications(@RequestParam(required = false) String userId,
-            @RequestParam(required = false) String userEmail) {
-        if (userId != null && userEmail != null) {
-            return notificationRepository.findByUserIdOrUserEmail(userId, userEmail);
-        } else if (userId != null) {
-            return notificationRepository.findByUserId(userId);
-        } else if (userEmail != null) {
-            return notificationRepository.findByUserEmail(userEmail);
-        }
-        return notificationRepository.findAll();
+    // US 4.2 / 4.3 / 4.4 / 4.5 / 4.11 / 4.30: Get user's notifications
+    @GetMapping("/recipient/{recipientId}")
+    public ResponseEntity<ApiResponse<List<NotificationLog>>> getNotifications(@PathVariable String recipientId) {
+        return ResponseEntity.ok(ApiResponse.ok(notificationService.getNotificationsByRecipient(recipientId)));
     }
 
-    @PostMapping
-    public Notification createNotification(@RequestBody Notification notification) {
-        if (notification.getTimestamp() == null) {
-            notification.setTimestamp("Just now");
-        }
-        return notificationRepository.save(notification);
+    @GetMapping("/unread/{recipientId}")
+    public ResponseEntity<ApiResponse<List<NotificationLog>>> getUnreadNotifications(@PathVariable String recipientId) {
+        return ResponseEntity.ok(ApiResponse.ok(notificationService.getUnreadNotifications(recipientId)));
     }
 
-    @PutMapping("/{id}/read")
-    public ResponseEntity<Notification> markAsRead(@PathVariable String id) {
-        Optional<Notification> opt = notificationRepository.findById(id);
-        if (opt.isPresent()) {
-            Notification n = opt.get();
-            n.setRead(true);
-            notificationRepository.save(n);
-            return ResponseEntity.ok(n);
-        }
-        return ResponseEntity.notFound().build();
+    @GetMapping("/unread-count/{recipientId}")
+    public ResponseEntity<ApiResponse<Long>> getUnreadCount(@PathVariable String recipientId) {
+        return ResponseEntity.ok(ApiResponse.ok(notificationService.getUnreadCount(recipientId)));
     }
 
-    @PutMapping("/read-all")
-    public ResponseEntity<Void> markAllAsRead(@RequestParam(required = false) String userId,
-            @RequestParam(required = false) String userEmail) {
-        List<Notification> list;
-        if (userId != null || userEmail != null) {
-            list = notificationRepository.findByUserIdOrUserEmail(userId != null ? userId : "",
-                    userEmail != null ? userEmail : "");
-        } else {
-            list = notificationRepository.findAll();
-        }
-        for (Notification n : list) {
-            n.setRead(true);
-        }
-        notificationRepository.saveAll(list);
-        return ResponseEntity.ok().build();
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String id) {
+        notificationService.markAsRead(id);
+        return ResponseEntity.ok(ApiResponse.ok("Notification marked as read.", null));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNotification(@PathVariable String id) {
-        notificationRepository.deleteById(id);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/user/{userId}")
-    public ResponseEntity<Void> deleteAllForUser(@PathVariable String userId) {
-        List<Notification> list = notificationRepository.findByUserId(userId);
-        notificationRepository.deleteAll(list);
-        return ResponseEntity.ok().build();
+    @PostMapping("/send")
+    public ResponseEntity<ApiResponse<NotificationLog>> sendNotification(@RequestBody NotificationLog log) {
+        NotificationLog saved = notificationService.sendNotification(
+                log.getRecipientId(),
+                log.getRecipientRole() != null ? log.getRecipientRole() : "PET_OWNER",
+                log.getRecipientEmail(),
+                log.getRecipientPhone(),
+                log.getNotificationType() != null ? log.getNotificationType() : NotificationType.APPOINTMENT_REMINDER,
+                log.getTitle(),
+                log.getMessage(),
+                log.getReferenceType(),
+                log.getReferenceId()
+        );
+        return ResponseEntity.ok(ApiResponse.ok("Notification sent.", saved));
     }
 }

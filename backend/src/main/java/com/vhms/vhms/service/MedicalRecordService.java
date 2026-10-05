@@ -78,12 +78,12 @@ public class MedicalRecordService {
                 .orElse(null);
 
         if (appointment != null) {
-            AppointmentService.normalizeSpeciesBreed(appointment);
+            // AppointmentService.normalizeSpeciesBreed(appointment);
             if (record.getSpecies() == null || record.getSpecies().isBlank()
                     || record.getSpecies().contains(" - ")
                     || "Unknown".equalsIgnoreCase(record.getSpecies())) {
-                if (appointment.getSpecies() != null && !appointment.getSpecies().isBlank()) {
-                    record.setSpecies(appointment.getSpecies());
+                if (appointment.getPetSpecies() != null && !appointment.getPetSpecies().isBlank()) {
+                    record.setSpecies(appointment.getPetSpecies());
                     dirty = true;
                 }
             }
@@ -94,10 +94,10 @@ public class MedicalRecordService {
                 }
             }
             // Prefer appointment's split values when EMR still has combined legacy text
-            if (appointment.getSpecies() != null && appointment.getBreed() != null
+            if (appointment.getPetSpecies() != null && appointment.getBreed() != null
                     && (record.getSpecies() == null || record.getSpecies().contains(" - ")
                     || record.getBreed() == null || record.getBreed().isBlank())) {
-                record.setSpecies(appointment.getSpecies());
+                record.setSpecies(appointment.getPetSpecies());
                 record.setBreed(appointment.getBreed());
                 dirty = true;
             }
@@ -213,12 +213,12 @@ public class MedicalRecordService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found for petId: " + petId));
 
-        AppointmentService.normalizeSpeciesBreed(appointment);
+        // AppointmentService.normalizeSpeciesBreed(appointment);
 
         MedicalRecord record = new MedicalRecord();
         record.setPetId(petId);
         record.setPetName(appointment.getPetName());
-        record.setSpecies(appointment.getSpecies() != null ? appointment.getSpecies() : "Unknown");
+        record.setSpecies(appointment.getPetSpecies() != null ? appointment.getPetSpecies() : "Unknown");
         record.setBreed(appointment.getBreed() != null ? appointment.getBreed() : "");
         record.setAge(appointment.getAge() != null ? appointment.getAge() : 0);
         record.setWeight(appointment.getWeight() != null ? appointment.getWeight() : 0.0);

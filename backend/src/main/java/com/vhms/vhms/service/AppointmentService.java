@@ -1,229 +1,533 @@
 package com.vhms.vhms.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.UUID;
+
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.vhms.vhms.dto.AppointmentResponseDTO;
-import com.vhms.vhms.dto.AppointmentStatusUpdateDTO;
+import com.vhms.vhms.dto.appointment.CreateAppointmentRequest;
+import com.vhms.vhms.dto.appointment.ReassignDoctorRequest;
+import com.vhms.vhms.dto.appointment.RescheduleAppointmentRequest;
+import com.vhms.vhms.dto.appointment.UpdateAppointmentStatusRequest;
+import com.vhms.vhms.exception.InvalidOperationException;
 import com.vhms.vhms.exception.ResourceNotFoundException;
+import com.vhms.vhms.exception.SlotConflictException;
 import com.vhms.vhms.model.Appointment;
+import com.vhms.vhms.model.AppointmentStatus;
+import com.vhms.vhms.model.NotificationType;
 import com.vhms.vhms.repository.AppointmentRepository;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
 
-    private static final Set<String> ALLOWED_STATUSES = Set.of(
-            "SCHEDULED", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED",
-            // Pet-owner booking / approval flow (IT24101204)
-            "PENDING", "APPROVED", "REJECTED"
+    private final AppointmentRepository appointmentRepository;
+    private final NotificationService notificationService;
+
+    private static final List<AppointmentStatus> CONFLICT_STATUSES = Arrays.asList(
+            AppointmentStatus.REQUESTED,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.RESCHEDULED,
+            AppointmentStatus.IN_PROGRESS
     );
 
-    private final AppointmentRepository appointmentRepository;
-
-    @PostConstruct
-    public void ensureDemoAppointments() {
-        // COMPLETED past appointments
-        upsertDemo("APP-101", "Buddy", "Dog", "Golden Retriever", "John Doe", "Annual checkup and vaccination", "COMPLETED", "PET-101", 4, 32.5, -1, 0); // Yesterday
-        upsertDemo("APP-102", "Luna", "Cat", "Persian", "Sarah Smith", "Not eating for 2 days", "COMPLETED", "PET-102", 3, 4.2, 0, -4); // Today, 4 hours ago
-        upsertDemo("APP-103", "Max", "Dog", "German Shepherd", "Mike Johnson", "Limping on back right leg", "COMPLETED", "PET-103", 5, 34.0, 0, -2); // Today, 2 hours ago
-
-        // IN_PROGRESS appointment
-        upsertDemo("APP-108", "Charlie", "Dog", "Beagle", "Ruwan Bandara", "Vomiting since yesterday", "IN_PROGRESS", "PET-108", 7, 12.4, 0, -1); // Today, 1 hour ago
-
-        // WAITING appointments
-        upsertDemo("APP-105", "Milo", "Cat", "Siamese", "Amaya Silva", "Skin irritation and itching", "WAITING", "PET-105", 4, 5.1, 0, 0); // Today, now
-        upsertDemo("APP-107", "Bella", "Cat", "British Shorthair", "Dilani Jayasuriya", "Dental checkup", "WAITING", "PET-107", 3, 5.8, 0, 1); // Today, +1 hour
-
-        // SCHEDULED appointments
-        upsertDemo("APP-104", "Coco", "Dog", "Poodle", "Nimal Perera", "Vaccination booster", "SCHEDULED", "PET-104", 2, 8.5, 0, 2); // Today, +2 hours
-        upsertDemo("APP-106", "Rocky", "Dog", "Labrador", "Kasun Fernando", "Ear infection follow-up", "SCHEDULED", "PET-106", 6, 30.0, 0, 4); // Today, +4 hours
-        
-        // New Pets (Future)
-        upsertDemo("APP-109", "Daisy", "Dog", "Bulldog", "Sam Perera", "Skin infection", "SCHEDULED", "PET-109", 2, 18.0, 1, 0); // Tomorrow
-        upsertDemo("APP-110", "Simba", "Cat", "Maine Coon", "Tara Fernando", "Routine checkup", "SCHEDULED", "PET-110", 4, 7.2, 2, 0); // Day after
-        upsertDemo("APP-111", "Leo", "Dog", "Husky", "Kusal Mendis", "Lethargy and fever", "COMPLETED", "PET-111", 5, 25.5, -2, 0); // 2 Days ago
+    @jakarta.annotation.PostConstruct
+    public void initResetApt0002() {
+        try {
+            appointmentRepository.findByAppointmentNumber("APT-0002").ifPresent(a -> {
+                a.setRebookAllowed(false);
+                appointmentRepository.save(a);
+            });
+        } catch (Exception ignored) {}
     }
 
-    private void upsertDemo(
-            String id, String petName, String species, String breed,
-            String owner, String reason, String status, String petId, int age, double weight, int daysOffset, int hoursOffset) {
-        
-        LocalDateTime aptDate = LocalDateTime.now().plusDays(daysOffset).plusHours(hoursOffset).withMinute(0).withSecond(0).withNano(0);
-        String timeStr = aptDate.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH));
+    public Appointment createAppointment(CreateAppointmentRequest request) {
+        // Validate conflict
+        boolean conflict = appointmentRepository.existsByDoctorIdAndAppointmentDateAndTimeSlotAndStatusIn(
+                request.getDoctorId(),
+                request.getAppointmentDate(),
+                request.getTimeSlot(),
+                CONFLICT_STATUSES
+        );
 
-        Appointment existing = appointmentRepository.findById(id).orElse(null);
-        if (existing == null) {
-            appointmentRepository.save(demoAppointment(
-                    id, timeStr, petName, species, breed, owner, reason, status, petId, age, weight, aptDate));
-            return;
-        }
-
-        boolean dirty = false;
-        normalizeSpeciesBreed(existing);
-
-        if (existing.getTime() == null || existing.getTime().isBlank() || !timeStr.equals(existing.getTime())) {
-            existing.setTime(timeStr);
-            existing.setAppointmentDate(aptDate);
-            dirty = true;
-        }
-        if (existing.getSpecies() == null || existing.getSpecies().isBlank()
-                || existing.getSpecies().contains(" - ")
-                || "Pet".equalsIgnoreCase(existing.getSpecies())) {
-            existing.setSpecies(species);
-            dirty = true;
-        }
-        if (existing.getBreed() == null || existing.getBreed().isBlank()) {
-            existing.setBreed(breed);
-            dirty = true;
-        }
-        if (existing.getPetName() == null || existing.getPetName().isBlank()) {
-            existing.setPetName(petName);
-            dirty = true;
-        }
-        if (existing.getOwnerName() == null || existing.getOwnerName().isBlank()) {
-            existing.setOwnerName(owner);
-            dirty = true;
-        }
-        if (existing.getReason() == null || existing.getReason().isBlank()) {
-            existing.setReason(reason);
-            dirty = true;
-        }
-        if (existing.getPetId() == null || existing.getPetId().isBlank()) {
-            existing.setPetId(petId);
-            dirty = true;
-        }
-        if (existing.getAge() == null || existing.getAge() == 0) {
-            existing.setAge(age);
-            dirty = true;
-        }
-        if (existing.getWeight() == null || existing.getWeight() == 0) {
-            existing.setWeight(weight);
-            dirty = true;
-        }
-        // Keep starter test appointments in the intended status for filter demos
-        if ("APP-104".equals(id) || "APP-105".equals(id) || "APP-106".equals(id)
-                || "APP-107".equals(id) || "APP-108".equals(id)) {
-            if (!status.equals(existing.getStatus())) {
-                existing.setStatus(status);
-                dirty = true;
-            }
+        if (conflict) {
+            throw new SlotConflictException("The time slot " + request.getTimeSlot() + " on " + request.getAppointmentDate() + " is already booked for this veterinarian.");
         }
 
-        if (!species.equals(existing.getSpecies()) || !breed.equals(nullToEmpty(existing.getBreed()))) {
-            existing.setSpecies(species);
-            existing.setBreed(breed);
-            dirty = true;
-        }
+        Appointment appointment = Appointment.builder()
+                .appointmentNumber(generateAppointmentNumber())
+                .petId(request.getPetId())
+                .petName(request.getPetName())
+                .petSpecies(request.getPetSpecies())
+                .petBreed(request.getPetBreed())
+                .petAge(request.getPetAge())
+                .ownerId(request.getOwnerId())
+                .ownerName(request.getOwnerName())
+                .ownerPhone(request.getOwnerPhone())
+                .ownerEmail(request.getOwnerEmail())
+                .doctorId(request.getDoctorId())
+                .doctorName(request.getDoctorName() != null ? request.getDoctorName() : "Assigned Veterinarian")
+                .doctorSpecialization(request.getDoctorSpecialization())
+                .appointmentType(request.getAppointmentType())
+                .appointmentDate(request.getAppointmentDate())
+                .timeSlot(request.getTimeSlot())
+                .status(AppointmentStatus.REQUESTED)
+                .reasonForVisit(request.getReasonForVisit())
+                .symptoms(request.getSymptoms())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
 
-        if (dirty) {
-            appointmentRepository.save(existing);
-        }
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Send submission notification to Pet Owner
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_REQUESTED,
+                "Appointment Request Submitted",
+                "Your appointment request for " + saved.getPetName() + " on " + saved.getAppointmentDate()
+                        + " at " + saved.getTimeSlot() + " with " + saved.getDoctorName() + " has been submitted (" + saved.getAppointmentNumber() + "). Waiting for hospital confirmation.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        // Notify Admin (All requests route through Admin; doctor is NOT notified until Admin confirms)
+        notificationService.sendNotification(
+                "ADMIN-001",
+                "ADMIN",
+                null,
+                null,
+                NotificationType.APPOINTMENT_REQUESTED,
+                "New Appointment Request",
+                "New appointment request for " + saved.getPetName() + " (Owner: " + saved.getOwnerName() + ") on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") with " + saved.getDoctorName() + " (" + saved.getAppointmentNumber() + "). Please review and confirm.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
     }
 
-    private String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    /** Split legacy values like "Dog - Golden Retriever" into species + breed. */
-    static void normalizeSpeciesBreed(Appointment appointment) {
-        if (appointment == null || appointment.getSpecies() == null) return;
-        String value = appointment.getSpecies().trim();
-        int sep = value.indexOf(" - ");
-        if (sep > 0) {
-            String speciesPart = value.substring(0, sep).trim();
-            String breedPart = value.substring(sep + 3).trim();
-            appointment.setSpecies(speciesPart);
-            if (appointment.getBreed() == null || appointment.getBreed().isBlank()) {
-                appointment.setBreed(breedPart);
-            }
-        }
-    }
-
-    public List<AppointmentResponseDTO> getAllAppointments() {
-        return appointmentRepository.findAllByOrderByAppointmentDateAsc()
-                .stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    public AppointmentResponseDTO getAppointment(String id) {
-        return toDto(findAppointment(id));
-    }
-
-    public AppointmentResponseDTO updateStatus(String id, AppointmentStatusUpdateDTO request) {
-        String status = request.getStatus().trim().toUpperCase(Locale.ROOT).replace(' ', '_');
-        if (!ALLOWED_STATUSES.contains(status)) {
-            throw new IllegalArgumentException("Unsupported appointment status: " + request.getStatus());
-        }
-
-        Appointment appointment = findAppointment(id);
-        appointment.setStatus(status);
-        return toDto(appointmentRepository.save(appointment));
-    }
-
-    private Appointment findAppointment(String id) {
+    public Appointment getAppointmentById(String id) {
         return appointmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with ID: " + id));
     }
 
-    private Appointment demoAppointment(
-            String id, String time, String petName, String species, String breed,
-            String owner, String reason, String status, String petId, int age, double weight, LocalDateTime aptDate) {
-        Appointment appointment = new Appointment();
-        appointment.setId(id);
-        appointment.setTime(time);
-        appointment.setPetName(petName);
-        appointment.setSpecies(species);
-        appointment.setBreed(breed);
-        appointment.setOwnerName(owner);
-        appointment.setReason(reason);
-        appointment.setStatus(status);
-        appointment.setPetId(petId);
-        appointment.setAge(age);
-        appointment.setWeight(weight);
-        appointment.setDoctorId("DOC-001");
-        appointment.setDoctorName("Dr. Smith");
-        appointment.setAppointmentDate(aptDate);
+    public Appointment getAppointmentByNumber(String appointmentNumber) {
+        return appointmentRepository.findByAppointmentNumber(appointmentNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with number: " + appointmentNumber));
+    }
+
+    public List<Appointment> getAllAppointments() {
+        return appointmentRepository.findAll();
+    }
+
+    public List<Appointment> getAppointmentsByOwner(String ownerId) {
+        return appointmentRepository.findByOwnerIdOrderByAppointmentDateDesc(ownerId);
+    }
+
+    public List<Appointment> getAppointmentsByDoctor(String doctorId) {
+        return appointmentRepository.findByDoctorIdOrderByAppointmentDateDesc(doctorId)
+                .stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.REQUESTED)
+                .collect(Collectors.toList());
+    }
+
+    public List<Appointment> getDoctorDailyAgenda(String doctorId, String date) {
+        String queryDate = (date != null && !date.isBlank()) ? date : LocalDate.now().toString();
+        return appointmentRepository.findByDoctorIdAndAppointmentDate(doctorId, queryDate)
+                .stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.REQUESTED && a.getStatus() != AppointmentStatus.CANCELLED && a.getStatus() != AppointmentStatus.REJECTED)
+                .collect(Collectors.toList());
+    }
+
+    public List<Appointment> getAppointmentsByStatus(AppointmentStatus status) {
+        return appointmentRepository.findByStatus(status);
+    }
+
+    public Appointment approveAppointment(String id) {
+        Appointment appointment = getAppointmentById(id);
+        if (appointment.getStatus() != AppointmentStatus.REQUESTED) {
+            throw new InvalidOperationException("Only REQUESTED appointments can be approved. Current status: " + appointment.getStatus());
+        }
+
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setUpdatedAt(LocalDateTime.now());
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Notify Pet Owner
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_CONFIRMED,
+                "Appointment Confirmed!",
+                "Great news! Your appointment for " + saved.getPetName() + " on " + saved.getAppointmentDate()
+                        + " at " + saved.getTimeSlot() + " is confirmed with " + saved.getDoctorName() + ".",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        // Notify Doctor on confirmation by Admin
+        notificationService.sendNotification(
+                saved.getDoctorId(),
+                "DOCTOR",
+                null,
+                null,
+                NotificationType.APPOINTMENT_ASSIGNED,
+                "New Confirmed Appointment Assigned",
+                "An appointment for " + saved.getPetName() + " (" + saved.getAppointmentNumber() + ") on " + saved.getAppointmentDate()
+                        + " (" + saved.getTimeSlot() + ") has been confirmed by Admin and assigned to your schedule.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
+    }
+
+    public Appointment rejectAppointment(String id, String reason) {
+        Appointment appointment = getAppointmentById(id);
+        appointment.setStatus(AppointmentStatus.REJECTED);
+        appointment.setRejectionReason(reason);
+        appointment.setUpdatedAt(LocalDateTime.now());
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Notify Pet Owner with Options
+        String docName = saved.getDoctorName() != null ? saved.getDoctorName() : "assigned doctor";
+        String cleanReason = (reason != null && !reason.isBlank()) ? reason : "Doctor unavailable on this slot.";
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_REJECTED,
+                "Appointment Request Declined (" + saved.getAppointmentNumber() + ")",
+                "Your appointment for " + saved.getPetName() + " was declined: " + cleanReason + ". Please choose an option: 1) Select a different time with " + docName + ", or 2) Choose an alternative doctor.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
+    }
+
+    public Appointment reassignDoctor(String id, ReassignDoctorRequest request) {
+        Appointment appointment = getAppointmentById(id);
+
+        String targetDate = (request.getNewAppointmentDate() != null && !request.getNewAppointmentDate().isBlank())
+                ? request.getNewAppointmentDate() : appointment.getAppointmentDate();
+        String targetSlot = (request.getNewTimeSlot() != null && !request.getNewTimeSlot().isBlank())
+                ? request.getNewTimeSlot() : appointment.getTimeSlot();
+
+        // Conflict check on new doctor
+        boolean conflict = appointmentRepository.existsByDoctorIdAndAppointmentDateAndTimeSlotAndStatusIn(
+                request.getNewDoctorId(),
+                targetDate,
+                targetSlot,
+                CONFLICT_STATUSES
+        );
+
+        if (conflict) {
+            throw new SlotConflictException("Doctor " + request.getNewDoctorName() + " is already booked for " + targetDate + " (" + targetSlot + ").");
+        }
+
+        appointment.setPreviousDoctorId(appointment.getDoctorId());
+        appointment.setPreviousDoctorName(appointment.getDoctorName());
+        appointment.setDoctorId(request.getNewDoctorId());
+        appointment.setDoctorName(request.getNewDoctorName());
+        if (request.getNewDoctorSpecialization() != null) {
+            appointment.setDoctorSpecialization(request.getNewDoctorSpecialization());
+        }
+        appointment.setAppointmentDate(targetDate);
+        appointment.setTimeSlot(targetSlot);
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        if (request.getReassignmentReason() != null) {
+            appointment.setAdminNotes("Reassigned: " + request.getReassignmentReason());
+        }
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Notify Pet Owner
+        String prevDoc = saved.getPreviousDoctorName();
+        String currentDoc = saved.getDoctorName();
+        String noticeMsg = (prevDoc != null && !prevDoc.equalsIgnoreCase(currentDoc) && !prevDoc.equalsIgnoreCase("Assigned Veterinarian"))
+                ? "Your appointment for " + saved.getPetName() + " on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") is confirmed with " + currentDoc + " (Allocated as " + prevDoc + " is off-duty on this date)."
+                : "Your appointment for " + saved.getPetName() + " has been assigned to " + currentDoc + " on " + saved.getAppointmentDate() + " at " + saved.getTimeSlot() + ".";
+
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_RESCHEDULED,
+                "Veterinarian Allocated & Confirmed",
+                noticeMsg,
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        // Notify New Doctor
+        notificationService.sendNotification(
+                saved.getDoctorId(),
+                "DOCTOR",
+                null,
+                null,
+                NotificationType.APPOINTMENT_ASSIGNED,
+                "Reassigned Appointment Added",
+                "An appointment for " + saved.getPetName() + " (" + saved.getAppointmentNumber() + ") on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") was assigned to you.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
+    }
+
+    public Appointment rescheduleAppointment(String id, RescheduleAppointmentRequest request) {
+        Appointment appointment = getAppointmentById(id);
+
+        String targetDoctorId = (request.getOptionalNewDoctorId() != null && !request.getOptionalNewDoctorId().isBlank())
+                ? request.getOptionalNewDoctorId() : appointment.getDoctorId();
+
+        // Conflict check
+        boolean conflict = appointmentRepository.existsByDoctorIdAndAppointmentDateAndTimeSlotAndStatusIn(
+                targetDoctorId,
+                request.getNewAppointmentDate(),
+                request.getNewTimeSlot(),
+                CONFLICT_STATUSES
+        );
+
+        if (conflict) {
+            throw new SlotConflictException("The time slot " + request.getNewTimeSlot() + " on " + request.getNewAppointmentDate() + " is already occupied.");
+        }
+
+        boolean wasRejected = appointment.getStatus() == AppointmentStatus.REJECTED;
+
+        appointment.setAppointmentDate(request.getNewAppointmentDate());
+        appointment.setTimeSlot(request.getNewTimeSlot());
+        if (request.getOptionalNewDoctorId() != null && !request.getOptionalNewDoctorId().isBlank()) {
+            appointment.setPreviousDoctorId(appointment.getDoctorId());
+            appointment.setPreviousDoctorName(appointment.getDoctorName());
+            appointment.setDoctorId(request.getOptionalNewDoctorId());
+            if (request.getOptionalNewDoctorName() != null && !request.getOptionalNewDoctorName().isBlank()) {
+                appointment.setDoctorName(request.getOptionalNewDoctorName());
+            }
+        }
+        
+        // If it was rejected, put it back to REQUESTED for admin approval
+        if (wasRejected) {
+            appointment.setStatus(AppointmentStatus.REQUESTED);
+            appointment.setRejectionReason(null);
+        } else {
+            appointment.setStatus(AppointmentStatus.RESCHEDULED);
+        }
+
+        if (request.getRescheduleReason() != null) {
+            appointment.setAdminNotes((wasRejected ? "Re-selected after rejection: " : "Rescheduled: ") + request.getRescheduleReason());
+        }
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Notify Pet Owner
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_RESCHEDULED,
+                wasRejected ? "Appointment Resubmitted" : "Appointment Rescheduled",
+                "Your appointment for " + saved.getPetName() + " is now moved to " + saved.getAppointmentDate()
+                        + " at " + saved.getTimeSlot() + " with " + saved.getDoctorName() + ".",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        // Notify Assigned Doctor
+        if (saved.getDoctorId() != null && !saved.getDoctorId().isBlank()) {
+            notificationService.sendNotification(
+                    saved.getDoctorId(),
+                    "DOCTOR",
+                    null,
+                    null,
+                    NotificationType.APPOINTMENT_RESCHEDULED,
+                    "Appointment #" + saved.getAppointmentNumber() + " Rescheduled",
+                    "Patient " + saved.getPetName() + " (" + saved.getOwnerName() + ") is now rescheduled to " + saved.getAppointmentDate() + " at " + saved.getTimeSlot() + ".",
+                    "APPOINTMENT",
+                    saved.getId()
+            );
+        }
+
+        // Notify Admin if it was re-selected after rejection
+        if (wasRejected) {
+            notificationService.sendNotification(
+                    "ADMIN-001",
+                    "ADMIN",
+                    null,
+                    null,
+                    NotificationType.APPOINTMENT_RESCHEDULED,
+                    "Re-selected Appointment: " + saved.getAppointmentNumber(),
+                    "Pet owner re-selected " + saved.getDoctorName() + " on " + saved.getAppointmentDate() + " (" + saved.getTimeSlot() + ") for " + saved.getPetName() + ". Ready for approval.",
+                    "APPOINTMENT",
+                    saved.getId()
+            );
+        }
+
+        return saved;
+    }
+
+    public Appointment cancelAppointment(String id, String reason, String cancelledBy) {
+        Appointment appointment = getAppointmentById(id);
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointment.setCancellationReason(reason);
+        appointment.setCancelledBy(cancelledBy != null ? cancelledBy : "ADMIN");
+        appointment.setUpdatedAt(LocalDateTime.now());
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        // Notify Pet Owner
+        notificationService.sendNotification(
+                saved.getOwnerId(),
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_CANCELLED,
+                "Appointment Cancelled",
+                "Your appointment (" + saved.getAppointmentNumber() + ") for " + saved.getPetName()
+                        + " has been cancelled. Reason: " + (reason != null ? reason : "Cancelled by " + appointment.getCancelledBy()),
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
+    }
+
+    public Appointment markCompleted(String id, String doctorNotes) {
+        Appointment appointment = getAppointmentById(id);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        if (doctorNotes != null) {
+            appointment.setDoctorNotes(doctorNotes);
+        }
+        appointment.setUpdatedAt(LocalDateTime.now());
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment sendManualReminder(String id) {
+        Appointment appointment = getAppointmentById(id);
+
+        String recipientId = (appointment.getOwnerId() != null && !appointment.getOwnerId().trim().isEmpty())
+                ? appointment.getOwnerId()
+                : "USR-5001";
+
+        notificationService.sendNotification(
+                recipientId,
+                "PET_OWNER",
+                appointment.getOwnerEmail(),
+                appointment.getOwnerPhone(),
+                NotificationType.APPOINTMENT_REMINDER,
+                "Upcoming Appointment Reminder 🔔",
+                "Reminder: Your appointment (" + (appointment.getAppointmentNumber() != null ? appointment.getAppointmentNumber() : id) + ") for " + appointment.getPetName() + " is scheduled on "
+                        + appointment.getAppointmentDate() + " at " + appointment.getTimeSlot() + " with " + appointment.getDoctorName() + " at Sri Jayawardanapura Animal Hospital.",
+                "APPOINTMENT",
+                appointment.getId()
+        );
+
         return appointment;
     }
 
-    private AppointmentResponseDTO toDto(Appointment appointment) {
-        normalizeSpeciesBreed(appointment);
-        AppointmentResponseDTO dto = new AppointmentResponseDTO();
-        dto.setId(appointment.getId());
-        dto.setTime(resolveTime(appointment));
-        dto.setPatient(appointment.getPetName());
-        dto.setSpecies(appointment.getSpecies() != null ? appointment.getSpecies() : "Pet");
-        dto.setBreed(appointment.getBreed() != null ? appointment.getBreed() : "");
-        dto.setOwner(appointment.getOwnerName());
-        dto.setReason(appointment.getReason());
-        dto.setStatus(appointment.getStatus());
-        dto.setPetId(appointment.getPetId());
-        dto.setDoctorId(appointment.getDoctorId());
-        dto.setDoctorName(appointment.getDoctorName());
-        if (appointment.getAppointmentDate() != null) {
-            dto.setDate(appointment.getAppointmentDate().toLocalDate().toString());
+    public Appointment updateStatus(String id, UpdateAppointmentStatusRequest request) {
+        Appointment appointment = getAppointmentById(id);
+        appointment.setStatus(request.getStatus());
+        if (request.getReason() != null) {
+            if (request.getStatus() == AppointmentStatus.REJECTED) {
+                appointment.setRejectionReason(request.getReason());
+            } else if (request.getStatus() == AppointmentStatus.CANCELLED) {
+                appointment.setCancellationReason(request.getReason());
+            }
         }
-        return dto;
+        if (request.getCancelledBy() != null) {
+            appointment.setCancelledBy(request.getCancelledBy());
+        }
+        if (request.getDoctorNotes() != null) {
+            appointment.setDoctorNotes(request.getDoctorNotes());
+        }
+        if (request.getAdminNotes() != null) {
+            appointment.setAdminNotes(request.getAdminNotes());
+        }
+        Appointment saved = appointmentRepository.save(appointment);
+
+        if (request.getStatus() == AppointmentStatus.EXPIRED || request.getStatus() == AppointmentStatus.NO_SHOW) {
+            // Notify Admin ONLY (Centralized workflow: Admin reviews and decides when to notify pet owner for rebooking)
+            notificationService.sendNotification(
+                    "ADMIN-001",
+                    "ADMIN",
+                    "admin@hospital.com",
+                    null,
+                    NotificationType.APPOINTMENT_CANCELLED,
+                    "⚠️ Appointment Marked Expired / No-Show",
+                    "Appointment #" + saved.getAppointmentNumber() + " for " + saved.getPetName()
+                            + " was marked as Expired (No-Show) by " + (saved.getDoctorName() != null ? saved.getDoctorName() : "Doctor") + ".",
+                    "APPOINTMENT",
+                    saved.getId()
+            );
+        }
+
+        return saved;
     }
 
-    private String resolveTime(Appointment appointment) {
-        if (appointment.getTime() != null && !appointment.getTime().isBlank()) {
-            return appointment.getTime();
+    // Admin-mediated action: Admin triggers re-booking notification to Pet Owner
+    public Appointment sendRebookAlertToOwner(String id) {
+        Appointment appointment = getAppointmentById(id);
+        appointment.setRebookAllowed(true);
+        Appointment saved = appointmentRepository.save(appointment);
+
+        notificationService.sendNotification(
+                saved.getOwnerId() != null ? saved.getOwnerId() : "USR-5001",
+                "PET_OWNER",
+                saved.getOwnerEmail(),
+                saved.getOwnerPhone(),
+                NotificationType.APPOINTMENT_CANCELLED,
+                "Appointment Expired - Re-booking Available ⌛",
+                "Your scheduled appointment (" + saved.getAppointmentNumber() + ") for " + saved.getPetName()
+                        + " on " + saved.getAppointmentDate() + " was marked as expired. Hospital Admin has opened the re-booking option for you. Please visit your Pet Owner Portal to book a new slot if care is needed.",
+                "APPOINTMENT",
+                saved.getId()
+        );
+
+        return saved;
+    }
+
+    private synchronized String generateAppointmentNumber() {
+        String prefix = "APT-";
+
+        List<Appointment> existing = appointmentRepository.findByAppointmentNumberStartingWith(prefix);
+        java.util.Set<Integer> usedSeqs = new java.util.HashSet<>();
+        for (Appointment a : existing) {
+            String num = a.getAppointmentNumber();
+            if (num != null && num.startsWith(prefix)) {
+                String[] parts = num.split("-");
+                try {
+                    int seq = Integer.parseInt(parts[parts.length - 1]);
+                    usedSeqs.add(seq);
+                } catch (NumberFormatException ignored) {}
+            }
         }
-        if (appointment.getAppointmentDate() != null) {
-            return appointment.getAppointmentDate()
-                    .format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH));
+        int seq = 1;
+        while (usedSeqs.contains(seq)) {
+            seq++;
         }
-        return "--:--";
+        return String.format("%s%04d", prefix, seq);
     }
 }

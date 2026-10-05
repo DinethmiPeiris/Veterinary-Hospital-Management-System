@@ -95,8 +95,8 @@ public class PetOwnerAppointmentController {
         if (appointment.getCreatedAt() == null) {
             appointment.setCreatedAt(LocalDateTime.now());
         }
-        if (appointment.getStatus() == null || appointment.getStatus().isEmpty()) {
-            appointment.setStatus("PENDING");
+        if (appointment.getStatus() == null) {
+            appointment.setStatus(com.vhms.vhms.model.AppointmentStatus.REQUESTED);
         }
         return ResponseEntity.ok(appointmentRepository.save(appointment));
     }
@@ -111,7 +111,8 @@ public class PetOwnerAppointmentController {
         Appointment appt = optional.get();
 
         if (str(details, "status") != null) {
-            appt.setStatus(str(details, "status"));
+            com.vhms.vhms.model.AppointmentStatus parsed = parseStatus(str(details, "status"));
+            if (parsed != null) appt.setStatus(parsed);
         }
         if (str(details, "doctorNotes") != null) {
             appt.setDoctorNotes(str(details, "doctorNotes"));
@@ -161,7 +162,7 @@ public class PetOwnerAppointmentController {
         a.setPetOwnerPhone(str(m, "petOwnerPhone"));
         a.setPetId(str(m, "petId"));
         a.setPetName(str(m, "petName"));
-        a.setSpecies(str(m, "species"));
+        a.setPetSpecies(str(m, "species"));
         a.setBreed(str(m, "breed"));
         a.setAge(toInteger(m.get("age")));
         a.setWeight(toDouble(m.get("weight")));
@@ -175,12 +176,16 @@ public class PetOwnerAppointmentController {
         a.setTimeSlot(str(m, "timeSlot"));
         a.setTime(str(m, "time"));
         a.setReason(str(m, "reason"));
-        a.setStatus(str(m, "status"));
+        com.vhms.vhms.model.AppointmentStatus parsed = parseStatus(str(m, "status"));
+        if (parsed != null) a.setStatus(parsed);
         a.setDoctorNotes(str(m, "doctorNotes"));
         a.setPrescriptions(str(m, "prescriptions"));
         a.setDiagnosis(str(m, "diagnosis"));
         a.setRejectReason(str(m, "rejectReason"));
-        a.setAppointmentDate(toDateTime(m.get("appointmentDate")));
+        LocalDateTime parsedDt = toDateTime(m.get("appointmentDate"));
+        if (parsedDt != null) {
+            a.setAppointmentDate(parsedDt.toLocalDate().toString());
+        }
 
         // Keep the two naming schemes (pet-owner UI vs doctor workflow) in sync.
         if (a.getOwnerName() == null) {
@@ -215,7 +220,7 @@ public class PetOwnerAppointmentController {
                 // keep start of day when the slot label isn't a clock time
             }
         }
-        a.setAppointmentDate(parsed);
+        a.setAppointmentDate(parsed.toLocalDate().toString());
     }
 
     /**
@@ -247,6 +252,18 @@ public class PetOwnerAppointmentController {
         }
         if (a.getSpecialization() == null) {
             a.setSpecialization(d.getSpecialization());
+        }
+    }
+
+    private com.vhms.vhms.model.AppointmentStatus parseStatus(String s) {
+        if (s == null) return null;
+        s = s.toUpperCase();
+        if (s.equals("PENDING")) return com.vhms.vhms.model.AppointmentStatus.REQUESTED;
+        if (s.equals("APPROVED")) return com.vhms.vhms.model.AppointmentStatus.CONFIRMED;
+        try {
+            return com.vhms.vhms.model.AppointmentStatus.valueOf(s);
+        } catch (Exception e) {
+            return null;
         }
     }
 

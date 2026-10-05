@@ -27,6 +27,9 @@ import AdminHospitalizedPetsPage from './pages/AdminHospitalizedPetsPage'
 import AdminMedicineRequestsPage from './pages/AdminMedicineRequestsPage'
 import AdminInventoryPage from './pages/AdminInventoryPage'
 import AdminCageOccupancyPage from './pages/AdminCageOccupancyPage'
+import PetOwnerPortal from './pages/epic4/PetOwnerPortal'
+import DoctorPortal from './pages/epic4/DoctorPortal'
+import AdminHub from './pages/epic4/AdminHub'
 import './App.css'
 
 function App() {
@@ -70,6 +73,13 @@ function App() {
       <Route path="/pets" element={<><PetManagementPage /><PortalSwitch to="/pet-owner/dashboard" label="Consultations & Medical History" icon="📋" /></>} />
       <Route path="/doctor-portal" element={<><DoctorDashboardPage /><PortalSwitch to="/doctor/dashboard" label="Consultation Workspace" icon="🩺" /></>} />
       <Route path="/admin-portal" element={<><AdminDashboardPage /><PortalSwitch to="/admin/dashboard" label="Reports & Consultations" icon="📊" /></>} />
+
+      {/* Epic 4: Appointment Scheduling, Billing & Payment Management */}
+      <Route path="/appointments" element={<PetOwnerPortal />} />
+      <Route path="/invoices" element={<PetOwnerPortal />} />
+      <Route path="/portal/owner" element={<PetOwnerPortal />} />
+      <Route path="/portal/doctor" element={<DoctorPortal />} />
+      <Route path="/portal/admin" element={<AdminHub />} />
     </Routes>
   )
 }

@@ -25,7 +25,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
   };
 
   // Tabs: 'appointments' | 'invoices' | 'payments'
-  const [activeTab, setActiveTab] = useState(initialView || 'appointments');
+  const [activeTab, setActiveTab] = useState(initialView || 'invoices');
 
   useEffect(() => {
     if (initialView) {
@@ -108,7 +108,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
       if (!existing) {
         localStorage.setItem('vhms_epic4_rebook_allowed', JSON.stringify({ 'APT-0002': true }));
       }
-    } catch (e) {}
+    } catch (e) { }
     loadAllData();
     const interval = setInterval(loadAllData, 3000);
     const handleStorage = () => {
@@ -119,7 +119,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
         if (latest && !latest.read && (latest.recipientId === ownerId || latest.recipientId === 'ALL')) {
           showNotification(`🔔 ${latest.title} — ${latest.message}`, 'info');
         }
-      } catch (err) {}
+      } catch (err) { }
     };
     window.addEventListener('storage', handleStorage);
     window.addEventListener('vhms_notifications_changed', handleStorage);
@@ -285,7 +285,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
         const firstAvail = res.data.find((s) => s.available || s.isAvailable);
         setOwnerReschedSlot(firstAvail ? firstAvail.timeSlot : '');
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleOwnerRescheduleSubmit = async (e) => {
@@ -687,28 +687,23 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
 
       {/* Header */}
       {!hideHeader && (
-      <div className="epic-header">
-        <div className="epic-title-group">
-          <h1>🐾 Pet Owner Portal</h1>
-          <p>Welcome, {ownerName} &mdash; Manage appointments, settle invoices, and view receipts.</p>
+        <div className="epic-header">
+          <div className="epic-title-group">
+            <h1>🐾 Pet Owner Portal</h1>
+            <p>Welcome, {ownerName} &mdash; Manage appointments, settle invoices, and view receipts.</p>
+          </div>
+          <div className="epic-actions-bar">
+            <NotificationBell recipientId={ownerId} />
+            <button className="btn-primary-epic" onClick={openBookingModal}>
+              + Book Appointment
+            </button>
+          </div>
         </div>
-        <div className="epic-actions-bar">
-          <NotificationBell recipientId={ownerId} />
-          <button className="btn-primary-epic" onClick={openBookingModal}>
-            + Book Appointment
-          </button>
-        </div>
-      </div>
       )}
 
       {/* Tabs */}
       <div className="epic-tabs">
-        <button
-          className={`epic-tab-btn ${activeTab === 'appointments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('appointments')}
-        >
-          📅 My Appointments ({appointments.length})
-        </button>
+
         <button
           className={`epic-tab-btn ${activeTab === 'invoices' ? 'active' : ''}`}
           onClick={() => setActiveTab('invoices')}
@@ -1154,59 +1149,59 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
                       <th>Action</th>
                     </tr>
                   </thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr key={inv.id}>
-                      <td><strong>{inv.invoiceNumber}</strong></td>
-                      <td>{inv.petName}</td>
-                      <td>
-                        <div>{inv.issueDate}</div>
-                      </td>
-                      <td>
-                        <small>
-                          {inv.items?.length || 0} items
-                          {inv.hospitalizationCharges > 0 && ` + Rs. ${inv.hospitalizationCharges} (Hosp.)`}
-                        </small>
-                      </td>
-                      <td><strong>Rs. {inv.totalAmount?.toFixed(2)}</strong></td>
-                      <td>
-                        <strong style={{ color: inv.balanceAmount > 0 ? '#ef4444' : '#10b981' }}>
-                          Rs. {inv.balanceAmount?.toFixed(2)}
-                        </strong>
-                      </td>
-                      <td>
-                        <span className={`status-pill ${inv.paymentStatus?.toLowerCase()}`}>
-                          {inv.paymentStatus}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                          <button
-                            className="btn-sm-action btn-reassign"
-                            onClick={() => { setSelectedInvoice(inv); setShowInvoiceDetailsModal(true); }}
-                            title="View itemized breakdown"
-                          >
-                            📄 View Bill
-                          </button>
-                          {inv.balanceAmount > 0 ? (
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr key={inv.id}>
+                        <td><strong>{inv.invoiceNumber}</strong></td>
+                        <td>{inv.petName}</td>
+                        <td>
+                          <div>{inv.issueDate}</div>
+                        </td>
+                        <td>
+                          <small>
+                            {inv.items?.length || 0} items
+                            {inv.hospitalizationCharges > 0 && ` + Rs. ${inv.hospitalizationCharges} (Hosp.)`}
+                          </small>
+                        </td>
+                        <td><strong>Rs. {inv.totalAmount?.toFixed(2)}</strong></td>
+                        <td>
+                          <strong style={{ color: inv.balanceAmount > 0 ? '#ef4444' : '#10b981' }}>
+                            Rs. {inv.balanceAmount?.toFixed(2)}
+                          </strong>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${inv.paymentStatus?.toLowerCase()}`}>
+                            {inv.paymentStatus}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                             <button
-                              className="btn-sm-action btn-pay"
-                              onClick={() => openPaymentModal(inv)}
+                              className="btn-sm-action btn-reassign"
+                              onClick={() => { setSelectedInvoice(inv); setShowInvoiceDetailsModal(true); }}
+                              title="View itemized breakdown"
                             >
-                              💳 Pay Bill
+                              📄 View Bill
                             </button>
-                          ) : (
-                            <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: '600', alignSelf: 'center' }}>✓ Settled</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                            {inv.balanceAmount > 0 ? (
+                              <button
+                                className="btn-sm-action btn-pay"
+                                onClick={() => openPaymentModal(inv)}
+                              >
+                                💳 Pay Bill
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: '600', alignSelf: 'center' }}>✓ Settled</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 

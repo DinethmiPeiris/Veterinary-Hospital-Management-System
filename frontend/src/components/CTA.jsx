@@ -31,7 +31,10 @@ export default function CTA() {
       <div className="container">
         <div className="cta-inner reveal" ref={ref}>
           <span className="section-label">🚀 Get Started Today</span>
-          <h2 className="section-title" id="cta-title">Ready to Give Your Pet the<br /><span>Best Healthcare?</span></h2>
+          <h2 className="section-title" id="cta-title" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ color: 'inherit' }}>Ready to Give Your Pet the</span>
+            <span>Best Healthcare?</span>
+          </h2>
           <p className="section-subtitle">Join thousands of pet families who trust Sri Jayawardenapura Animal Hospital for all their veterinary needs.</p>
           <div className="cta-btns">
             <button className="btn btn-primary" id="cta-book-btn" onClick={handleBookAppointment}>🐾 Book an Appointment</button>

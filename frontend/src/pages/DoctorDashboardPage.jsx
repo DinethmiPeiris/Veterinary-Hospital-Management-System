@@ -809,590 +809,546 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
         <div className="admin-page doctor-theme" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* Header */}
             {!hideHeader && (
-            <header className="admin-header">
-                <div className="admin-shell">
-                    <div className="admin-brand">
-                        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                            <div className="brand-icon-glow">
-                                <span className="brand-icon"><IconStethoscope size={24} /></span>
-                            </div>
-                            <div>
-                                <strong className="brand-name">Sri Jayawardanapura Animal Hospital</strong>
-                                <span className="brand-subtitle">Doctor Portal</span>
-                            </div>
-                        </Link>
-                    </div>
+                <header className="admin-header">
+                    <div className="admin-shell">
+                        <div className="admin-brand">
+                            <Link to="/doctor/portal" onClick={() => setCurrentView('OVERVIEW')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                <div className="brand-icon-glow">
+                                    <span className="brand-icon"><IconStethoscope size={24} /></span>
+                                </div>
+                                <div>
+                                    <strong className="brand-name">Sri Jayawardanapura Animal Hospital</strong>
+                                    <span className="brand-subtitle">Doctor Portal</span>
+                                </div>
+                            </Link>
+                        </div>
 
-                    <div className="admin-nav-right">
-                        <div className="doctor-dropdown-wrapper" style={{ position: 'relative' }}>
-                            <div
-                                className={`admin-user-pill ${isDropdownOpen ? 'active' : ''}`}
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className="user-avatar-sm">
-                                    {userInitial}
+                        <div className="admin-nav-right">
+                            <div className="doctor-dropdown-wrapper" style={{ position: 'relative' }}>
+                                <div
+                                    className={`admin-user-pill ${isDropdownOpen ? 'active' : ''}`}
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className="user-avatar-sm">
+                                        {userInitial}
+                                    </div>
+                                    <div className="user-meta">
+                                        <strong>{name}</strong>
+                                        <span className="user-role-badge doctor-badge">Veterinary Surgeon</span>
+                                    </div>
+                                    <span className={`dropdown-caret ${isDropdownOpen ? 'open' : ''}`}>▾</span>
                                 </div>
-                                <div className="user-meta">
-                                    <strong>{name}</strong>
-                                    <span className="user-role-badge doctor-badge">Veterinary Surgeon</span>
-                                </div>
-                                <span className={`dropdown-caret ${isDropdownOpen ? 'open' : ''}`}>▾</span>
-                            </div>
 
-                            {isDropdownOpen && (
-                                <div className="doctor-user-dropdown">
-                                    <button
-                                        className="dropdown-item"
-                                        onClick={() => {
-                                            setCurrentView('PROFILE');
-                                            setIsDropdownOpen(false);
-                                        }}
-                                    >
-                                        My Profile
-                                    </button>
-                                    <button
-                                        className="dropdown-item logout"
-                                        onClick={() => {
-                                            setIsDropdownOpen(false);
-                                            handleLogout();
-                                        }}
-                                    >
-                                        Log Out
-                                    </button>
-                                </div>
-                            )}
+                                {isDropdownOpen && (
+                                    <div className="doctor-user-dropdown">
+                                        <button
+                                            className="dropdown-item"
+                                            onClick={() => {
+                                                setCurrentView('PROFILE');
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            My Profile
+                                        </button>
+                                        <button
+                                            className="dropdown-item logout"
+                                            onClick={() => {
+                                                setIsDropdownOpen(false);
+                                                handleLogout();
+                                            }}
+                                        >
+                                            Log Out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
             )}
 
             <div className="doc-unified-layout">
-            {/* UNIFIED LEFT SIDEBAR NAVIGATION */}
-            {!hideHeader && (
-            <aside className="po-sidebar">
-                <nav className="po-sidebar-nav">
-                    <div className="po-sidebar-group-label">CLINICAL</div>
-                    <button className={`po-sidebar-item${currentView === 'OVERVIEW' ? ' active' : ''}`} onClick={() => setCurrentView('OVERVIEW')}>
-                        <span className="po-sidebar-icon">📊</span> Dashboard
-                    </button>
-
-                    <div className="po-sidebar-group-label">APPOINTMENTS</div>
-                    <button className={`po-sidebar-item${currentView === 'BILLING' ? ' active' : ''}`} onClick={() => setCurrentView('BILLING')}>
-                        <span className="po-sidebar-icon">🔔</span> Booking Requests
-                    </button>
-
-                    <div className="po-sidebar-group-label">HOSPITAL</div>
-                    <button className={`po-sidebar-item${currentView === 'RECOMMEND_ADMISSION' ? ' active' : ''}`} onClick={() => setCurrentView('RECOMMEND_ADMISSION')}>
-                        <span className="po-sidebar-icon">🏥</span> Recommend Admission
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'HOSPITALIZED_PETS' ? ' active' : ''}`} onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
-                        <span className="po-sidebar-icon">🐾</span> Hospitalized Pets
-                    </button>
-
-                    <div className="po-sidebar-group-label">ACCOUNT</div>
-                    <button className={`po-sidebar-item${currentView === 'PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('PROFILE')}>
-                        <span className="po-sidebar-icon">👨‍⚕️</span> My Profile
-                    </button>
-                </nav>
-            </aside>
-            )}
-
-            <main className="admin-main admin-shell po-main-content" style={hideHeader ? { padding: '10px 0' } : {}}>
-                {currentView !== 'OVERVIEW' && (
-                    <div className="back-navigation-bar">
-                        <button className="btn-back-overview" onClick={() => setCurrentView('OVERVIEW')}>
-                            ← Back to Clinical Workspace
-                        </button>
-                    </div>
-                )}
-
-                {currentView === 'OVERVIEW' && (
-                    <>
-                        {/* Clinical Hero Banner */}
-                        <section className="admin-hero-card">
-                            <div className="hero-content">
-                                <div className="hero-status-pill">
-                                    <span className="live-pulse"></span> Authenticated Veterinary Surgeon Workspace
-                                </div>
-                                <h1 className="hero-title">Welcome, {name}</h1>
-                                <p className="hero-description">
-                                    Manage clinical consultations, inspect patient medical records, and log Rx prescriptions.
-                                </p>
-                            </div>
-                            <div className="hero-actions">
-                                <div className={`live-availability-badge ${availabilityStatus.toLowerCase()}`}>
-                                    <span className="status-dot"></span>
-                                    {availabilityStatus === 'AVAILABLE' && 'Available for Consultations'}
-                                    {availabilityStatus === 'UNAVAILABLE' && 'Off Duty'}
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Executive Clinical KPI Cards */}
-                        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
-                            <div className="bento-card">
-                                <div className="bento-head">
-                                    <span className="bento-label">Today's Assigned Consultations</span>
-                                    <span className="bento-icon-wrap emerald"><IconCalendar size={22} /></span>
-                                </div>
-                                <div className="bento-number">{myAppointments.length}</div>
-                                <div className="bento-footer text-muted">Active Clinical Appointments</div>
-                            </div>
-
-                            <div className="bento-card">
-                                <div className="bento-head">
-                                    <span className="bento-label">Completed Consultations</span>
-                                    <span className="bento-icon-wrap blue"><IconCheckCircle size={22} /></span>
-                                </div>
-                                <div className="bento-number">{myAppointments.filter(a => a.status === 'COMPLETED').length}</div>
-                                <div className="bento-footer text-muted">Successfully Treated Patients</div>
-                            </div>
-
-                            <div className="bento-card">
-                                <div className="bento-head">
-                                    <span className="bento-label">Practice Duty Status</span>
-                                    <span className="bento-icon-wrap purple"><IconStethoscope size={22} /></span>
-                                </div>
-                                <div className="bento-number" style={{ fontSize: '1.25rem', color: availabilityStatus === 'AVAILABLE' ? '#047857' : '#dc2626' }}>
-                                    {availabilityStatus === 'AVAILABLE' ? 'On Duty' : 'Off Duty'}
-                                </div>
-                                <div className="bento-footer text-muted">Live Consultation Toggle</div>
-                            </div>
-                            
-                            <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #3b82f6' }} onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
-                                <div className="bento-head">
-                                    <span className="bento-label" style={{ fontWeight: 800 }}>Hospitalized Patients</span>
-                                    <span className="bento-icon-wrap blue"><IconCalendar size={22} /></span>
-                                </div>
-                                <div className="bento-number">Admissions</div>
-                                <div className="bento-footer text-muted">Manage Inpatient Care</div>
-                            </div>
-
-                            <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #f59e0b' }} onClick={() => setCurrentView('BILLING')}>
-                                <div className="bento-head">
-                                    <span className="bento-label" style={{ fontWeight: 800 }}>Billing & Appointments</span>
-                                    <span className="bento-icon-wrap" style={{ background: '#fef3c7', color: '#d97706' }}><IconCheckCircle size={22} /></span>
-                                </div>
-                                <div className="bento-number">Requests</div>
-                                <div className="bento-footer text-muted">Issue Treatment Invoices</div>
-                            </div>
-                        </section>
-
-
-                        {/* Live Availability Duty Control */}
-                        <section className="admin-panel-card" style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '28px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <span>⚡ Live Duty Availability Toggle</span>
-                                    </h3>
-                                    <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.86rem' }}>
-                                        Update your real-time status visible to hospital staff and pet owners seeking consultations.
-                                    </p>
-                                </div>
-
-                                <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '5px', borderRadius: '16px', border: '1px solid #e2e8f0', gap: '4px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleAvailabilityChange('AVAILABLE')}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '10px 20px',
-                                            borderRadius: '12px',
-                                            border: 'none',
-                                            fontWeight: 700,
-                                            fontSize: '0.86rem',
-                                            cursor: 'pointer',
-                                            background: availabilityStatus === 'AVAILABLE' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
-                                            color: availabilityStatus === 'AVAILABLE' ? '#ffffff' : '#64748b',
-                                            boxShadow: availabilityStatus === 'AVAILABLE' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none'
-                                        }}
-                                    >
-                                        Available for Consultations
-                                    </button>
-
-
-
-                                    <button
-                                        type="button"
-                                        onClick={() => handleAvailabilityChange('UNAVAILABLE')}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '10px 20px',
-                                            borderRadius: '12px',
-                                            border: 'none',
-                                            fontWeight: 700,
-                                            fontSize: '0.86rem',
-                                            cursor: 'pointer',
-                                            background: availabilityStatus === 'UNAVAILABLE' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'transparent',
-                                            color: availabilityStatus === 'UNAVAILABLE' ? '#ffffff' : '#64748b',
-                                            boxShadow: availabilityStatus === 'UNAVAILABLE' ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
-                                        }}
-                                    >
-                                        Off Duty
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Patient Consultations Roster */}
-                        <section className="admin-panel-card">
-                            <div className="panel-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                                <div>
-                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
-                                        <span>📅 Assigned Consultations & Medical Roster</span>
-                                    </h3>
-
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <span style={{ background: '#f1f5f9', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, color: '#334155', border: '1px solid #e2e8f0' }}>
-                                        Total: {myAppointments.length}
-                                    </span>
-                                    <span style={{ background: '#dcfce7', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, color: '#15803d', border: '1px solid #bbf7d0' }}>
-                                        Approved: {myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Filter Bar */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 16px 0', flexWrap: 'wrap', gap: '12px' }}>
-                                <div style={{ display: 'flex', gap: '8px', background: '#f8fafc', padding: '4px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-                                    {['ALL', 'APPROVED', 'COMPLETED'].map(st => (
-                                        <button
-                                            key={st}
-                                            type="button"
-                                            onClick={() => setStatusFilter(st)}
-                                            style={{
-                                                padding: '7px 16px',
-                                                borderRadius: '10px',
-                                                border: 'none',
-                                                fontWeight: 700,
-                                                fontSize: '0.82rem',
-                                                cursor: 'pointer',
-                                                background: statusFilter === st ? '#10b981' : 'transparent',
-                                                color: statusFilter === st ? '#ffffff' : '#64748b',
-                                                boxShadow: statusFilter === st ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none'
-                                            }}
-                                        >
-                                            {st === 'ALL' && `All Patients (${myAppointments.length})`}
-                                            {st === 'APPROVED' && `Approved (${myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length})`}
-                                            {st === 'COMPLETED' && `Completed (${myAppointments.filter(a => a.status === 'COMPLETED').length})`}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div style={{ position: 'relative', width: '280px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Search by pet, species, or owner..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '9px 14px 9px 36px',
-                                            borderRadius: '12px',
-                                            border: '1px solid #cbd5e1',
-                                            fontSize: '0.86rem',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: '#94a3b8' }}>🔍</span>
-                                </div>
-                            </div>
-
-                            {/* Patient List */}
-                            {filteredAppointments.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8fafc', borderRadius: '18px', border: '1px dashed #cbd5e1' }}>
-                                    <h4 style={{ margin: '0 0 4px 0', color: '#1e293b' }}>No Consultations Match Selection</h4>
-                                    <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>Try updating your search query or filter controls.</p>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
-                                    {filteredAppointments.map((appt) => (
-                                        <div key={appt.id} className="doc-patient-card">
-                                            <div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-                                                            <IconPaw size={24} />
-                                                        </div>
-                                                        <div>
-                                                            <button className="clickable-pet-title" onClick={() => handleViewPetProfile(appt)}>
-                                                                {appt.petName}
-                                                            </button>
-                                                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                                                                {appt.species} • {appt.breed || 'Standard'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <span style={{
-                                                        padding: '4px 12px',
-                                                        borderRadius: '100px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 800,
-                                                        background: appt.status === 'COMPLETED' ? '#e0f2fe' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#dcfce7' : appt.status === 'REJECTED' ? '#fef2f2' : '#fef3c7',
-                                                        color: appt.status === 'COMPLETED' ? '#0284c7' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#16a34a' : appt.status === 'REJECTED' ? '#dc2626' : '#b45309',
-                                                        border: `1px solid ${appt.status === 'COMPLETED' ? '#bae6fd' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#bbf7d0' : appt.status === 'REJECTED' ? '#fca5a5' : '#fde68a'}`
-                                                    }}>
-                                                        {appt.status === 'COMPLETED' ? 'Completed' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? 'Approved' : ['REJECTED', 'CANCELLED', 'EXPIRED', 'NO_SHOW'].includes(appt.status) ? 'Declined' : 'Pending Approval'}
-                                                    </span>
-                                                </div>
-
-                                                <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', fontSize: '0.83rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                    <div><strong>📅 Appointment:</strong> {appt.date} ({appt.timeSlot || '10:30 AM'})</div>
-                                                    <div><strong>🩺 Service:</strong> {appt.serviceType || 'General Consultation'}</div>
-                                                    <div>
-                                                        <strong>👤 Owner:</strong>{' '}
-                                                        <button className="clickable-entity-btn" onClick={() => handleViewOwnerProfile(appt)}>
-                                                            {appt.ownerName} ({(!appt.ownerPhone || appt.ownerPhone === 'Not Specified') ? '0771234567' : appt.ownerPhone})
-                                                        </button>
-                                                    </div>
-                                                    {appt.reason && <div><strong>📝 Chief Complaint:</strong> {appt.reason}</div>}
-                                                </div>
-
-                                                {appt.diagnosis && (
-                                                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '12px', borderRadius: '14px', fontSize: '0.82rem', color: '#065f46', marginTop: '10px' }}>
-                                                        <div><strong>Diagnosis:</strong> {appt.diagnosis}</div>
-                                                        {appt.prescription && <div style={{ marginTop: '4px' }}><strong>Rx Prescription:</strong> {appt.prescription}</div>}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div style={{ display: 'flex', gap: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleViewPetProfile(appt)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '9px 12px',
-                                                        borderRadius: '12px',
-                                                        border: '1px solid #cbd5e1',
-                                                        background: '#ffffff',
-                                                        color: '#475569',
-                                                        fontWeight: 700,
-                                                        fontSize: '0.82rem',
-                                                        cursor: 'pointer',
-                                                        textAlign: 'center'
-                                                    }}
-                                                >
-                                                    Inspect Pet Profile
-                                                </button>
-
-                                                {['APPROVED', 'CONFIRMED', 'IN_PROGRESS'].includes(appt.status) ? (
-                                                    <button
-                                                        type="button"
-                                                        disabled={appt.date > new Date().toISOString().split('T')[0]}
-                                                        onClick={() => {
-                                                            setSelectedConsultationId(appt.id || appt.appointmentId || appt.appointmentNumber);
-                                                            setCurrentView('CONSULTATION');
-                                                        }}
-                                                        style={{
-                                                            flex: 1,
-                                                            padding: '9px 12px',
-                                                            borderRadius: '12px',
-                                                            border: 'none',
-                                                            background: appt.date > new Date().toISOString().split('T')[0] ? '#f1f5f9' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                                            color: appt.date > new Date().toISOString().split('T')[0] ? '#94a3b8' : '#ffffff',
-                                                            fontWeight: 700,
-                                                            fontSize: '0.82rem',
-                                                            cursor: appt.date > new Date().toISOString().split('T')[0] ? 'not-allowed' : 'pointer',
-                                                            boxShadow: appt.date > new Date().toISOString().split('T')[0] ? 'none' : '0 2px 6px rgba(16, 185, 129, 0.25)',
-                                                            textAlign: 'center'
-                                                        }}
-                                                    >
-                                                        {appt.date > new Date().toISOString().split('T')[0] 
-                                                            ? `Wait until ${appt.date}` 
-                                                            : (appt.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation')}
-                                                    </button>
-                                                ) : appt.status === 'COMPLETED' ? (
-                                                    <span style={{
-                                                        flex: 1,
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '9px 12px',
-                                                        borderRadius: '12px',
-                                                        background: '#f0f9ff',
-                                                        color: '#0284c7',
-                                                        fontWeight: 700,
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid #bae6fd'
-                                                    }}>
-                                                        ✓ Visit Completed
-                                                    </span>
-                                                ) : appt.status === 'REJECTED' || appt.status === 'DECLINED' ? (
-                                                    <span style={{
-                                                        flex: 1,
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '9px 12px',
-                                                        borderRadius: '12px',
-                                                        background: '#fef2f2',
-                                                        color: '#dc2626',
-                                                        fontWeight: 700,
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid #fca5a5'
-                                                    }}>
-                                                        ✕ Appointment Declined
-                                                    </span>
-                                                ) : (
-                                                    <span style={{
-                                                        flex: 1,
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '9px 12px',
-                                                        borderRadius: '12px',
-                                                        background: '#fffbeb',
-                                                        color: '#b45309',
-                                                        fontWeight: 700,
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid #fde68a'
-                                                    }}>
-                                                        ⏳ Pending Admin Approval
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-                    </>
-                )}
-
-                {/* READ-ONLY DOCTOR PROFILE VIEW */}
-                {currentView === 'PROFILE' && (
-                    <section className="admin-panel-card profile-panel">
-                        <div className="panel-card-header">
-                            <div>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>👤 My Professional Doctor Profile</h2>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '20px', padding: '28px', marginBottom: '24px' }}>
-                            <img
-                                src={doctorProfile?.photoUrl || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80'}
-                                alt="Doctor"
-                                style={{ width: '90px', height: '90px', borderRadius: '20px', objectFit: 'cover', border: '3px solid #ffffff', boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}
-                            />
-                            <div>
-                                <span style={{ background: '#dcfce7', color: '#047857', border: '1px solid #a7f3d0', padding: '3px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800 }}>{doctorProfile?.id ? `${doctorProfile.id} • ` : ''}Authorized Surgeon</span>
-                                <h2 style={{ margin: '6px 0 2px', fontSize: '1.6rem', fontWeight: 900, color: '#0f172a' }}>{doctorProfile?.name || name}</h2>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#059669', fontWeight: 700 }}>{doctorProfile?.specialization || department}</p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr)', gap: '20px', marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '16px' }}>Professional Information</p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.88rem', color: '#334155' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                                            <strong style={{ color: '#0f172a' }}>Medical Licence / ID:</strong> <span>{doctorProfile?.id || 'Pending Validation'}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                                            <strong style={{ color: '#0f172a' }}>Credentials:</strong> <span>{doctorProfile?.experience || 'Registered Surgeon'}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                                            <strong style={{ color: '#0f172a' }}>Operating Hours:</strong> <span>{doctorProfile?.availableHours || '08:00 AM - 05:00 PM'}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <strong style={{ color: '#0f172a' }}>Registration Status:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>Active - Verified</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '16px' }}>Contact Information</p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.9rem', color: '#334155' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><IconMail size={18} style={{ color: '#64748b' }} /> <span>{doctorProfile?.email || email}</span></div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><IconPhone size={18} style={{ color: '#64748b' }} /> <span>{doctorProfile?.phone || phone}</span></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Clinical Biography & Services</p>
-                                    <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
-                                        {doctorProfile?.bio || 'Professional veterinary surgeon dedicated to premium animal care.'}
-                                    </p>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Approved Medical Services</p>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {(doctorProfile?.services || ['General Care', 'Consultations']).map((srv, i) => (
-                                            <span key={i} style={{ background: '#f1f5f9', color: '#0f172a', padding: '5px 12px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 700, border: '1px solid #e2e8f0' }}>
-                                                {srv}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Account Security Update</p>
-                                    <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        <input
-                                            type="password"
-                                            placeholder="Enter New Password (min 6 chars)"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                                        />
-                                        <input
-                                            type="password"
-                                            placeholder="Confirm New Password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                                        />
-                                        <button type="submit" disabled={isSavingPass} style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#059669', color: '#fff', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                            {isSavingPass ? 'Processing...' : 'Confirm Password Change'}
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                )}
-
-                {currentView === 'HOSPITALIZED_PETS' && (
-                    <DoctorHospitalizedPetsPage hideHeader={true} />
-                )}
-                
-                {currentView === 'BILLING' && (
-                    <DoctorPortal 
-                        hideHeader={true} 
-                        onStartConsultation={(id) => {
-                            setSelectedConsultationId(id);
-                            setCurrentView('CONSULTATION');
-                        }}
-                    />
-                )}
-
-                {currentView === 'CONSULTATION' && selectedConsultationId && (
-                    <div style={{ padding: '20px' }}>
-                        <div className="back-navigation-bar" style={{ marginBottom: '20px' }}>
-                            <button className="btn-back-overview" onClick={() => setCurrentView('BILLING')}>
-                                ← Back to Booking Requests
+                <main className="admin-main admin-shell" style={hideHeader ? { padding: '10px 0' } : { padding: '24px 0' }}>
+                    {currentView !== 'OVERVIEW' && currentView !== 'CONSULTATION' && (
+                        <div className="back-navigation-bar" style={{ marginBottom: '10px' }}>
+                            <button className="btn-back-overview" onClick={() => setCurrentView('OVERVIEW')}>
+                                ← Back to Clinical Workspace
                             </button>
                         </div>
-                        <ConsultationPage appointmentId={selectedConsultationId} />
-                    </div>
-                )}
+                    )}
 
-                {currentView === 'RECOMMEND_ADMISSION' && (
-                    <DoctorRecommendPage />
-                )}
-            </main>
+                    {currentView === 'OVERVIEW' && (
+                        <>
+                            {/* Clinical Hero Banner */}
+                            <section className="admin-hero-card">
+                                <div className="hero-content">
+                                    <div className="hero-status-pill">
+                                        <span className="live-pulse"></span> Authenticated Veterinary Surgeon Workspace
+                                    </div>
+                                    <h1 className="hero-title">Welcome, {name}</h1>
+                                    <p className="hero-description">
+                                        Manage clinical consultations, inspect patient medical records, and log Rx prescriptions.
+                                    </p>
+                                </div>
+                                <div className="hero-actions">
+                                    <div className={`live-availability-badge ${availabilityStatus.toLowerCase()}`}>
+                                        <span className="status-dot"></span>
+                                        {availabilityStatus === 'AVAILABLE' && 'Available for Consultations'}
+                                        {availabilityStatus === 'UNAVAILABLE' && 'Off Duty'}
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Executive Clinical KPI Cards */}
+                            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
+                                <div className="bento-card">
+                                    <div className="bento-head">
+                                        <span className="bento-label">Today's Assigned Consultations</span>
+                                        <span className="bento-icon-wrap emerald"><IconCalendar size={22} /></span>
+                                    </div>
+                                    <div className="bento-number">{myAppointments.length}</div>
+                                    <div className="bento-footer text-muted">Active Clinical Appointments</div>
+                                </div>
+
+                                <div className="bento-card">
+                                    <div className="bento-head">
+                                        <span className="bento-label">Completed Consultations</span>
+                                        <span className="bento-icon-wrap blue"><IconCheckCircle size={22} /></span>
+                                    </div>
+                                    <div className="bento-number">{myAppointments.filter(a => a.status === 'COMPLETED').length}</div>
+                                    <div className="bento-footer text-muted">Successfully Treated Patients</div>
+                                </div>
+
+                                <div className="bento-card">
+                                    <div className="bento-head">
+                                        <span className="bento-label">Practice Duty Status</span>
+                                        <span className="bento-icon-wrap purple"><IconStethoscope size={22} /></span>
+                                    </div>
+                                    <div className="bento-number" style={{ fontSize: '1.25rem', color: availabilityStatus === 'AVAILABLE' ? '#047857' : '#dc2626' }}>
+                                        {availabilityStatus === 'AVAILABLE' ? 'On Duty' : 'Off Duty'}
+                                    </div>
+                                    <div className="bento-footer text-muted">Live Consultation Toggle</div>
+                                </div>
+
+                                <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #3b82f6' }} onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
+                                    <div className="bento-head">
+                                        <span className="bento-label" style={{ fontWeight: 800 }}>Hospitalized Patients</span>
+                                        <span className="bento-icon-wrap blue"><IconCalendar size={22} /></span>
+                                    </div>
+                                    <div className="bento-number" style={{ fontSize: '1.5rem' }}>Admissions</div>
+                                    <div className="bento-footer text-muted">Manage Inpatient Care</div>
+                                </div>
+
+                                <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #f59e0b' }} onClick={() => setCurrentView('BILLING')}>
+                                    <div className="bento-head">
+                                        <span className="bento-label" style={{ fontWeight: 800 }}>Billing & Appointments</span>
+                                        <span className="bento-icon-wrap" style={{ background: '#fef3c7', color: '#d97706' }}><IconCheckCircle size={22} /></span>
+                                    </div>
+                                    <div className="bento-number" style={{ fontSize: '1.5rem' }}>Requests</div>
+                                    <div className="bento-footer text-muted">Issue Treatment Invoices</div>
+                                </div>
+                            </section>
+
+
+                            {/* Live Availability Duty Control */}
+                            <section className="admin-panel-card" style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '28px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span>⚡ Live Duty Availability Toggle</span>
+                                        </h3>
+                                        <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                                            Update your real-time status visible to hospital staff and pet owners seeking consultations.
+                                        </p>
+                                    </div>
+
+                                    <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '5px', borderRadius: '16px', border: '1px solid #e2e8f0', gap: '4px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAvailabilityChange('AVAILABLE')}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '10px 20px',
+                                                borderRadius: '12px',
+                                                border: 'none',
+                                                fontWeight: 700,
+                                                fontSize: '0.86rem',
+                                                cursor: 'pointer',
+                                                background: availabilityStatus === 'AVAILABLE' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
+                                                color: availabilityStatus === 'AVAILABLE' ? '#ffffff' : '#64748b',
+                                                boxShadow: availabilityStatus === 'AVAILABLE' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none'
+                                            }}
+                                        >
+                                            Available for Consultations
+                                        </button>
+
+
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAvailabilityChange('UNAVAILABLE')}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '10px 20px',
+                                                borderRadius: '12px',
+                                                border: 'none',
+                                                fontWeight: 700,
+                                                fontSize: '0.86rem',
+                                                cursor: 'pointer',
+                                                background: availabilityStatus === 'UNAVAILABLE' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'transparent',
+                                                color: availabilityStatus === 'UNAVAILABLE' ? '#ffffff' : '#64748b',
+                                                boxShadow: availabilityStatus === 'UNAVAILABLE' ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
+                                            }}
+                                        >
+                                            Off Duty
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Patient Consultations Roster */}
+                            <section className="admin-panel-card">
+                                <div className="panel-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                    <div>
+                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
+                                            <span>📅 Assigned Consultations & Medical Roster</span>
+                                        </h3>
+
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <span style={{ background: '#f1f5f9', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, color: '#334155', border: '1px solid #e2e8f0' }}>
+                                            Total: {myAppointments.length}
+                                        </span>
+                                        <span style={{ background: '#dcfce7', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, color: '#15803d', border: '1px solid #bbf7d0' }}>
+                                            Approved: {myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Filter Bar */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 16px 0', flexWrap: 'wrap', gap: '12px' }}>
+                                    <div style={{ display: 'flex', gap: '8px', background: '#f8fafc', padding: '4px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                                        {['ALL', 'APPROVED', 'COMPLETED'].map(st => (
+                                            <button
+                                                key={st}
+                                                type="button"
+                                                onClick={() => setStatusFilter(st)}
+                                                style={{
+                                                    padding: '7px 16px',
+                                                    borderRadius: '10px',
+                                                    border: 'none',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.82rem',
+                                                    cursor: 'pointer',
+                                                    background: statusFilter === st ? '#10b981' : 'transparent',
+                                                    color: statusFilter === st ? '#ffffff' : '#64748b',
+                                                    boxShadow: statusFilter === st ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none'
+                                                }}
+                                            >
+                                                {st === 'ALL' && `All Patients (${myAppointments.length})`}
+                                                {st === 'APPROVED' && `Approved (${myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length})`}
+                                                {st === 'COMPLETED' && `Completed (${myAppointments.filter(a => a.status === 'COMPLETED').length})`}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div style={{ position: 'relative', width: '280px' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Search by pet, species, or owner..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '9px 14px 9px 36px',
+                                                borderRadius: '12px',
+                                                border: '1px solid #cbd5e1',
+                                                fontSize: '0.86rem',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: '#94a3b8' }}>🔍</span>
+                                    </div>
+                                </div>
+
+                                {/* Patient List */}
+                                {filteredAppointments.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8fafc', borderRadius: '18px', border: '1px dashed #cbd5e1' }}>
+                                        <h4 style={{ margin: '0 0 4px 0', color: '#1e293b' }}>No Consultations Match Selection</h4>
+                                        <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>Try updating your search query or filter controls.</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+                                        {filteredAppointments.map((appt) => (
+                                            <div key={appt.id} className="doc-patient-card">
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)', boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.7), 0 4px 10px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                                                                <IconPaw size={26} strokeWidth={2.2} />
+                                                            </div>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                <button className="clickable-pet-title" onClick={() => handleViewPetProfile(appt)} style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    {appt.petName} <span style={{ color: '#0ea5e9' }}><IconCheckCircle size={16} strokeWidth={2.5} /></span>
+                                                                </button>
+                                                                <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500 }}>
+                                                                    {appt.species} • {appt.breed || 'Standard Breed'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <span style={{
+                                                            padding: '6px 14px',
+                                                            borderRadius: '100px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 800,
+                                                            background: appt.status === 'COMPLETED' ? '#e0f2fe' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#dcfce7' : appt.status === 'REJECTED' ? '#fef2f2' : '#fef3c7',
+                                                            color: appt.status === 'COMPLETED' ? '#0284c7' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#16a34a' : appt.status === 'REJECTED' ? '#dc2626' : '#b45309',
+                                                        }}>
+                                                            {appt.status === 'COMPLETED' ? 'Completed' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? 'Approved' : ['REJECTED', 'CANCELLED', 'EXPIRED', 'NO_SHOW'].includes(appt.status) ? 'Declined' : 'Pending Approval'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '18px', background: 'transparent', padding: '0', fontSize: '0.86rem', color: '#475569' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date & Time</span>
+                                                            <span style={{ fontWeight: 600, color: '#1e293b' }}>{appt.date} • {appt.timeSlot || '10:30 AM'}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Service Type</span>
+                                                            <span style={{ fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{appt.serviceType || 'General Consultation'}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pet Owner</span>
+                                                            <button className="clickable-entity-btn" onClick={() => handleViewOwnerProfile(appt)} style={{ fontWeight: 600, color: '#0f172a', textDecorationColor: '#cbd5e1' }}>
+                                                                {appt.ownerName}
+                                                            </button>
+                                                        </div>
+                                                        {appt.reason && (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Complaint</span>
+                                                                <span style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{appt.reason}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {appt.diagnosis && (
+                                                        <div style={{ background: '#f8fafc', borderLeft: '4px solid #10b981', padding: '14px 16px', borderRadius: '0 12px 12px 0', fontSize: '0.86rem', color: '#334155', marginTop: '4px' }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                <div><span style={{ color: '#059669', fontWeight: 800 }}>Diagnosis:</span> {appt.diagnosis}</div>
+                                                                {appt.prescription && <div><span style={{ color: '#0ea5e9', fontWeight: 800 }}>Rx:</span> {appt.prescription}</div>}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', marginTop: 'auto' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleViewPetProfile(appt)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '10px 16px',
+                                                            borderRadius: '100px',
+                                                            background: '#f8fafc',
+                                                            color: '#475569',
+                                                            fontWeight: 700,
+                                                            fontSize: '0.86rem',
+                                                            border: '0',
+                                                            cursor: 'pointer',
+                                                            textAlign: 'center',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseOver={(e) => e.target.style.background = '#f1f5f9'}
+                                                        onMouseOut={(e) => e.target.style.background = '#f8fafc'}
+                                                    >
+                                                        Inspect Profile
+                                                    </button>
+
+                                                    {['APPROVED', 'CONFIRMED', 'IN_PROGRESS'].includes(appt.status) ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={appt.date > new Date().toISOString().split('T')[0]}
+                                                            onClick={() => {
+                                                                setSelectedConsultationId(appt.id || appt.appointmentId || appt.appointmentNumber);
+                                                                setCurrentView('CONSULTATION');
+                                                            }}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding: '10px 16px',
+                                                                borderRadius: '100px',
+                                                                border: 'none',
+                                                                background: appt.date > new Date().toISOString().split('T')[0] ? '#f1f5f9' : '#0f172a',
+                                                                color: appt.date > new Date().toISOString().split('T')[0] ? '#94a3b8' : '#ffffff',
+                                                                fontWeight: 700,
+                                                                fontSize: '0.86rem',
+                                                                cursor: appt.date > new Date().toISOString().split('T')[0] ? 'not-allowed' : 'pointer',
+                                                                boxShadow: appt.date > new Date().toISOString().split('T')[0] ? 'none' : '0 4px 12px rgba(15, 23, 42, 0.2)',
+                                                                textAlign: 'center',
+                                                                transition: 'transform 0.2s',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                            onMouseOver={(e) => { if (appt.date <= new Date().toISOString().split('T')[0]) e.target.style.transform = 'translateY(-2px)' }}
+                                                            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+                                                        >
+                                                            {appt.date > new Date().toISOString().split('T')[0]
+                                                                ? `Wait until ${appt.date}`
+                                                                : (appt.status === 'IN_PROGRESS' ? 'Resume Consult' : 'Start Consult')}
+                                                        </button>
+                                                    ) : appt.status === 'COMPLETED' ? (
+                                                        <span style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', borderRadius: '100px', background: '#f8fafc', color: '#94a3b8', fontWeight: 700, fontSize: '0.86rem', border: '0' }}>
+                                                            Consult Completed
+                                                        </span>
+                                                    ) : appt.status === 'REJECTED' || appt.status === 'DECLINED' ? (
+                                                        <span style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', borderRadius: '100px', background: '#f8fafc', color: '#ef4444', fontWeight: 700, fontSize: '0.86rem', border: '0' }}>
+                                                            Access Declined
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', borderRadius: '100px', background: '#f8fafc', color: '#94a3b8', fontWeight: 700, fontSize: '0.86rem', border: '0' }}>
+                                                            Awaiting Approval
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        </>
+                    )}
+
+                    {/* READ-ONLY DOCTOR PROFILE VIEW */}
+                    {currentView === 'PROFILE' && (
+                        <section className="admin-panel-card profile-panel">
+                            <div className="panel-card-header">
+                                <div>
+                                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>👤 My Professional Doctor Profile</h2>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '20px', padding: '28px', marginBottom: '24px' }}>
+                                <img
+                                    src={doctorProfile?.photoUrl || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80'}
+                                    alt="Doctor"
+                                    style={{ width: '90px', height: '90px', borderRadius: '20px', objectFit: 'cover', border: '3px solid #ffffff', boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}
+                                />
+                                <div>
+                                    <span style={{ background: '#dcfce7', color: '#047857', border: '1px solid #a7f3d0', padding: '3px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800 }}>{doctorProfile?.id ? `${doctorProfile.id} • ` : ''}Authorized Surgeon</span>
+                                    <h2 style={{ margin: '6px 0 2px', fontSize: '1.6rem', fontWeight: 900, color: '#0f172a' }}>{doctorProfile?.name || name}</h2>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#059669', fontWeight: 700 }}>{doctorProfile?.specialization || department}</p>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr)', gap: '20px', marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '16px' }}>Professional Information</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.88rem', color: '#334155' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                                                <strong style={{ color: '#0f172a' }}>Medical Licence / ID:</strong> <span>{doctorProfile?.id || 'Pending Validation'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                                                <strong style={{ color: '#0f172a' }}>Credentials:</strong> <span>{doctorProfile?.experience || 'Registered Surgeon'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                                                <strong style={{ color: '#0f172a' }}>Operating Hours:</strong> <span>{doctorProfile?.availableHours || '08:00 AM - 05:00 PM'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <strong style={{ color: '#0f172a' }}>Registration Status:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>Active - Verified</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '16px' }}>Contact Information</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.9rem', color: '#334155' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><IconMail size={18} style={{ color: '#64748b' }} /> <span>{doctorProfile?.email || email}</span></div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><IconPhone size={18} style={{ color: '#64748b' }} /> <span>{doctorProfile?.phone || phone}</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Clinical Biography & Services</p>
+                                        <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
+                                            {doctorProfile?.bio || 'Professional veterinary surgeon dedicated to premium animal care.'}
+                                        </p>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Approved Medical Services</p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {(doctorProfile?.services || ['General Care', 'Consultations']).map((srv, i) => (
+                                                <span key={i} style={{ background: '#f1f5f9', color: '#0f172a', padding: '5px 12px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 700, border: '1px solid #e2e8f0' }}>
+                                                    {srv}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px' }}>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Account Security Update</p>
+                                        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            <input
+                                                type="password"
+                                                placeholder="Enter New Password (min 6 chars)"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                                            />
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm New Password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                                            />
+                                            <button type="submit" disabled={isSavingPass} style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#059669', color: '#fff', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                                                {isSavingPass ? 'Processing...' : 'Confirm Password Change'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {currentView === 'HOSPITALIZED_PETS' && (
+                        <DoctorHospitalizedPetsPage hideHeader={true} />
+                    )}
+
+                    {currentView === 'BILLING' && (
+                        <DoctorPortal
+                            hideHeader={true}
+                            onStartConsultation={(id) => {
+                                setSelectedConsultationId(id);
+                                setCurrentView('CONSULTATION');
+                            }}
+                        />
+                    )}
+
+                    {currentView === 'CONSULTATION' && selectedConsultationId && (
+                        <div style={{ padding: '20px' }}>
+                            <div className="back-navigation-bar" style={{ marginBottom: '20px' }}>
+                                <button className="btn-back-overview" onClick={() => setCurrentView('BILLING')}>
+                                    ← Back to Booking Requests
+                                </button>
+                            </div>
+                            <ConsultationPage appointmentId={selectedConsultationId} />
+                        </div>
+                    )}
+
+                    {currentView === 'RECOMMEND_ADMISSION' && (
+                        <DoctorRecommendPage />
+                    )}
+                </main>
             </div>
 
             {/* PET MEDICAL PROFILE INSPECTOR MODAL */}

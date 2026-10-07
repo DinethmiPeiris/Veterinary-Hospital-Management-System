@@ -66,11 +66,13 @@
 /* Navigation Tabs */
 .epic-tabs {
   display: flex;
-  gap: 0.5rem;
-  background: #f1f5f9;
-  padding: 0.35rem;
-  border-radius: var(--epic-radius);
+  gap: 1rem;
+  background: #ffffff;
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
   margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(16, 185, 129, 0.1);
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -81,13 +83,13 @@
 }
 
 .epic-tab-btn {
-  padding: 0.6rem 1.25rem;
-  border-radius: 8px;
-  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--epic-text-muted);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -98,13 +100,14 @@
 
 .epic-tab-btn:hover {
   color: var(--epic-text-main);
-  background: rgba(255, 255, 255, 0.6);
+  background: #f8fafc;
 }
 
 .epic-tab-btn.active {
-  background: #ffffff;
+  background: #ecfdf5;
   color: #059669;
-  box-shadow: var(--epic-shadow-sm);
+  border-color: #10b981;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
 }
 
 /* Stats / KPI Cards */
@@ -144,10 +147,25 @@
   color: #059669;
 }
 
-.stat-icon.blue { background: #e0f2fe; color: #0284c7; }
-.stat-icon.amber { background: #fef3c7; color: #d97706; }
-.stat-icon.purple { background: #f3e8ff; color: #7c3aed; }
-.stat-icon.rose { background: #ffe4e6; color: #e11d48; }
+.stat-icon.blue {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.stat-icon.amber {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.stat-icon.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.stat-icon.rose {
+  background: #ffe4e6;
+  color: #e11d48;
+}
 
 .stat-content h3 {
   font-size: 0.8rem;
@@ -240,18 +258,62 @@
   letter-spacing: 0.03em;
 }
 
-.status-pill.requested { background: #fef3c7; color: #b45309; }
-.status-pill.confirmed { background: #dcfce7; color: #15803d; }
-.status-pill.in_progress { background: #e0f2fe; color: #0369a1; }
-.status-pill.completed { background: #e0e7ff; color: #4338ca; }
-.status-pill.cancelled { background: #fee2e2; color: #b91c1c; }
-.status-pill.rejected { background: #f3f4f6; color: #4b5563; }
-.status-pill.rescheduled { background: #fae8ff; color: #86198f; }
-.status-pill.expired, .status-pill.no_show { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.status-pill.requested {
+  background: #fef3c7;
+  color: #b45309;
+}
 
-.status-pill.paid { background: #dcfce7; color: #15803d; }
-.status-pill.unpaid { background: #fee2e2; color: #b91c1c; }
-.status-pill.partially_paid { background: #fef3c7; color: #b45309; }
+.status-pill.confirmed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.in_progress {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-pill.completed {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.status-pill.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-pill.rejected {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-pill.rescheduled {
+  background: #fae8ff;
+  color: #86198f;
+}
+
+.status-pill.expired,
+.status-pill.no_show {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.status-pill.paid {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.unpaid {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-pill.partially_paid {
+  background: #fef3c7;
+  color: #b45309;
+}
 
 /* Pet Species Avatars & Badges */
 .pet-cell {
@@ -278,11 +340,30 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
-.pet-avatar-dog { background: #eff6ff; border: 1.5px solid #bfdbfe; }
-.pet-avatar-cat { background: #fdf2f8; border: 1.5px solid #fbcfe8; }
-.pet-avatar-bird { background: #ecfdf5; border: 1.5px solid #a7f3d0; }
-.pet-avatar-rabbit { background: #ede9fe; border: 1.5px solid #c4b5fd; }
-.pet-avatar-other { background: #f8fafc; border: 1.5px solid #e2e8f0; }
+.pet-avatar-dog {
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+}
+
+.pet-avatar-cat {
+  background: #fdf2f8;
+  border: 1.5px solid #fbcfe8;
+}
+
+.pet-avatar-bird {
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+}
+
+.pet-avatar-rabbit {
+  background: #ede9fe;
+  border: 1.5px solid #c4b5fd;
+}
+
+.pet-avatar-other {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+}
 
 .species-pill {
   display: inline-flex;
@@ -297,11 +378,35 @@
   vertical-align: middle;
 }
 
-.species-pill.dog { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-.species-pill.cat { background: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
-.species-pill.bird { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-.species-pill.rabbit { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-.species-pill.other { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.species-pill.dog {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.species-pill.cat {
+  background: #fce7f3;
+  color: #9d174d;
+  border: 1px solid #fbcfe8;
+}
+
+.species-pill.bird {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.species-pill.rabbit {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+
+.species-pill.other {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
 
 /* Buttons */
 .btn-primary-epic {
@@ -354,20 +459,50 @@
   gap: 0.25rem;
 }
 
-.btn-approve { background: #dcfce7; color: #166534; }
-.btn-approve:hover { background: #bbf7d0; }
+.btn-approve {
+  background: #dcfce7;
+  color: #166534;
+}
 
-.btn-reject { background: #fee2e2; color: #991b1b; }
-.btn-reject:hover { background: #fecaca; }
+.btn-approve:hover {
+  background: #bbf7d0;
+}
 
-.btn-reassign { background: #e0f2fe; color: #075985; }
-.btn-reassign:hover { background: #bae6fd; }
+.btn-reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
-.btn-reschedule { background: #fae8ff; color: #701a75; }
-.btn-reschedule:hover { background: #f5d0fe; }
+.btn-reject:hover {
+  background: #fecaca;
+}
 
-.btn-pay { background: #059669; color: white; }
-.btn-pay:hover { background: #047857; }
+.btn-reassign {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.btn-reassign:hover {
+  background: #bae6fd;
+}
+
+.btn-reschedule {
+  background: #fae8ff;
+  color: #701a75;
+}
+
+.btn-reschedule:hover {
+  background: #f5d0fe;
+}
+
+.btn-pay {
+  background: #059669;
+  color: white;
+}
+
+.btn-pay:hover {
+  background: #047857;
+}
 
 /* Modals */
 .modal-overlay {
@@ -526,7 +661,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .notification-bell:hover {
@@ -542,10 +677,24 @@
 }
 
 @keyframes bell-ring {
-  0%, 80%, 100% { transform: rotate(0); }
-  85% { transform: rotate(12deg); }
-  90% { transform: rotate(-12deg); }
-  95% { transform: rotate(6deg); }
+
+  0%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+
+  85% {
+    transform: rotate(12deg);
+  }
+
+  90% {
+    transform: rotate(-12deg);
+  }
+
+  95% {
+    transform: rotate(6deg);
+  }
 }
 
 .notification-badge {
@@ -569,20 +718,42 @@
 }
 
 @keyframes badge-pop {
-  0% { transform: scale(0); }
-  80% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+
+  80% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes badge-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 768px) {
@@ -590,6 +761,7 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
   .epic-stats-grid {
     grid-template-columns: 1fr;
   }
@@ -601,6 +773,7 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
 }
@@ -718,7 +891,8 @@ input[type="number"] {
     font-size: 9.5pt !important;
   }
 
-  html, body {
+  html,
+  body {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;

@@ -37,7 +37,6 @@ export default function Navbar() {
               <a onClick={() => scrollTo('contact')}>Contact</a>
             </div>
             <div className="nav-cta" style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-primary" id="nav-book-btn" onClick={() => navigate('/appointments')}>Book Now</button>
               <button className="btn btn-secondary" id="nav-login-btn" onClick={() => navigate('/login', { state: { mode: 'signin' } })}>Login</button>
               <button className="btn btn-primary" id="nav-register-btn" onClick={() => navigate('/login', { state: { mode: 'register' } })}>Register</button>
             </div>

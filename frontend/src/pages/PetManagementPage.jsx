@@ -241,9 +241,9 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
     // View state — persisted across refreshes
     const PET_VIEW_KEY = 'vhms_pet_view';
     const safePetViews = ['OVERVIEW', 'PETS_LIST', 'FIND_DOCTOR', 'MY_APPOINTMENTS', 'CONSULTATIONS', 'MEDICAL_HISTORY', 'PROFILE', 'NOTIFICATIONS', 'ADMISSIONS', 'BILLING', 'INVOICES', 'PAYMENTS'];
-    const initPetView = (() => { 
+    const initPetView = (() => {
         if (initialView) return initialView;
-        try { const v = localStorage.getItem(PET_VIEW_KEY); return safePetViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } 
+        try { const v = localStorage.getItem(PET_VIEW_KEY); return safePetViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; }
     })();
     const [currentView, setCurrentViewRaw] = useState(initPetView);
     const setCurrentView = (v) => { if (safePetViews.includes(v)) { try { localStorage.setItem(PET_VIEW_KEY, v); } catch { } } setCurrentViewRaw(v); window.scrollTo({ top: 0, behavior: 'instant' }); };
@@ -1457,2056 +1457,1999 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         <div className="pets-page" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* SAAS PORTAL HEADER */}
             {!hideHeader && (
-            <PortalHeader
-                currentUser={currentUser}
-                isDropdownOpen={isDropdownOpen}
-                setIsDropdownOpen={setIsDropdownOpen}
-                handleLogout={handleLogout}
-                setCurrentView={setCurrentView}
-                resetSubpageState={() => {
-                    setEditingPet(null);
-                    setSelectedPetDetail(null);
-                    setSelectedDoctorDetail(null);
-                    setSelectedApptDetail(null);
-                    setSelectedNotifDetail(null);
-                }}
-                notifications={notifications}
-                unreadNotifCount={unreadNotifCount}
-                isNotifDropdownOpen={isNotifDropdownOpen}
-                setIsNotifDropdownOpen={setIsNotifDropdownOpen}
-                markAsRead={handleMarkAsRead}
-                markAllAsRead={handleMarkAllAsRead}
-                setSelectedNotifDetail={setSelectedNotifDetail}
-            />
+                <PortalHeader
+                    currentUser={currentUser}
+                    isDropdownOpen={isDropdownOpen}
+                    setIsDropdownOpen={setIsDropdownOpen}
+                    handleLogout={handleLogout}
+                    setCurrentView={setCurrentView}
+                    resetSubpageState={() => {
+                        setEditingPet(null);
+                        setSelectedPetDetail(null);
+                        setSelectedDoctorDetail(null);
+                        setSelectedApptDetail(null);
+                        setSelectedNotifDetail(null);
+                    }}
+                    notifications={notifications}
+                    unreadNotifCount={unreadNotifCount}
+                    isNotifDropdownOpen={isNotifDropdownOpen}
+                    setIsNotifDropdownOpen={setIsNotifDropdownOpen}
+                    markAsRead={handleMarkAsRead}
+                    markAllAsRead={handleMarkAllAsRead}
+                    setSelectedNotifDetail={setSelectedNotifDetail}
+                />
             )}
 
-            <div className="pet-owner-unified-layout">
-            {/* UNIFIED LEFT SIDEBAR NAVIGATION */}
-            {!hideHeader && (
-            <aside className="po-sidebar">
-                <nav className="po-sidebar-nav">
-                    <div className="po-sidebar-group-label">MAIN</div>
-                    <button className={`po-sidebar-item${currentView === 'OVERVIEW' ? ' active' : ''}`} onClick={() => setCurrentView('OVERVIEW')}>
-                        <span className="po-sidebar-icon">🐾</span> Dashboard
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'PETS_LIST' || currentView === 'ADD_PET' || currentView === 'PET_PROFILE_DETAIL' ? ' active' : ''}`} onClick={() => setCurrentView('PETS_LIST')}>
-                        <span className="po-sidebar-icon">🐶</span> My Pets
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'FIND_DOCTOR' || currentView === 'DOCTOR_PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('FIND_DOCTOR')}>
-                        <span className="po-sidebar-icon">🔍</span> Find Doctor & Book
-                    </button>
+            <div className="dashboard-container">
 
-                    <div className="po-sidebar-group-label">APPOINTMENTS</div>
-                    <button className={`po-sidebar-item${currentView === 'MY_APPOINTMENTS' ? ' active' : ''}`} onClick={() => setCurrentView('MY_APPOINTMENTS')}>
-                        <span className="po-sidebar-icon">📅</span> My Appointments
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'CONSULTATIONS' ? ' active' : ''}`} onClick={() => setCurrentView('CONSULTATIONS')}>
-                        <span className="po-sidebar-icon">📋</span> Consultations
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'MEDICAL_HISTORY' ? ' active' : ''}`} onClick={() => setCurrentView('MEDICAL_HISTORY')}>
-                        <span className="po-sidebar-icon">❤️</span> Medical History
-                    </button>
 
-                    <div className="po-sidebar-group-label">HOSPITAL</div>
-                    <button className={`po-sidebar-item${currentView === 'ADMISSIONS' ? ' active' : ''}`} onClick={() => setCurrentView('ADMISSIONS')}>
-                        <span className="po-sidebar-icon">🏥</span> Admissions
-                    </button>
-
-                    <div className="po-sidebar-group-label">BILLING</div>
-                    <button className={`po-sidebar-item${currentView === 'INVOICES' || currentView === 'BILLING' ? ' active' : ''}`} onClick={() => setCurrentView('INVOICES')}>
-                        <span className="po-sidebar-icon">💳</span> Invoices
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'PAYMENTS' ? ' active' : ''}`} onClick={() => setCurrentView('PAYMENTS')}>
-                        <span className="po-sidebar-icon">💰</span> Payments
-                    </button>
-
-                    <div className="po-sidebar-group-label">ACCOUNT</div>
-                    <button className={`po-sidebar-item${currentView === 'NOTIFICATIONS' ? ' active' : ''}`} onClick={() => setCurrentView('NOTIFICATIONS')}>
-                        <span className="po-sidebar-icon">🔔</span> Notifications
-                        {unreadNotifCount > 0 && <span className="po-sidebar-badge">{unreadNotifCount}</span>}
-                    </button>
-                    <button className={`po-sidebar-item${currentView === 'PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('PROFILE')}>
-                        <span className="po-sidebar-icon">👤</span> My Profile
-                    </button>
-                </nav>
-            </aside>
-            )}
-
-            <main className="pets-main saas-shell po-main-content" style={hideHeader ? { padding: '10px 0' } : {}}>
-                {/* Back to Registered Pets Header when viewing pet profile or edit form */}
-                {(currentView === 'ADD_PET' || currentView === 'PET_PROFILE_DETAIL') && (
-                    <div className="back-navigation-bar">
-                        <button className="btn-back-overview" onClick={() => setCurrentView('PETS_LIST')}>
-                            ← Back to Registered Pets
-                        </button>
-                    </div>
-                )}
-
-                {/* MAIN OVERVIEW VIEW */}
-                {currentView === 'OVERVIEW' && (
-                    <>
-                        <HeroSection currentUser={currentUser} />
-
-                        <section className="saas-dashboard-grid">
-                            <DashboardCard
-                                icon={DualPawIcon}
-                                solid={true}
-                                theme="mint"
-                                label="REGISTERED PETS"
-                                value={pets.length}
-                                subtext="Your furry companions"
-                                buttonText="View All Pets"
-                                onClick={() => setCurrentView('PETS_LIST')}
-                            />
-                            <DashboardCard
-                                icon={Calendar}
-                                solid={true}
-                                theme="blue"
-                                label="UPCOMING VISITS"
-                                value={upcomingAppointments.length > 0 ? `${upcomingAppointments.length} Scheduled` : '0 Scheduled'}
-                                subtext={upcomingAppointments.length > 0 ? `Next: ${upcomingAppointments[0].date} (${upcomingAppointments[0].timeSlot || '10:30 AM'})` : 'No upcoming visits'}
-                                buttonText="View Appointments"
-                                onClick={() => setCurrentView('MY_APPOINTMENTS')}
-                            />
-                            <DashboardCard
-                                icon={ShieldCheck}
-                                theme="peach"
-                                label="PREVENTIVE CARE"
-                                value="Up to Date"
-                                subtext="Rabies & Annual Checkup current"
-                            />
-                            <DashboardCard
-                                icon={Bell}
-                                solid={true}
-                                theme="purple"
-                                label="NOTIFICATION CENTER"
-                                value={`${unreadNotifCount} Unread`}
-                                subtext={unreadNotifCount > 0 ? "Important updates pending" : "All notifications caught up"}
-                                onClick={() => setCurrentView('NOTIFICATIONS')}
-                            />
-                        </section>
-
-                        <FooterQuote />
-
-                        {/* Quick Portals Cards Section (Legacy architecture maintained) */}
-                        <section className="quick-portals-section" style={{ marginTop: '10px' }}>
-                            <div className="section-header-row">
-                                <h2 className="section-title">
-                                    Pet Management Portals
-                                </h2>
-                            </div>
-
-                            <div className="portals-grid-2">
-                                {/* CARD 1: REGISTER NEW PET */}
-                                <div className="portal-card add-pet-portal-card" onClick={openAddForm}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box icon-emerald-box">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                                        </div>
-                                        <span className="portal-badge badge-new">+ New Registration</span>
-                                    </div>
-                                    <h3 className="portal-card-title">Register New Pet</h3>
-                                    <p className="portal-card-desc">
-                                        Add a new pet profile with species, breed, age, weight, and custom photo for hospital appointments.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text">Open Pet Registration Form →</span>
-                                    </div>
-                                </div>
-
-                                {/* CARD 2: MY REGISTERED PETS */}
-                                <div className="portal-card pets-list-portal-card" onClick={() => setCurrentView('PETS_LIST')}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box icon-folder-box">
-                                            🐾
-                                        </div>
-                                        <span className="portal-badge badge-info">{pets.length} Registered</span>
-                                    </div>
-                                    <h3 className="portal-card-title">My Registered Pets Directory</h3>
-                                    <p className="portal-card-desc">
-                                        View, inspect, edit, or remove your registered pet profiles and medical stats.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text">View Pet Profiles Directory →</span>
-                                    </div>
-                                </div>
-
-                                {/* CARD 3: FIND A DOCTOR & BOOK */}
-                                <div className="portal-card find-doctor-portal-card" onClick={() => setCurrentView('FIND_DOCTOR')}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box icon-purple-box">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                        </div>
-                                        <span className="portal-badge badge-new">Instant Booking</span>
-                                    </div>
-                                    <h3 className="portal-card-title">Find a Doctor & Book Visit</h3>
-                                    <p className="portal-card-desc">
-                                        Search veterinarians by specialization, view available slots, and request an appointment.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text">Search Doctors & Services →</span>
-                                    </div>
-                                </div>
-
-                                {/* CARD 4: MY APPOINTMENTS */}
-                                <div className="portal-card appointments-portal-card" onClick={() => setCurrentView('MY_APPOINTMENTS')}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box icon-blue-box">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                                        </div>
-                                        <span className="portal-badge badge-info">{appointments.length} Scheduled</span>
-                                    </div>
-                                    <h3 className="portal-card-title">My Appointments & Status</h3>
-                                    <p className="portal-card-desc">
-                                        Track your upcoming hospital consultations, visit reasons, and approval status.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text">View Appointments Roster →</span>
-                                    </div>
-                                </div>
-
-                                {/* CARD 5: HOSPITAL ADMISSIONS (Epic 3) */}
-                                <div className="portal-card appointments-portal-card" id="admissions-portal-card" onClick={() => setCurrentView('ADMISSIONS')}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box icon-blue-box">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"></path><path d="M12 9v6"></path><path d="M9 12h6"></path><path d="M3 21h18"></path></svg>
-                                        </div>
-                                        <span className="portal-badge badge-info">Hospitalization</span>
-                                    </div>
-                                    <h3 className="portal-card-title">Hospital Admissions</h3>
-                                    <p className="portal-card-desc">
-                                        Review doctor admission recommendations, request admission, and follow your pet's treatment and recovery.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text">View Admissions →</span>
-                                    </div>
-                                </div>
-
-                                {/* CARD 6: INVOICES & PAYMENTS (Epic 4) */}
-                                <div className="portal-card" id="billing-portal-card" onClick={() => setCurrentView('BILLING')} style={{ borderTop: '4px solid #f59e0b' }}>
-                                    <div className="portal-card-top">
-                                        <div className="portal-icon-box" style={{ background: '#fef3c7', color: '#d97706' }}>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                                        </div>
-                                        <span className="portal-badge" style={{ background: '#fef3c7', color: '#d97706' }}>Billing</span>
-                                    </div>
-                                    <h3 className="portal-card-title">Bookings & Invoices</h3>
-                                    <p className="portal-card-desc">
-                                        View and securely pay hospital invoices for completed consultations and treatments.
-                                    </p>
-                                    <div className="portal-card-footer">
-                                        <span className="link-text" style={{ color: '#d97706' }}>View Invoices →</span>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </section>
-                    </>
-                )}
-
-                {/* DEDICATED SUBPAGE: REGISTER NEW PET PAGE */}
-                {currentView === 'ADD_PET' && (
-                    <section className="dedicated-subpage-section">
-                        <div className="subpage-header-box">
-                            <h2>{editingPet ? 'Edit Pet Profile' : 'Register New Pet'}</h2>
-                            <p>Complete the pet profile details below to enable hospital bookings and medical history tracking.</p>
-                        </div>
-
-                        <div className="add-pet-form-card">
-                            <form onSubmit={handleSavePet} className="standalone-pet-form">
-                                <div className="form-group">
-                                    <label>Pet Name *</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Buddy"
-                                        value={name}
-                                        onChange={(e) => {
-                                            setName(e.target.value);
-                                            if (petFormErrors.name) setPetFormErrors(prev => ({ ...prev, name: null }));
-                                        }}
-                                        style={petFormErrors.name ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
-                                        required
-                                    />
-                                    {petFormErrors.name && (
-                                        <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
-                                            ⚠️ {petFormErrors.name}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="form-grid-2">
-                                    <div className="form-group">
-                                        <label>Species *</label>
-                                        <select value={species} onChange={(e) => setSpecies(e.target.value)}>
-                                            <option value="Dog">Dog 🐕</option>
-                                            <option value="Cat">Cat 🐈</option>
-                                            <option value="Rabbit">Rabbit 🐇</option>
-                                            <option value="Bird">Bird 🦜</option>
-                                            <option value="Other">Other 🐾</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Breed</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Golden Retriever"
-                                            value={breed}
-                                            onChange={(e) => {
-                                                setBreed(e.target.value);
-                                                if (petFormErrors.breed) setPetFormErrors(prev => ({ ...prev, breed: null }));
-                                            }}
-                                            style={petFormErrors.breed ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
-                                        />
-                                        {petFormErrors.breed && (
-                                            <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
-                                                ⚠️ {petFormErrors.breed}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="form-grid-4">
-                                    <div className="form-group">
-                                        <label>Date of Birth *</label>
-                                        <input
-                                            type="date"
-                                            value={dateOfBirth}
-                                            max={new Date().toISOString().split('T')[0]}
-                                            onChange={handleDobChange}
-                                            style={petFormErrors.dateOfBirth ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
-                                            required
-                                        />
-                                        {petFormErrors.dateOfBirth && (
-                                            <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
-                                                ⚠️ {petFormErrors.dateOfBirth}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Age (Years / Months) *</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Auto-calculated (e.g. 4 Months, 2 Years)"
-                                            value={age}
-                                            onChange={(e) => setAge(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Weight (kg) *</label>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            placeholder="e.g. 14.5"
-                                            value={weight}
-                                            onChange={(e) => {
-                                                setWeight(e.target.value);
-                                                if (petFormErrors.weight) setPetFormErrors(prev => ({ ...prev, weight: null }));
-                                            }}
-                                            style={petFormErrors.weight ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
-                                            required
-                                        />
-                                        {petFormErrors.weight && (
-                                            <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
-                                                ⚠️ {petFormErrors.weight}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Gender *</label>
-                                        <select value={gender} onChange={(e) => setGender(e.target.value)}>
-                                            <option value="Male">Male ♂</option>
-                                            <option value="Female">Female ♀</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Upload Pet Photo (Optional)</label>
-                                    <div className="photo-upload-container">
-                                        <input
-                                            type="file"
-                                            id="pet-photo-file"
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                            style={{ display: 'none' }}
-                                        />
-
-                                        {photoUrl ? (
-                                            <div className="photo-preview-card">
-                                                <img src={photoUrl} alt="Pet Preview" className="photo-preview-img" />
-                                                <div className="photo-preview-actions">
-                                                    <label htmlFor="pet-photo-file" className="btn-upload-change">
-                                                        📷 Change Photo
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        className="btn-upload-remove"
-                                                        onClick={() => setPhotoUrl('')}
-                                                    >
-                                                        ✕ Remove
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <label htmlFor="pet-photo-file" className="photo-dropzone">
-                                                <div className="dropzone-icon">📷</div>
-                                                <div className="dropzone-text">
-                                                    <strong>Click to upload pet photo</strong>
-                                                    <span>Supports PNG, JPG, WEBP (Max 5MB)</span>
-                                                </div>
-                                            </label>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="form-actions-row">
-                                    <button type="button" className="btn-cancel" onClick={() => setCurrentView('OVERVIEW')}>
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="btn-save">
-                                        {editingPet ? 'Update Pet Profile' : 'Complete Registration'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </section>
-                )}
-
-                {/* DEDICATED SUBPAGE: MY REGISTERED PETS LIST */}
-                {currentView === 'PETS_LIST' && (
-                    <section className="dedicated-subpage-section">
-                        <div className="pets-top-bar">
-                            <div>
-                                <h1>My Registered Pets</h1>
-                                <p>Manage pet profiles, update medical stats, and prepare for hospital visits.</p>
-                            </div>
-                            <button className="btn-add-pet" onClick={openAddForm}>+ Register New Pet</button>
-                        </div>
-
-                        {loading ? (
-                            <div className="loading-state">Loading pet profiles...</div>
-                        ) : pets.length === 0 ? (
-                            <div className="empty-pets-card">
-                                <div className="empty-emoji">🐶</div>
-                                <h3>No Pet Profiles Found</h3>
-                                <p>You haven't registered any pets yet. Click below to add your first pet!</p>
-                                <button className="btn-add-pet-large" onClick={openAddForm}>+ Register My First Pet</button>
-                            </div>
-                        ) : (
-                            <div className="pets-grid">
-                                {pets.map((pet) => (
-                                    <div
-                                        key={pet.id}
-                                        className="pet-card"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={(e) => {
-                                            if (!e.target.closest('.pet-card-actions')) {
-                                                openViewPet(pet);
-                                            }
-                                        }}
-                                    >
-                                        <div className="pet-img-wrap">
-                                            <img
-                                                src={pet.photoUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80'}
-                                                alt={pet.name}
-                                                className="pet-img"
-                                            />
-                                            <span className="species-badge">{pet.species}</span>
-                                        </div>
-                                        <div className="pet-info">
-                                            <h3>{pet.name}</h3>
-                                            <div className="pet-meta-row">
-                                                <span className="meta-item"><strong>Breed:</strong> {pet.breed}</span>
-                                                <span className="meta-item"><strong>Age:</strong> {pet.age} yrs</span>
-                                            </div>
-                                            <div className="pet-meta-row">
-                                                <span className="meta-item"><strong>DOB:</strong> {pet.dateOfBirth || 'N/A'}</span>
-                                                <span className="meta-item"><strong>Weight:</strong> {pet.weight} kg</span>
-                                            </div>
-                                            <div className="pet-meta-row">
-                                                <span className="meta-item"><strong>Gender:</strong> {pet.gender}</span>
-                                            </div>
-
-                                            <div className="pet-card-actions">
-                                                <button className="btn-view" onClick={(e) => { e.stopPropagation(); openViewPet(pet); }}>View</button>
-                                                <button className="btn-edit" onClick={(e) => { e.stopPropagation(); openEditForm(pet); }}>Update</button>
-                                                <button className="btn-delete" onClick={(e) => { e.stopPropagation(); handleDeletePet(pet.id, pet.name); }}>Delete</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                )}
-
-                {/* DEDICATED SUBPAGE: PET PROFILE DETAILS */}
-                {currentView === 'PET_PROFILE_DETAIL' && selectedPetDetail && (
-                    <section className="dedicated-subpage-section">
-                        <div className="pets-top-bar">
-                            <div>
-                                <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    🐾 {selectedPetDetail.name}'s Complete Profile
-                                    <span className="species-badge" style={{ fontSize: '0.85rem' }}>{selectedPetDetail.species}</span>
-                                </h1>
-                                <p>Comprehensive medical, identity, and statistical record for hospital visits.</p>
-                            </div>
-                        </div>
-
-                        {/* Hero Card Banner */}
-                        <div className="pet-detail-hero-card" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)', color: '#ffffff', borderRadius: '24px', padding: '32px', display: 'flex', gap: '32px', alignItems: 'center', boxShadow: '0 20px 40px rgba(4, 120, 87, 0.25)', marginBottom: '24px' }}>
-                            <img
-                                src={selectedPetDetail.photoUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80'}
-                                alt={selectedPetDetail.name}
-                                style={{ width: '130px', height: '130px', borderRadius: '20px', objectFit: 'cover', border: '4px solid rgba(255, 255, 255, 0.2)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}
-                            />
-                            <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                    <h2 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800 }}>{selectedPetDetail.name}</h2>
-                                    <span style={{ background: 'rgba(255,255,255,0.2)', color: '#ffffff', padding: '4px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, backdropFilter: 'blur(4px)' }}>
-                                        {selectedPetDetail.gender}
-                                    </span>
-                                    <span style={{ background: 'rgba(16, 185, 129, 0.3)', color: '#a7f3d0', padding: '4px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, backdropFilter: 'blur(4px)' }}>
-                                        {selectedPetDetail.species}
-                                    </span>
-                                </div>
-                                <p style={{ margin: 0, color: '#a7f3d0', fontSize: '1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>🟢 Active Hospital Patient Profile</span>
-                                    <span>•</span>
-                                    <span>Verified Ownership Record</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Detailed Grid Stats */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                            {/* Box 1: Core Identification */}
-                            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-                                <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    🆔 Core Identification
-                                </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.95rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Pet Full Name:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.name}</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Species / Category:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.species}</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Breed:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.breed || 'Not Specified'}</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: '#64748b' }}>Gender / Sex:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.gender}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Box 2: Medical & Vital Stats */}
-                            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-                                <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    📊 Vital Metrics & Age
-                                </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.95rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Date of Birth (DOB):</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.dateOfBirth || 'N/A'}</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Calculated Age:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.age} years</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
-                                        <span style={{ color: '#64748b' }}>Current Weight:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.weight} kg</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: '#64748b' }}>Gender:</span>
-                                        <strong style={{ color: '#0f172a' }}>{selectedPetDetail.gender || 'Not Specified'}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        {/* Bottom Quick Action Box */}
-                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                            <div>
-                                <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#0f172a' }}>Need to Schedule a Visit for {selectedPetDetail.name}?</h4>
-                                <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>Connect with specialist doctors and request consultation slots instantly.</p>
-                            </div>
-                            <button className="btn-add-pet" onClick={() => setCurrentView('FIND_DOCTOR')}>
-                                📅 Book Visit for {selectedPetDetail.name} →
+                <main style={hideHeader ? { padding: '10px 0' } : {}}>
+                    {/* Back to Registered Pets Header when viewing pet profile or edit form */}
+                    {(currentView === 'ADD_PET' || currentView === 'PET_PROFILE_DETAIL') && (
+                        <div className="back-navigation-bar">
+                            <button className="btn-back-overview" onClick={() => setCurrentView('PETS_LIST')}>
+                                ← Back to Registered Pets
                             </button>
                         </div>
-                    </section>
-                )}
+                    )}
 
-                {/* DEDICATED SUBPAGE: FIND A DOCTOR & BOOK */}
-                {currentView === 'FIND_DOCTOR' && (
-                    <section className="dedicated-subpage-section">
-                        <div className="subpage-header-box">
-                            <div>
-                                <h2>Find a Doctor & Book Visit</h2>
-                            </div>
-                        </div>
+                    {/* MAIN OVERVIEW VIEW */}
+                    {currentView === 'OVERVIEW' && (
+                        <>
+                            <HeroSection currentUser={currentUser} />
 
-                        {/* Modernized Search & Specialization Filter Bar */}
-                        <div className="doctor-search-bar-card">
-                            <div className="search-input-wrap">
-                                <span className="search-icon">🔍</span>
-                                <input
-                                    type="text"
-                                    placeholder="Search doctor by name, specialization, or clinical service..."
-                                    value={doctorSearch}
-                                    onChange={(e) => setDoctorSearch(e.target.value)}
-                                    className="doctor-search-input"
+                            <section className="saas-dashboard-grid">
+                                <DashboardCard
+                                    icon={DualPawIcon}
+                                    solid={true}
+                                    theme="mint"
+                                    label="REGISTERED PETS"
+                                    value={pets.length}
+                                    subtext="Your furry companions"
+                                    buttonText="View All Pets"
+                                    onClick={() => setCurrentView('PETS_LIST')}
                                 />
-                                {doctorSearch && (
-                                    <button className="btn-clear-search" onClick={() => setDoctorSearch('')}>✕</button>
-                                )}
-                            </div>
+                                <DashboardCard
+                                    icon={Calendar}
+                                    solid={true}
+                                    theme="blue"
+                                    label="UPCOMING VISITS"
+                                    value={upcomingAppointments.length > 0 ? `${upcomingAppointments.length} Scheduled` : '0 Scheduled'}
+                                    subtext={upcomingAppointments.length > 0 ? `Next: ${upcomingAppointments[0].date} (${upcomingAppointments[0].timeSlot || '10:30 AM'})` : 'No upcoming visits'}
+                                    buttonText="View Appointments"
+                                    onClick={() => setCurrentView('MY_APPOINTMENTS')}
+                                />
+                                <DashboardCard
+                                    icon={ShieldCheck}
+                                    theme="peach"
+                                    label="PREVENTIVE CARE"
+                                    value="Up to Date"
+                                    subtext="Rabies & Annual Checkup current"
+                                />
 
-                            <div className="spec-filter-pills" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span className="filter-label">Filter Specialization:</span>
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <select
-                                        className="spec-select-dropdown"
-                                        value={specFilter}
-                                        onChange={(e) => setSpecFilter(e.target.value)}
-                                    >
-                                        <option value="ALL">🩺 All Specialists</option>
-                                        <option value="OPD">🩺 OPD Medicine (2)</option>
-                                        <option value="Surgery">⚕️ Surgery & Trauma (2)</option>
-                                        <option value="Eye">👁️ Ophthalmology / Eyes (1)</option>
-                                    </select>
-                                    <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b', fontSize: '0.75rem', fontWeight: 800 }}>
-                                        ▼
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                            </section>
 
-                        {/* Doctors Grid */}
-                        <div className="doctors-grid">
-                            {filteredDoctors.length === 0 ? (
-                                <div className="empty-pets-card">
-                                    <div className="empty-emoji">🔍</div>
-                                    <h3>No Doctors Found</h3>
-                                    <p>No veterinarian matching your search criteria was found.</p>
+                            <FooterQuote />
+
+                            {/* Quick Portals Cards Section (Legacy architecture maintained) */}
+                            <section className="quick-portals-section" style={{ marginTop: '10px' }}>
+                                <div className="section-header-row">
+                                    <h2 className="portals-section-title">
+                                        Pet Management Portals
+                                    </h2>
                                 </div>
-                            ) : (
-                                filteredDoctors.map((doc) => (
-                                    <div key={doc.id} className="pet-doctor-card">
-                                        <div className="doc-card-header">
-                                            <div className="doc-avatar-box" style={{ overflow: 'hidden', background: '#ecfdf5' }}>
-                                                {doc.photoUrl
-                                                    ? <img src={doc.photoUrl} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                                                    : <span style={{ fontSize: '1.8rem' }}>🩺</span>
-                                                }
+
+                                <div className="portals-grid-2">
+                                    {/* CARD 1: REGISTER NEW PET */}
+                                    <div className="portal-card add-pet-portal-card" onClick={openAddForm}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-emerald-box">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                             </div>
-                                            <div>
-                                                {(() => {
-                                                    const isOff = isDoctorOffDuty(doc);
-                                                    const isBusy = doc.status === 'BUSY';
-                                                    return (
-                                                        <span className={`doc-status-badge ${isOff ? 'unavailable' : isBusy ? 'busy' : 'available'}`} style={isOff ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' } : isBusy ? { background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' } : {}}>
-                                                            {isOff && '🔴 Off Duty'}
-                                                            {!isOff && isBusy && '🟡 In Consultation / Busy'}
-                                                            {!isOff && !isBusy && '🟢 On Duty'}
-                                                        </span>
-                                                    );
-                                                })()}
-                                                <h3 className="doc-name">{doc.name}</h3>
-                                                <span className="doc-spec">{doc.specialization}</span>
+                                            <span className="portal-badge badge-new">+ New Registration</span>
+                                        </div>
+                                        <h3 className="portal-card-title">Register New Pet</h3>
+                                        <p className="portal-card-desc">
+                                            Add a new pet profile with species, breed, age, weight, and custom photo for hospital appointments.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">Open Pet Registration Form →</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 2: MY REGISTERED PETS */}
+                                    <div className="portal-card pets-list-portal-card" onClick={() => setCurrentView('PETS_LIST')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-folder-box">
+                                                🐾
                                             </div>
+                                            <span className="portal-badge badge-info">{pets.length} Registered</span>
                                         </div>
-
-                                        <div style={{ margin: '12px 0', fontSize: '0.84rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span>🕒</span>
-                                            <strong>Hours:</strong> {doc.availableHours || 'Mon - Sun | 11:00 AM - 02:00 PM'}
-                                        </div>
-
-                                        <div className="doc-services-tags" style={{ marginBottom: '16px' }}>
-                                            {(doc.services || []).slice(0, 3).map((srv, i) => (
-                                                <span key={i} className="service-tag">{srv}</span>
-                                            ))}
-                                            {(doc.services || []).length > 3 && (
-                                                <span className="service-tag" style={{ background: '#f1f5f9', color: '#64748b' }}>
-                                                    +{(doc.services || []).length - 3} more
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="doc-card-footer">
-                                            <button className="btn-view-profile" onClick={() => openDoctorProfile(doc)}>
-                                                View Doctor Profile
-                                            </button>
-                                            <button className="btn-book-now" onClick={() => openBookingModal(doc)}>
-                                                {isDoctorWorkingToday(doc) ? 'Book Visit →' : 'Book Future Date →'}
-                                            </button>
+                                        <h3 className="portal-card-title">My Registered Pets Directory</h3>
+                                        <p className="portal-card-desc">
+                                            View, inspect, edit, or remove your registered pet profiles and medical stats.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">View Pet Profiles Directory →</span>
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                )}
 
-                {/* DEDICATED SUBPAGE: DOCTOR PROFILE */}
-                {currentView === 'DOCTOR_PROFILE' && selectedDoctorDetail && (() => {
-                    const doc = selectedDoctorDetail;
-                    const isUnavailable = isDoctorOffDuty(doc);
-                    const isBusy = doc.status === 'BUSY';
-                    const serviceList = Array.isArray(doc.services)
-                        ? doc.services
-                        : (doc.services || '').split(',').map(s => s.trim()).filter(Boolean);
-
-                    const cleanExp = (text) => {
-                        if (!text) return 'Registered Veterinary Surgeon';
-                        let cleaned = text.replace(/B\.V\.Sc\.?\s*(\(Sri Lanka\))?\s*\|?\s*/gi, '').trim();
-                        if (cleaned.startsWith('|')) cleaned = cleaned.substring(1).trim();
-                        return cleaned || 'Registered Veterinary Surgeon';
-                    };
-
-                    const cleanBio = (bioText) => {
-                        if (!bioText) return 'Experienced veterinary specialist dedicated to providing the highest quality care for your pets.';
-                        return bioText
-                            .replace(/He obtained his Bachelor of Veterinary Science \(B\.V\.Sc\.\) qualification in Sri Lanka in 1991 and has been registered with the Veterinary Council of Sri Lanka since July 1992 under Registration No\. 694\.\s*/gi, '')
-                            .replace(/Bachelor of Veterinary Science \(B\.V\.Sc\.\)\s* qualification\s*/gi, '')
-                            .replace(/B\.V\.Sc\.?\s*(\(Sri Lanka\))?\s*/gi, '')
-                            .trim();
-                    };
-
-                    return (
-                        <section className="dedicated-subpage-section doctor-profile-page">
-                            {/* Back Button with spacing */}
-                            <div style={{ marginTop: '20px', marginBottom: '24px' }}>
-                                <button
-                                    type="button"
-                                    className="btn-back-overview"
-                                    onClick={() => setCurrentView('FIND_DOCTOR')}
-                                >
-                                    ← Back to Doctor List & Booking
-                                </button>
-                            </div>
-
-                            {/* Hero Banner */}
-                            <div className="doc-profile-hero">
-                                <div className="doc-profile-hero-left">
-                                    <div className="doc-profile-avatar-wrap">
-                                        {doc.photoUrl
-                                            ? <img src={doc.photoUrl} alt={doc.name} className="doc-profile-photo" />
-                                            : <div className="doc-profile-photo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', background: '#ecfdf5' }}>👨‍⚕️</div>
-                                        }
-                                        <span className={`doc-profile-status-dot ${isUnavailable ? 'unavailable' : isBusy ? 'busy' : 'available'}`}></span>
-                                    </div>
-                                    <div className="doc-profile-identity">
-                                        <span className={`doc-profile-status-pill ${isUnavailable ? 'unavailable' : isBusy ? 'busy' : 'available'}`}>
-                                            {isUnavailable && '🔴 Off Duty'}
-                                            {isBusy && '🟡 In Consultation'}
-                                            {!isUnavailable && !isBusy && '🟢 Available Today'}
-                                        </span>
-                                        <h1 className="doc-profile-name">{doc.name}</h1>
-                                        <p className="doc-profile-spec">{doc.specialization || doc.address || 'Veterinary Surgeon'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* All Fields — matching registration form */}
-                            <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '28px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', marginBottom: '20px' }}>
-
-                                {/* Row 1: Name + Email */}
-                                <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Doctor Full Name</span>
-                                        <p style={{ margin: '6px 0 0', fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>{doc.name}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Hospital Email Address</span>
-                                        <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.email || 'Not listed'}</p>
-                                    </div>
-                                </div>
-
-                                {/* Row 2: Phone + Specialization */}
-                                <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
-                                        <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.phone || 'Not listed'}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Specialization / Department</span>
-                                        <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.specialization || doc.address || 'Not specified'}</p>
-                                    </div>
-                                </div>
-
-                                {/* Row 3: Experience + Working Hours */}
-                                <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Experience / Qualifications</span>
-                                        <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.experience || 'Registered Veterinary Surgeon'}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Available Working Hours</span>
-                                        <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.availableHours || 'Mon – Fri | 08:00 AM – 05:00 PM'}</p>
-                                    </div>
-                                </div>
-
-                                {/* Services */}
-                                <div style={{ marginBottom: '20px' }}>
-                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Services Offered</span>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-                                        {serviceList.length > 0
-                                            ? serviceList.map((s, i) => (
-                                                <span key={i} style={{ background: '#f0fdf4', color: '#059669', border: '1px solid #bbf7d0', padding: '5px 14px', borderRadius: '20px', fontSize: '0.83rem', fontWeight: 600 }}>{s}</span>
-                                            ))
-                                            : <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No services listed.</span>
-                                        }
-                                    </div>
-                                </div>
-
-                                {/* Bio */}
-                                <div>
-                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Doctor Bio / Professional Description</span>
-                                    <p style={{ margin: '8px 0 0', color: '#334155', lineHeight: 1.75, fontSize: '0.9rem' }}>{cleanBio(doc.bio)}</p>
-                                </div>
-                            </div>
-
-                            {/* Bottom CTA */}
-                            <div className="doc-profile-bottom-cta">
-                                <p>Ready to schedule a visit with <strong>{doc.name}</strong>?</p>
-                                <button className="btn-book-now doc-profile-book-btn" onClick={() => openBookingModal(doc)}>
-                                    {isUnavailable ? '📅 Book for a Future Date →' : '📅 Book a Consultation →'}
-                                </button>
-                            </div>
-                        </section>
-                    );
-                })()}
-
-
-
-                {/* DEDICATED SUBPAGE: MY APPOINTMENTS & STATUS */}
-                {currentView === 'MY_APPOINTMENTS' && (
-                    <section className="dedicated-subpage-section">
-                        <div className="pets-top-bar">
-                            <div>
-                                <h1>📅 My Scheduled Appointments</h1>
-                                <p>Track upcoming hospital visits, consultation reasons, and approval status.</p>
-                            </div>
-                            <button className="btn-add-pet" onClick={() => setCurrentView('FIND_DOCTOR')}>+ Request New Appointment</button>
-                        </div>
-
-                        {userAppointments.length === 0 ? (
-                            <div className="empty-pets-card">
-                                <div className="empty-emoji">📅</div>
-                                <h3>No Appointments Booked</h3>
-                                <p>You haven't requested any hospital consultations yet.</p>
-                                <button className="btn-add-pet-large" onClick={() => setCurrentView('FIND_DOCTOR')}>
-                                    + Book Your First Consultation
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="appointments-roster">
-                                {userAppointments.map((apt) => (
-                                    <div
-                                        key={apt.id}
-                                        className="appointment-card"
-                                        style={{ cursor: 'pointer', transition: 'all 0.25s ease' }}
-                                        onClick={() => setSelectedApptDetail(apt)}
-                                    >
-                                        <div className="apt-header">
-                                            <div>
-                                                <span className="apt-id-tag">{apt.id}</span>
-                                                <h3 className="apt-pet-name">🐾 {apt.petName} ({apt.species || 'Pet'})</h3>
+                                    {/* CARD 3: FIND A DOCTOR & BOOK */}
+                                    <div className="portal-card find-doctor-portal-card" onClick={() => setCurrentView('FIND_DOCTOR')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-purple-box">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                             </div>
-                                            <span className={`apt-status-chip ${apt.status}`}>
-                                                {apt.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : apt.status === 'APPROVED' ? 'APPROVED' : apt.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
+                                            <span className="portal-badge badge-new">Instant Booking</span>
+                                        </div>
+                                        <h3 className="portal-card-title">Find a Doctor & Book Visit</h3>
+                                        <p className="portal-card-desc">
+                                            Search veterinarians by specialization, view available slots, and request an appointment.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">Search Doctors & Services →</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 4: MY APPOINTMENTS */}
+                                    <div className="portal-card appointments-portal-card" onClick={() => setCurrentView('MY_APPOINTMENTS')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-blue-box">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                            </div>
+                                            <span className="portal-badge badge-info">{appointments.length} Scheduled</span>
+                                        </div>
+                                        <h3 className="portal-card-title">My Appointments & Status</h3>
+                                        <p className="portal-card-desc">
+                                            Track your upcoming hospital consultations, visit reasons, and approval status.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">View Appointments Roster →</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 5: HOSPITAL ADMISSIONS (Epic 3) */}
+                                    <div className="portal-card appointments-portal-card" id="admissions-portal-card" onClick={() => setCurrentView('ADMISSIONS')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-blue-box">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"></path><path d="M12 9v6"></path><path d="M9 12h6"></path><path d="M3 21h18"></path></svg>
+                                            </div>
+                                            <span className="portal-badge badge-info">Hospitalization</span>
+                                        </div>
+                                        <h3 className="portal-card-title">Hospital Admissions</h3>
+                                        <p className="portal-card-desc">
+                                            Review doctor admission recommendations, request admission, and follow your pet's treatment and recovery.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">View Admissions →</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 6: INVOICES & PAYMENTS (Epic 4) */}
+                                    <div className="portal-card billing-portal-card" id="billing-portal-card" onClick={() => setCurrentView('BILLING')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-emerald-box">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                            </div>
+                                            <span className="portal-badge badge-new">Billing</span>
+                                        </div>
+                                        <h3 className="portal-card-title">Invoices</h3>
+                                        <p className="portal-card-desc">
+                                            View and securely pay hospital invoices for completed consultations and treatments.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">View Invoices →</span>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </section>
+                        </>
+                    )}
+
+                    {/* DEDICATED SUBPAGE: REGISTER NEW PET PAGE */}
+                    {currentView === 'ADD_PET' && (
+                        <section className="dedicated-subpage-section">
+                            <div className="subpage-header-box">
+                                <h2>{editingPet ? 'Edit Pet Profile' : 'Register New Pet'}</h2>
+                                <p>Complete the pet profile details below to enable hospital bookings and medical history tracking.</p>
+                            </div>
+
+                            <div className="add-pet-form-card">
+                                <form onSubmit={handleSavePet} className="standalone-pet-form">
+                                    <div className="form-group">
+                                        <label>Pet Name *</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Buddy"
+                                            value={name}
+                                            onChange={(e) => {
+                                                setName(e.target.value);
+                                                if (petFormErrors.name) setPetFormErrors(prev => ({ ...prev, name: null }));
+                                            }}
+                                            style={petFormErrors.name ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
+                                            required
+                                        />
+                                        {petFormErrors.name && (
+                                            <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
+                                                ⚠️ {petFormErrors.name}
                                             </span>
-                                        </div>
-
-                                        <div className="apt-grid-meta">
-                                            <div>
-                                                <strong>Assigned Veterinarian</strong>
-                                                <span>{apt.doctorName || 'Assigned Specialist'}</span>
-                                            </div>
-                                            <div>
-                                                <strong>Service Type</strong>
-                                                <span>{apt.serviceType}</span>
-                                            </div>
-                                            <div>
-                                                <strong>Date & Time Slot</strong>
-                                                <span>{apt.date} at {apt.timeSlot}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="apt-reason-box">
-                                            <strong>Reason for Visit:</strong> {apt.reason}
-                                        </div>
-
-                                        {(apt.status === 'REJECTED' || apt.rejectReason) && (
-                                            <div style={{ marginTop: '12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '10px 14px', color: '#991b1b', fontSize: '0.85rem' }}>
-                                                <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', color: '#dc2626', fontWeight: 700 }}>
-                                                    <span>❌ Rejection Reason:</span>
-                                                </strong>
-                                                <span style={{ color: '#7f1d1d', fontWeight: 600 }}>{apt.rejectReason || 'Hospital schedule full for requested time slot.'}</span>
-                                            </div>
                                         )}
-
-                                        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                🔍 <span style={{ color: '#475569' }}>Click card for appointment details</span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); setSelectedApptDetail(apt); }}
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                                                    color: '#ffffff',
-                                                    border: 'none',
-                                                    padding: '8px 18px',
-                                                    borderRadius: '10px',
-                                                    fontSize: '0.82rem',
-                                                    fontWeight: 700,
-                                                    cursor: 'pointer',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    boxShadow: '0 2px 8px rgba(4, 120, 87, 0.25)',
-                                                    flexShrink: 0,
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                📋 View Booking Details
-                                            </button>
-                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                )}
 
-                {/* MY PROFILE VIEW (US 1.3 & US 1.4) */}
-                {currentView === 'PROFILE' && (
-                    <section className="pets-panel-card profile-panel" style={{ marginTop: '28px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-                        <div className="panel-card-header" style={{ marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
-                                    👤
-                                </div>
-                                <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>My Pet Owner Profile</h2>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>Manage your personal details, contact info, and account password.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            if (newPassword) {
-                                const passErr = validatePasswordComplexity(newPassword);
-                                if (passErr) {
-                                    showToast(`❌ ${passErr}`, 'error');
-                                    return;
-                                }
-                                if (newPassword !== confirmPassword) {
-                                    showToast('❌ Passwords do not match.', 'error');
-                                    return;
-                                }
-                            }
-                            showToast('Profile details updated successfully!', 'success');
-                            setNewPassword('');
-                            setConfirmPassword('');
-                            setCurrentView('OVERVIEW');
-                        }} className="profile-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                                <div className="form-group">
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Full Name *</label>
-                                    <input
-                                        type="text"
-                                        defaultValue={currentUser?.name || 'Dinethmi Peiris'}
-                                        required
-                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Email Address (Account Identifier)</label>
-                                    <input
-                                        type="email"
-                                        defaultValue={currentUser?.email || 'thinupeiris04@gmail.com'}
-                                        disabled
-                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontSize: '0.92rem' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                                <div className="form-group">
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Phone Number *</label>
-                                    <input
-                                        type="tel"
-                                        defaultValue="0771234567"
-                                        placeholder="e.g. 0771234567"
-                                        required
-                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Residential Address</label>
-                                    <input
-                                        type="text"
-                                        defaultValue="No. 45, Rajagiriya Road, Colombo"
-                                        placeholder="e.g. 123 Main St, City"
-                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Password Change Box */}
-                            <div className="password-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '16px', marginTop: '10px' }}>
-                                <h4 style={{ margin: '0 0 6px', fontSize: '0.95rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>🔒 Account Security & Password</h4>
-                                <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#64748b' }}>Update your secret password to keep your pet records secure.</p>
-
-                                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                                    <div className="form-group">
-                                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>New Password</label>
-                                        <input
-                                            type="password"
-                                            placeholder="Enter new secret password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Confirm New Password</label>
-                                        <input
-                                            type="password"
-                                            placeholder="Confirm new password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
-                                        />
-                                    </div>
-                                </div>
-                                {newPassword && (
-                                    <div style={{ marginTop: '12px', padding: '10px 12px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.78rem', color: '#475569' }}>
-                                        <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1e293b' }}>Password Requirements:</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '4px' }}>
-                                            <span style={{ color: newPassword.length >= 6 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                {newPassword.length >= 6 ? '✓' : '✗'} Min. 6 characters
-                                            </span>
-                                            <span style={{ color: /[A-Z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                {/[A-Z]/.test(newPassword) ? '✓' : '✗'} Uppercase (A-Z)
-                                            </span>
-                                            <span style={{ color: /[a-z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                {/[a-z]/.test(newPassword) ? '✓' : '✗'} Lowercase (a-z)
-                                            </span>
-                                            <span style={{ color: /[0-9]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                {/[0-9]/.test(newPassword) ? '✓' : '✗'} Number (0-9)
-                                            </span>
-                                            <span style={{ color: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '✗'} Special character (!@#...)
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="form-actions-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setCurrentView('OVERVIEW')} style={{ padding: '10px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: '#10b981', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}>Save Profile Changes</button>
-                            </div>
-                        </form>
-
-                        {/* DANGER ZONE (ACCOUNT DELETION) */}
-                        <div className="danger-zone-card" style={{ marginTop: '32px', border: '1px solid #fecaca', background: '#fff5f5', padding: '24px', borderRadius: '20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                                <div>
-                                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        ⚠️ Danger Zone — Permanently Delete Account
-                                    </h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#7f1d1d' }}>
-                                        Once deleted, all registered pet profiles, medical histories, and consultation appointments will be permanently removed.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setConfirmDeleteText('');
-                                        setDeleteModalOpen(true);
-                                    }}
-                                    style={{
-                                        padding: '10px 20px',
-                                        borderRadius: '12px',
-                                        border: '1px solid #dc2626',
-                                        background: '#dc2626',
-                                        color: '#ffffff',
-                                        fontWeight: 700,
-                                        fontSize: '0.88rem',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#b91c1c'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = '#dc2626'}
-                                >
-                                    🗑️ Delete My Account
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-                )}
-
-                {/* DOCTOR PROFILE MODAL */}
-                {selectedDoctorForModal && (
-                    <div className="modal-overlay" onClick={() => setSelectedDoctorForModal(null)}>
-                        <div className="modal-content doctor-profile-modal" onClick={(e) => e.stopPropagation()}>
-                            <button className="modal-close-btn" onClick={() => setSelectedDoctorForModal(null)}>✕</button>
-                            <div className="doc-modal-header">
-                                <div className="doc-modal-avatar-box">🩺</div>
-                                <div>
-                                    {(() => {
-                                        const isOff = isDoctorOffDuty(selectedDoctorForModal);
-                                        const isBusy = selectedDoctorForModal.status === 'BUSY';
-                                        return (
-                                            <span className={`doc-status-badge ${isOff ? 'unavailable' : isBusy ? 'busy' : 'available'}`} style={isOff ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' } : isBusy ? { background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' } : {}}>
-                                                {isOff && '🔴 Off Duty'}
-                                                {!isOff && isBusy && '🟡 In Consultation / Busy'}
-                                                {!isOff && !isBusy && '🟢 On Duty'}
-                                            </span>
-                                        );
-                                    })()}
-                                    <h2>{selectedDoctorForModal.name}</h2>
-                                    <p className="modal-doc-spec">{selectedDoctorForModal.specialization}</p>
-                                    <span className="modal-doc-exp">{selectedDoctorForModal.experience}</span>
-                                </div>
-                            </div>
-
-                            <div className="doc-modal-body">
-                                <h4>About Doctor</h4>
-                                <p>{selectedDoctorForModal.bio}</p>
-
-                                <h4>Available Hours</h4>
-                                <p className="hours-text">🕒 {selectedDoctorForModal.availableHours}</p>
-
-                                <h4>Services Offered</h4>
-                                <div className="doc-services-tags">
-                                    {selectedDoctorForModal.services.map((s, i) => (
-                                        <span key={i} className="service-tag">{s}</span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="doc-modal-footer">
-                                <button className="btn-cancel" onClick={() => setSelectedDoctorForModal(null)}>Close</button>
-                                {isDoctorOffDuty(selectedDoctorForModal) ? (
-                                    <button className="btn-book-now disabled" disabled style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8' }}>
-                                        🔴 Doctor Off Duty
-                                    </button>
-                                ) : (
-                                    <button className="btn-book-now" onClick={() => {
-                                        const d = selectedDoctorForModal;
-                                        setSelectedDoctorForModal(null);
-                                        openBookingModal(d);
-                                    }}>
-                                        Book Visit with {selectedDoctorForModal.name} →
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* MULTI-STEP APPOINTMENT BOOKING MODAL */}
-                {bookingModalOpen && (
-                    <div className="modal-overlay">
-                        <div className="modal-content booking-wizard-modal">
-                            <div className="wizard-header">
-                                <div>
-                                    <h2>Book Hospital Appointment</h2>
-                                    <p>Step {bookingStep} of 3 — Complete your consultation request details.</p>
-                                </div>
-                                <button className="modal-close-btn" onClick={() => setBookingModalOpen(false)}>✕</button>
-                            </div>
-
-                            {/* Stepper Progress Bar */}
-                            <div className="stepper-progress">
-                                {[1, 2, 3].map((s) => (
-                                    <div key={s} className={`step-dot${bookingStep >= s ? ' active' : ''}${bookingStep === s ? ' current' : ''}`}>
-                                        {s}
-                                    </div>
-                                ))}
-                            </div>
-
-                            <form onSubmit={handleBookingSubmit} className="wizard-form-body">
-                                {/* STEP 1: DOCTOR, DATE & TIME SLOT PICKER */}
-                                {bookingStep === 1 && (() => {
-                                    const selectedDoc = doctors.find(d => d.id === bookingData.doctorId || d.name === bookingData.doctorName || (d.email && d.email === bookingData.doctorId));
-
-                                    let isDocDeactivated = selectedDoc ? (selectedDoc.status === 'INACTIVE' || selectedDoc.status === 'DEACTIVATED') : false;
-
-                                    const now = new Date();
-                                    const yyyy = now.getFullYear();
-                                    const mm = String(now.getMonth() + 1).padStart(2, '0');
-                                    const dd = String(now.getDate()).padStart(2, '0');
-                                    const todayStr = `${yyyy}-${mm}-${dd}`;
-
-                                    const minDateAllowed = todayStr;
-                                    const isDateToday = bookingData.date === todayStr;
-
-                                    const doctorWorkingDaysMap = JSON.parse(localStorage.getItem('vhms_doctor_working_days') || '{}');
-                                    let activeWorkingDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                                    if (selectedDoc) {
-                                        const keysToTry = [
-                                            selectedDoc.id,
-                                            String(selectedDoc.id),
-                                            selectedDoc.email,
-                                            selectedDoc.email ? selectedDoc.email.toLowerCase() : null,
-                                            selectedDoc.name,
-                                            selectedDoc.name ? selectedDoc.name.toLowerCase() : null,
-                                            bookingData.doctorId,
-                                            bookingData.doctorName
-                                        ].filter(Boolean);
-
-                                        for (const key of keysToTry) {
-                                            if (doctorWorkingDaysMap[key]) {
-                                                activeWorkingDays = doctorWorkingDaysMap[key];
-                                                break;
-                                            }
-                                        }
-                                        if (activeWorkingDays.length === 7) {
-                                            const matchedKey = Object.keys(doctorWorkingDaysMap).find(k =>
-                                                (selectedDoc.name && (k.toLowerCase().includes(selectedDoc.name.toLowerCase()) || selectedDoc.name.toLowerCase().includes(k.toLowerCase()))) ||
-                                                (selectedDoc.email && (k.toLowerCase().includes(selectedDoc.email.toLowerCase()) || selectedDoc.email.toLowerCase().includes(k.toLowerCase())))
-                                            );
-                                            if (matchedKey) activeWorkingDays = doctorWorkingDaysMap[matchedKey];
-                                        }
-                                    }
-
-                                    const dateParts = (bookingData.date || '').split('-').map(Number);
-                                    const dateObj = dateParts.length === 3 ? new Date(dateParts[0], dateParts[1] - 1, dateParts[2]) : null;
-                                    const dayNamesList = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                                    const dayName = dateObj ? dayNamesList[dateObj.getDay()] : null;
-
-                                    const isOffDutyDay = Boolean(dayName && !activeWorkingDays.some(d => String(d).toLowerCase().startsWith(dayName.toLowerCase())));
-                                    const isDateSelectionValid = Boolean(bookingData.date && bookingData.date >= minDateAllowed && !isOffDutyDay && !isDocDeactivated);
-
-                                    return (
-                                        <div className="wizard-step-panel">
-                                            <h3>Step 1: Select Date & Time Slot</h3>
-
-                                            <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', fontWeight: 800, fontSize: '0.9rem' }}>
-                                                    DOC
-                                                </div>
-                                                <div>
-                                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Consultant</span>
-                                                    <strong style={{ display: 'block', color: '#0f172a', fontSize: '1.05rem', marginTop: '2px' }}>{bookingData.doctorName || (selectedDoc && selectedDoc.name) || 'Not Selected'}</strong>
-                                                </div>
-                                            </div>
-
-
-
-                                            <div className="form-group">
-                                                <label>Preferred Appointment Date *</label>
-                                                <input
-                                                    type="date"
-                                                    value={bookingData.date}
-                                                    min={minDateAllowed}
-                                                    onChange={(e) => setBookingData({ ...bookingData, date: e.target.value, timeSlot: '' })}
-                                                    required
-                                                    disabled={!bookingData.doctorId}
-                                                />
-                                            </div>
-
-                                            {bookingData.doctorId && bookingData.date && (
-                                                <div className="form-group">
-                                                    <label>Available Consultation Time Slots *</label>
-                                                    <div className="time-slots-grid">
-                                                        {(() => {
-                                                            const selectedDocObj = doctors.find(d => d.id === bookingData.doctorId || d.name === bookingData.doctorName || d.email === bookingData.doctorId);
-                                                            const isChanna = selectedDocObj && (
-                                                                (selectedDocObj.name && selectedDocObj.name.toLowerCase().includes('channa')) ||
-                                                                (selectedDocObj.email && selectedDocObj.email.toLowerCase().includes('channa'))
-                                                            );
-                                                            const isNimal = selectedDocObj && (
-                                                                (selectedDocObj.name && selectedDocObj.name.toLowerCase().includes('nimal')) ||
-                                                                (selectedDocObj.email && selectedDocObj.email.toLowerCase().includes('nimal'))
-                                                            );
-
-                                                            const shift1 = ['11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM'];
-                                                            const shift2 = ['03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'];
-
-                                                            const findDoctorSchedule = (docId, dateStr) => {
-                                                                if (!docId || !dateStr || !globalSchedules) return undefined;
-                                                                const keysToTry = [
-                                                                    docId,
-                                                                    String(docId),
-                                                                    selectedDocObj?.id,
-                                                                    selectedDocObj?.id ? String(selectedDocObj.id) : null,
-                                                                    selectedDocObj?.email,
-                                                                    selectedDocObj?.email ? selectedDocObj.email.toLowerCase() : null,
-                                                                    selectedDocObj?.name
-                                                                ].filter(Boolean);
-
-                                                                for (const key of keysToTry) {
-                                                                    if (globalSchedules[key] && globalSchedules[key][dateStr] !== undefined) {
-                                                                        return globalSchedules[key][dateStr];
-                                                                    }
-                                                                }
-                                                                return undefined;
-                                                            };
-                                                            const rawDaySched = findDoctorSchedule(bookingData.doctorId, bookingData.date);
-                                                            const hasExplicitSched = rawDaySched !== undefined;
-
-                                                            const defaultTimes = (isChanna || isNimal) ? shift1 : [...shift1, ...shift2];
-
-                                                            let slotsToRender = isOffDutyDay
-                                                                ? []
-                                                                : (hasExplicitSched
-                                                                    ? rawDaySched
-                                                                    : defaultTimes.map(t => ({ time: t, booked: false })));
-
-                                                            if ((isChanna || isNimal) && !isOffDutyDay && slotsToRender.length > 0) {
-                                                                slotsToRender = slotsToRender.filter(s => shift1.includes(typeof s === 'string' ? s : s.time));
-                                                            }
-
-                                                            const checkPastSlot = (timeStr, dateStr) => {
-                                                                if (!dateStr) return false;
-                                                                const now = new Date();
-                                                                const yyyy = now.getFullYear();
-                                                                const mm = String(now.getMonth() + 1).padStart(2, '0');
-                                                                const dd = String(now.getDate()).padStart(2, '0');
-                                                                const todayStrFormatted = `${yyyy}-${mm}-${dd}`;
-                                                                if (dateStr !== todayStrFormatted) return false;
-
-                                                                const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-                                                                if (!match) return false;
-                                                                let [_, hStr, mStr, period] = match;
-                                                                let hours = parseInt(hStr, 10);
-                                                                const minutes = parseInt(mStr, 10);
-                                                                if (period) {
-                                                                    const p = period.toUpperCase();
-                                                                    if (p === 'PM' && hours < 12) hours += 12;
-                                                                    if (p === 'AM' && hours === 12) hours = 0;
-                                                                }
-                                                                const curH = now.getHours();
-                                                                const curM = now.getMinutes();
-                                                                if (hours < curH) return true;
-                                                                if (hours === curH && minutes <= curM) return true;
-                                                                return false;
-                                                            };
-
-                                                            if (slotsToRender.length === 0) {
-                                                                return (
-                                                                    <p style={{ gridColumn: '1 / -1', width: '100%', color: '#dc2626', fontWeight: 600, fontSize: '0.88rem', margin: '6px 0', background: '#fef2f2', padding: '12px 16px', borderRadius: '10px', border: '1px solid #fca5a5' }}>
-                                                                        ⚠️ Doctor is <strong>Off Duty</strong> on {dayName ? `${dayName}s` : 'this day'}. Working Duty Days: <strong>{activeWorkingDays.join(', ')}</strong>.
-                                                                    </p>
-                                                                );
-                                                            }
-
-                                                            if (!bookingData.timeSlot && slotsToRender.length > 0) {
-                                                                const firstValid = slotsToRender.find(s => {
-                                                                    const isB = typeof s === 'object' ? s.booked : false;
-                                                                    const slotTime = typeof s === 'object' ? s.time : s;
-                                                                    const isP = checkPastSlot(slotTime, bookingData.date);
-                                                                    return !isB && !isP;
-                                                                });
-                                                                if (firstValid) {
-                                                                    const slotTime = typeof firstValid === 'object' ? firstValid.time : firstValid;
-                                                                    setTimeout(() => {
-                                                                        setBookingData(prev => prev.timeSlot ? prev : { ...prev, timeSlot: slotTime });
-                                                                    }, 0);
-                                                                }
-                                                            }
-
-                                                            return slotsToRender.map((slotData) => {
-                                                                const isBooked = typeof slotData === 'object' ? slotData.booked : false;
-                                                                const slotTime = typeof slotData === 'object' ? slotData.time : slotData;
-                                                                const isPast = checkPastSlot(slotTime, bookingData.date);
-                                                                const isDisabled = isBooked || isPast;
-
-                                                                return (
-                                                                    <button
-                                                                        key={slotTime}
-                                                                        type="button"
-                                                                        className={`time-slot-btn${bookingData.timeSlot === slotTime ? ' selected' : ''}`}
-                                                                        onClick={() => !isDisabled && setBookingData({ ...bookingData, timeSlot: slotTime })}
-                                                                        disabled={isDisabled}
-                                                                        style={isDisabled ? { opacity: 0.45, cursor: 'not-allowed', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #cbd5e1' } : {}}
-                                                                    >
-                                                                        {slotTime}{isBooked ? ' (Booked)' : isPast ? ' (Passed)' : ''}
-                                                                    </button>
-                                                                );
-                                                            });
-                                                        })()}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="wizard-footer">
-                                                <button type="button" className="btn-cancel" onClick={() => setBookingModalOpen(false)}>Cancel</button>
-                                                <button
-                                                    type="button"
-                                                    className="btn-save"
-                                                    onClick={() => setBookingStep(2)}
-                                                    disabled={!bookingData.doctorId || !isDateSelectionValid || !bookingData.timeSlot || isOffDutyDay}
-                                                    style={(!bookingData.doctorId || !isDateSelectionValid || !bookingData.timeSlot || isOffDutyDay) ? { opacity: 0.5, cursor: 'not-allowed', background: '#94a3b8' } : {}}
-                                                >
-                                                    Next: Select Pet & Service →
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-
-                                {/* STEP 2: PET & SERVICE DETAILS */}
-                                {bookingStep === 2 && (
-                                    <div className="wizard-step-panel">
-                                        <h3>Step 2: Select Pet & Service Details</h3>
-
+                                    <div className="form-grid-2">
                                         <div className="form-group">
-                                            <label>Select Pet Profile *</label>
-                                            {pets.length === 0 ? (
-                                                <p className="no-pets-warn">⚠️ You have no registered pets. Please register a pet profile first!</p>
-                                            ) : (
-                                                <select
-                                                    value={bookingData.petId}
-                                                    onChange={(e) => setBookingData({ ...bookingData, petId: e.target.value })}
-                                                    required
-                                                >
-                                                    <option value="" disabled>-- Select your pet --</option>
-                                                    {pets.map((p) => (
-                                                        <option key={p.id} value={p.id}>
-                                                            🐾 {p.name} ({p.species} - {p.breed})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>Appointment / Service Type *</label>
-                                            <select
-                                                value={bookingData.serviceType}
-                                                onChange={(e) => setBookingData({ ...bookingData, serviceType: e.target.value })}
-                                            >
-                                                <option value="General Consultation">General Wellness Consultation 🩺</option>
-                                                <option value="Vaccination & Immunization">Vaccination & Immunization 💉</option>
-                                                <option value="Veterinary Surgery">Veterinary Surgery & Procedures ✂️</option>
-                                                <option value="Ophthalmology & Eye Care">Ophthalmology & Eye Care 👁️</option>
-                                                <option value="Emergency & Critical Care">Emergency & Critical Care 🚑</option>
+                                            <label>Species *</label>
+                                            <select value={species} onChange={(e) => setSpecies(e.target.value)}>
+                                                <option value="Dog">Dog 🐕</option>
+                                                <option value="Cat">Cat 🐈</option>
+                                                <option value="Rabbit">Rabbit 🐇</option>
+                                                <option value="Bird">Bird 🦜</option>
+                                                <option value="Other">Other 🐾</option>
                                             </select>
                                         </div>
 
                                         <div className="form-group">
-                                            <label>Additional Booking Notes / Medical Context (Optional)</label>
-                                            <textarea
-                                                placeholder="Specify any dietary habits, recent symptoms, or special care requirements..."
-                                                value={bookingData.notes}
-                                                onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
-                                                rows={3}
+                                            <label>Breed</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Golden Retriever"
+                                                value={breed}
+                                                onChange={(e) => {
+                                                    setBreed(e.target.value);
+                                                    if (petFormErrors.breed) setPetFormErrors(prev => ({ ...prev, breed: null }));
+                                                }}
+                                                style={petFormErrors.breed ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
+                                            />
+                                            {petFormErrors.breed && (
+                                                <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
+                                                    ⚠️ {petFormErrors.breed}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-grid-4">
+                                        <div className="form-group">
+                                            <label>Date of Birth *</label>
+                                            <input
+                                                type="date"
+                                                value={dateOfBirth}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                onChange={handleDobChange}
+                                                style={petFormErrors.dateOfBirth ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
+                                                required
+                                            />
+                                            {petFormErrors.dateOfBirth && (
+                                                <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
+                                                    ⚠️ {petFormErrors.dateOfBirth}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label>Age (Years / Months) *</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Auto-calculated (e.g. 4 Months, 2 Years)"
+                                                value={age}
+                                                onChange={(e) => setAge(e.target.value)}
+                                                required
                                             />
                                         </div>
 
-                                        <div className="wizard-footer">
-                                            <button type="button" className="btn-cancel" onClick={() => setBookingStep(1)}>← Back</button>
-                                            <button
-                                                type="button"
-                                                className="btn-save"
-                                                disabled={pets.length === 0}
-                                                onClick={() => setBookingStep(3)}
-                                            >
-                                                Next: Review Booking →
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* STEP 3: REVIEW & SUBMIT */}
-                                {bookingStep === 3 && (
-                                    <div className="wizard-step-panel">
-                                        <h3>Step 3: Review & Confirm Booking Request</h3>
-
-                                        <div className="booking-summary-card">
-                                            <div className="summary-row">
-                                                <strong>Date & Time Slot:</strong>
-                                                <span>📅 {bookingData.date} at {bookingData.timeSlot}</span>
-                                            </div>
-                                            <div className="summary-row">
-                                                <strong>Pet Profile:</strong>
-                                                <span>
-                                                    🐾 {pets.find(p => p.id === bookingData.petId)?.name || 'Selected Pet'}
+                                        <div className="form-group">
+                                            <label>Weight (kg) *</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                placeholder="e.g. 14.5"
+                                                value={weight}
+                                                onChange={(e) => {
+                                                    setWeight(e.target.value);
+                                                    if (petFormErrors.weight) setPetFormErrors(prev => ({ ...prev, weight: null }));
+                                                }}
+                                                style={petFormErrors.weight ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
+                                                required
+                                            />
+                                            {petFormErrors.weight && (
+                                                <span style={{ color: '#ef4444', fontSize: '0.82rem', marginTop: '4px', fontWeight: 600, display: 'block' }}>
+                                                    ⚠️ {petFormErrors.weight}
                                                 </span>
-                                            </div>
-                                            <div className="summary-row">
-                                                <strong>Requested Service:</strong>
-                                                <span>{bookingData.serviceType}</span>
-                                            </div>
-                                            <div className="summary-row">
-                                                <strong>Assigned Doctor:</strong>
-                                                <span>🩺 {bookingData.doctorName || 'Not Selected'}</span>
-                                            </div>
-                                            {bookingData.notes && (
-                                                <div className="summary-row">
-                                                    <strong>Notes:</strong>
-                                                    <span>{bookingData.notes}</span>
-                                                </div>
                                             )}
                                         </div>
 
-                                        <div className="wizard-footer">
-                                            <button type="button" className="btn-cancel" onClick={() => setBookingStep(2)}>← Back to Edit</button>
-                                            <button type="submit" className="btn-save">Submit Appointment Request</button>
+                                        <div className="form-group">
+                                            <label>Gender *</label>
+                                            <select value={gender} onChange={(e) => setGender(e.target.value)}>
+                                                <option value="Male">Male ♂</option>
+                                                <option value="Female">Female ♀</option>
+                                            </select>
                                         </div>
                                     </div>
-                                )}
-                            </form>
-                        </div>
-                    </div>
-                )}
-                {/* DELETE ACCOUNT CONFIRMATION MODAL */}
-                {deleteModalOpen && (
-                    <div className="modal-overlay" onClick={() => setDeleteModalOpen(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', background: '#ffffff', borderRadius: '24px', padding: '28px', border: '1px solid #fecaca' }}>
-                            <button className="modal-close-btn" onClick={() => setDeleteModalOpen(false)}>✕</button>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-                                    ⚠️
-                                </div>
-                                <div>
-                                    <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.25rem' }}>Delete Account Permanently?</h3>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#7f1d1d' }}>This action cannot be undone.</p>
-                                </div>
-                            </div>
 
-                            <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: 1.5, marginBottom: '16px' }}>
-                                Are you sure you want to delete your Pet Owner account (<strong>{currentUser?.email}</strong>)? All registered pet data and appointment schedules will be erased immediately.
-                            </p>
+                                    <div className="form-group">
+                                        <label>Upload Pet Photo (Optional)</label>
+                                        <div className="photo-upload-container">
+                                            <input
+                                                type="file"
+                                                id="pet-photo-file"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                style={{ display: 'none' }}
+                                            />
 
-                            <div className="form-group" style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                    Type <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#dc2626' }}>DELETE</code> to confirm:
-                                </label>
-                                <input
-                                    type="text"
-                                    value={confirmDeleteText}
-                                    onChange={(e) => setConfirmDeleteText(e.target.value)}
-                                    placeholder="Type DELETE here"
-                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontWeight: 'bold' }}
-                                />
-                            </div>
-
-                            <div className="form-actions-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setDeleteModalOpen(false)} style={{ padding: '10px 18px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                <button
-                                    type="button"
-                                    onClick={handleConfirmDeleteAccount}
-                                    style={{
-                                        padding: '10px 22px',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        background: confirmDeleteText.trim().toUpperCase() === 'DELETE' ? '#dc2626' : '#fca5a5',
-                                        color: '#ffffff',
-                                        fontWeight: 700,
-                                        cursor: confirmDeleteText.trim().toUpperCase() === 'DELETE' ? 'pointer' : 'not-allowed',
-                                    }}
-                                    disabled={confirmDeleteText.trim().toUpperCase() !== 'DELETE'}
-                                >
-                                    Confirm Account Deletion
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* DEDICATED SUBPAGE: CENTRALIZED NOTIFICATION CENTER (US 1.27, US 1.28, US 1.29) */}
-                {currentView === 'NOTIFICATIONS' && (
-                    <section className="dedicated-subpage-section">
-                        {/* Banner */}
-                        <div className="notif-center-banner">
-                            <div className="notif-banner-text">
-                                <h1>Centralized Notification Center 🔔</h1>
-                                <p>Stay updated on appointment approvals, medical reminders, and hospital service updates.</p>
-                            </div>
-                            <div className="notif-banner-actions">
-                                {unreadNotifCount > 0 && (
-                                    <button
-                                        type="button"
-                                        className="btn-banner-action"
-                                        onClick={handleMarkAllAsRead}
-                                    >
-                                        ✓ Mark All as Read ({unreadNotifCount})
-                                    </button>
-                                )}
-                                {notifications.some(n => n.read) && (
-                                    <button
-                                        type="button"
-                                        className="btn-banner-action danger"
-                                        onClick={handleClearReadNotifications}
-                                    >
-                                        🗑️ Clear Read
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Toolbar with Filters & Search */}
-                        <div className="notif-toolbar-card">
-                            <div className="notif-filter-pills">
-                                <button
-                                    type="button"
-                                    className={`filter-pill-btn ${notifFilter === 'ALL' ? 'active' : ''}`}
-                                    onClick={() => setNotifFilter('ALL')}
-                                >
-                                    <Bell size={15} />
-                                    <span>All</span>
-                                    <span className="pill-count-tag">{notifications.length}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={`filter-pill-btn ${notifFilter === 'UNREAD' ? 'active' : ''}`}
-                                    onClick={() => setNotifFilter('UNREAD')}
-                                >
-                                    <span className="pill-unread-dot"></span>
-                                    <span>Unread</span>
-                                    <span className="pill-count-tag unread-tag">{unreadNotifCount}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={`filter-pill-btn ${notifFilter === 'APPOINTMENTS' ? 'active' : ''}`}
-                                    onClick={() => setNotifFilter('APPOINTMENTS')}
-                                >
-                                    <Calendar size={15} />
-                                    <span>Appointments</span>
-                                    <span className="pill-count-tag">{notifications.filter(n => n.type === 'APPOINTMENT').length}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={`filter-pill-btn ${notifFilter === 'VACCINES' ? 'active' : ''}`}
-                                    onClick={() => setNotifFilter('VACCINES')}
-                                >
-                                    <ShieldCheck size={15} />
-                                    <span>Vaccines & Care</span>
-                                    <span className="pill-count-tag">{notifications.filter(n => n.type === 'VACCINE').length}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={`filter-pill-btn ${notifFilter === 'SYSTEM' ? 'active' : ''}`}
-                                    onClick={() => setNotifFilter('SYSTEM')}
-                                >
-                                    <Info size={15} />
-                                    <span>System Alerts</span>
-                                    <span className="pill-count-tag">{notifications.filter(n => n.type === 'SYSTEM' || n.type === 'PET_PROFILE').length}</span>
-                                </button>
-                            </div>
-
-                            <div className="notif-search-wrap">
-                                <Search size={16} className="notif-search-icon" color="#10b981" />
-                                <input
-                                    type="text"
-                                    className="notif-search-input"
-                                    placeholder="Search notifications..."
-                                    value={notifSearch}
-                                    onChange={(e) => setNotifSearch(e.target.value)}
-                                />
-                                {notifSearch && (
-                                    <button type="button" className="btn-clear-search" onClick={() => setNotifSearch('')}>
-                                        <X size={14} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Notification Cards List */}
-                        <div className="notif-cards-list">
-                            {(() => {
-                                const filtered = notifications.filter(n => {
-                                    const matchesFilter =
-                                        notifFilter === 'ALL' ? true :
-                                            notifFilter === 'UNREAD' ? !n.read :
-                                                notifFilter === 'APPOINTMENTS' ? n.type === 'APPOINTMENT' :
-                                                    notifFilter === 'VACCINES' ? n.type === 'VACCINE' :
-                                                        (n.type === 'SYSTEM' || n.type === 'PET_PROFILE');
-
-                                    const query = notifSearch.toLowerCase().trim();
-                                    const matchesSearch = !query ||
-                                        (n.title && n.title.toLowerCase().includes(query)) ||
-                                        (n.message && n.message.toLowerCase().includes(query));
-
-                                    return matchesFilter && matchesSearch;
-                                });
-
-                                if (filtered.length === 0) {
-                                    return (
-                                        <div className="empty-pets-card" style={{ background: '#ffffff', borderRadius: '24px', padding: '48px 24px', textAlign: 'center' }}>
-                                            <div className="empty-emoji">🔔</div>
-                                            <h3>No notifications found</h3>
-                                            <p>You have no {notifFilter !== 'ALL' ? notifFilter.toLowerCase() : ''} notifications matching your current filters.</p>
-                                            {notifFilter !== 'ALL' && (
-                                                <button type="button" className="btn-add-pet" onClick={() => { setNotifFilter('ALL'); setNotifSearch(''); }}>
-                                                    View All Notifications
-                                                </button>
-                                            )}
-                                        </div>
-                                    );
-                                }
-
-                                return filtered.map((n) => {
-                                    const isUnread = !n.read;
-                                    const iconEmoji = n.type === 'APPOINTMENT' ? '📅' : n.type === 'VACCINE' ? '💉' : n.type === 'PET_PROFILE' ? '🐾' : '⚙️';
-                                    const iconClass = n.type === 'APPOINTMENT' ? 'type-bg-appointment' : n.type === 'VACCINE' ? 'type-bg-vaccine' : n.type === 'PET_PROFILE' ? 'type-bg-pet' : 'type-bg-system';
-
-                                    return (
-                                        <div key={n.id} className={`notif-card-item ${isUnread ? 'unread' : ''}`}>
-                                            <div className={`notif-type-icon-box ${iconClass}`}>
-                                                {iconEmoji}
-                                            </div>
-
-                                            <div className="notif-card-body">
-                                                <div className="notif-card-header-row">
-                                                    <h4 className="notif-card-title">
-                                                        {n.title}
-                                                        {isUnread && (
-                                                            <span style={{
-                                                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                                                color: '#ffffff',
-                                                                padding: '3px 10px',
-                                                                borderRadius: '12px',
-                                                                fontSize: '0.72rem',
-                                                                fontWeight: 900,
-                                                                letterSpacing: '0.04em',
-                                                                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px'
-                                                            }}>
-                                                                ⚡ UNREAD
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <span className="notif-type-pill" style={{ background: isUnread ? '#ecfdf5' : '#f1f5f9', color: isUnread ? '#059669' : '#64748b' }}>
-                                                        {n.type}
-                                                    </span>
-                                                </div>
-
-                                                <p className="notif-card-message">{n.message}</p>
-
-                                                <div className="notif-card-meta-row">
-                                                    <span className="notif-timestamp-tag">
-                                                        🕒 {n.timestamp}
-                                                    </span>
-
-                                                    <div className="notif-actions-group">
-                                                        {/* US 1.27 Detail View Button */}
+                                            {photoUrl ? (
+                                                <div className="photo-preview-card">
+                                                    <img src={photoUrl} alt="Pet Preview" className="photo-preview-img" />
+                                                    <div className="photo-preview-actions">
+                                                        <label htmlFor="pet-photo-file" className="btn-upload-change">
+                                                            📷 Change Photo
+                                                        </label>
                                                         <button
                                                             type="button"
-                                                            className="btn-notif-action primary"
-                                                            onClick={() => {
-                                                                if (isUnread) handleMarkAsRead(n.id);
-                                                                setSelectedNotifDetail(n);
-                                                            }}
+                                                            className="btn-upload-remove"
+                                                            onClick={() => setPhotoUrl('')}
                                                         >
-                                                            👁️ View Details
-                                                        </button>
-
-                                                        {/* US 1.28 Toggle Read/Unread */}
-                                                        <button
-                                                            type="button"
-                                                            className="btn-notif-action"
-                                                            onClick={() => handleToggleReadStatus(n.id)}
-                                                        >
-                                                            {isUnread ? '✓ Mark as Read' : '↺ Mark Unread'}
-                                                        </button>
-
-                                                        {/* US 1.29 Delete Button */}
-                                                        <button
-                                                            type="button"
-                                                            className="btn-notif-action delete"
-                                                            onClick={() => handleDeleteNotification(n.id)}
-                                                            title="Delete notification"
-                                                        >
-                                                            🗑️ Delete
+                                                            ✕ Remove
                                                         </button>
                                                     </div>
                                                 </div>
+                                            ) : (
+                                                <label htmlFor="pet-photo-file" className="photo-dropzone">
+                                                    <div className="dropzone-icon">📷</div>
+                                                    <div className="dropzone-text">
+                                                        <strong>Click to upload pet photo</strong>
+                                                        <span>Supports PNG, JPG, WEBP (Max 5MB)</span>
+                                                    </div>
+                                                </label>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-actions-row">
+                                        <button type="button" className="btn-cancel" onClick={() => setCurrentView('OVERVIEW')}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="btn-save">
+                                            {editingPet ? 'Update Pet Profile' : 'Complete Registration'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* DEDICATED SUBPAGE: MY REGISTERED PETS LIST */}
+                    {currentView === 'PETS_LIST' && (
+                        <section className="dedicated-subpage-section">
+                            <div className="pets-top-bar">
+                                <div>
+                                    <h1>My Registered Pets</h1>
+                                    <p>Manage pet profiles, update medical stats, and prepare for hospital visits.</p>
+                                </div>
+                                <button className="btn-add-pet" onClick={openAddForm}>+ Register New Pet</button>
+                            </div>
+
+                            {loading ? (
+                                <div className="loading-state">Loading pet profiles...</div>
+                            ) : pets.length === 0 ? (
+                                <div className="empty-pets-card">
+                                    <div className="empty-emoji">🐶</div>
+                                    <h3>No Pet Profiles Found</h3>
+                                    <p>You haven't registered any pets yet. Click below to add your first pet!</p>
+                                    <button className="btn-add-pet-large" onClick={openAddForm}>+ Register My First Pet</button>
+                                </div>
+                            ) : (
+                                <div className="pets-grid">
+                                    {pets.map((pet) => (
+                                        <div
+                                            key={pet.id}
+                                            className="pet-card"
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={(e) => {
+                                                if (!e.target.closest('.pet-card-actions')) {
+                                                    openViewPet(pet);
+                                                }
+                                            }}
+                                        >
+                                            <div className="pet-img-wrap">
+                                                <img
+                                                    src={pet.photoUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80'}
+                                                    alt={pet.name}
+                                                    className="pet-img"
+                                                />
+                                                <span className="species-badge">{pet.species}</span>
+                                            </div>
+                                            <div className="pet-info">
+                                                <h3>{pet.name}</h3>
+                                                <div className="pet-meta-row">
+                                                    <span className="meta-item"><strong>Breed:</strong> {pet.breed}</span>
+                                                    <span className="meta-item"><strong>Age:</strong> {pet.age} yrs</span>
+                                                </div>
+                                                <div className="pet-meta-row">
+                                                    <span className="meta-item"><strong>DOB:</strong> {pet.dateOfBirth || 'N/A'}</span>
+                                                    <span className="meta-item"><strong>Weight:</strong> {pet.weight} kg</span>
+                                                </div>
+                                                <div className="pet-meta-row">
+                                                    <span className="meta-item"><strong>Gender:</strong> {pet.gender}</span>
+                                                </div>
+
+                                                <div className="pet-card-actions">
+                                                    <button className="btn-view" onClick={(e) => { e.stopPropagation(); openViewPet(pet); }}>View</button>
+                                                    <button className="btn-edit" onClick={(e) => { e.stopPropagation(); openEditForm(pet); }}>Update</button>
+                                                    <button className="btn-delete" onClick={(e) => { e.stopPropagation(); handleDeletePet(pet.id, pet.name); }}>Delete</button>
+                                                </div>
                                             </div>
                                         </div>
-                                    );
-                                });
-                            })()}
-                        </div>
-                    </section>
-                )}
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    )}
 
-                {/* NOTIFICATION DETAIL MODAL (US 1.27) */}
-                {selectedNotifDetail && (
-                    <div className="modal-overlay" onClick={() => setSelectedNotifDetail(null)}>
-                        <div className="modal-content notif-detail-modal-card" onClick={(e) => e.stopPropagation()}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className={`notif-type-icon-box ${selectedNotifDetail.type === 'APPOINTMENT' ? 'type-bg-appointment' : selectedNotifDetail.type === 'VACCINE' ? 'type-bg-vaccine' : 'type-bg-system'}`}>
-                                        {selectedNotifDetail.type === 'APPOINTMENT' ? '📅' : selectedNotifDetail.type === 'VACCINE' ? '💉' : '⚙️'}
+                    {/* DEDICATED SUBPAGE: PET PROFILE DETAILS */}
+                    {currentView === 'PET_PROFILE_DETAIL' && selectedPetDetail && (
+                        <section className="dedicated-subpage-section">
+                            <div className="pets-top-bar">
+                                <div>
+                                    <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        🐾 {selectedPetDetail.name}'s Complete Profile
+                                        <span className="species-badge" style={{ fontSize: '0.85rem' }}>{selectedPetDetail.species}</span>
+                                    </h1>
+                                    <p>Comprehensive medical, identity, and statistical record for hospital visits.</p>
+                                </div>
+                            </div>
+
+                            {/* Hero Card Banner */}
+                            <div className="pet-detail-hero-card" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)', color: '#ffffff', borderRadius: '24px', padding: '32px', display: 'flex', gap: '32px', alignItems: 'center', boxShadow: '0 20px 40px rgba(4, 120, 87, 0.25)', marginBottom: '24px' }}>
+                                <img
+                                    src={selectedPetDetail.photoUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80'}
+                                    alt={selectedPetDetail.name}
+                                    style={{ width: '130px', height: '130px', borderRadius: '20px', objectFit: 'cover', border: '4px solid rgba(255, 255, 255, 0.2)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                        <h2 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800 }}>{selectedPetDetail.name}</h2>
+                                        <span style={{ background: 'rgba(255,255,255,0.2)', color: '#ffffff', padding: '4px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, backdropFilter: 'blur(4px)' }}>
+                                            {selectedPetDetail.gender}
+                                        </span>
+                                        <span style={{ background: 'rgba(16, 185, 129, 0.3)', color: '#a7f3d0', padding: '4px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, backdropFilter: 'blur(4px)' }}>
+                                            {selectedPetDetail.species}
+                                        </span>
+                                    </div>
+                                    <p style={{ margin: 0, color: '#a7f3d0', fontSize: '1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>🟢 Active Hospital Patient Profile</span>
+                                        <span>•</span>
+                                        <span>Verified Ownership Record</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Detailed Grid Stats */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                                {/* Box 1: Core Identification */}
+                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+                                    <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        🆔 Core Identification
+                                    </h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.95rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Pet Full Name:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.name}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Species / Category:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.species}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Breed:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.breed || 'Not Specified'}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: '#64748b' }}>Gender / Sex:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.gender}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Box 2: Medical & Vital Stats */}
+                                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+                                    <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        📊 Vital Metrics & Age
+                                    </h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.95rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Date of Birth (DOB):</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.dateOfBirth || 'N/A'}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Calculated Age:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.age} years</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #f1f5f9', pb: '8px' }}>
+                                            <span style={{ color: '#64748b' }}>Current Weight:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.weight} kg</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: '#64748b' }}>Gender:</span>
+                                            <strong style={{ color: '#0f172a' }}>{selectedPetDetail.gender || 'Not Specified'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {/* Bottom Quick Action Box */}
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                <div>
+                                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#0f172a' }}>Need to Schedule a Visit for {selectedPetDetail.name}?</h4>
+                                    <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>Connect with specialist doctors and request consultation slots instantly.</p>
+                                </div>
+                                <button className="btn-add-pet" onClick={() => setCurrentView('FIND_DOCTOR')}>
+                                    📅 Book Visit for {selectedPetDetail.name} →
+                                </button>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* DEDICATED SUBPAGE: FIND A DOCTOR & BOOK */}
+                    {currentView === 'FIND_DOCTOR' && (
+                        <section className="dedicated-subpage-section">
+                            <div className="subpage-header-box">
+                                <div>
+                                    <h2>Find a Doctor & Book Visit</h2>
+                                </div>
+                            </div>
+
+                            {/* Modernized Search & Specialization Filter Bar */}
+                            <div className="doctor-search-bar-card">
+                                <div className="search-input-wrap">
+                                    <span className="search-icon">🔍</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Search doctor by name, specialization, or clinical service..."
+                                        value={doctorSearch}
+                                        onChange={(e) => setDoctorSearch(e.target.value)}
+                                        className="doctor-search-input"
+                                    />
+                                    {doctorSearch && (
+                                        <button className="btn-clear-search" onClick={() => setDoctorSearch('')}>✕</button>
+                                    )}
+                                </div>
+
+                                <div className="spec-filter-pills" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <span className="filter-label">Filter Specialization:</span>
+                                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                                        <select
+                                            className="spec-select-dropdown"
+                                            value={specFilter}
+                                            onChange={(e) => setSpecFilter(e.target.value)}
+                                        >
+                                            <option value="ALL">🩺 All Specialists</option>
+                                            <option value="OPD">🩺 OPD Medicine (2)</option>
+                                            <option value="Surgery">⚕️ Surgery & Trauma (2)</option>
+                                            <option value="Eye">👁️ Ophthalmology / Eyes (1)</option>
+                                        </select>
+                                        <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b', fontSize: '0.75rem', fontWeight: 800 }}>
+                                            ▼
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Doctors Grid */}
+                            <div className="doctors-grid">
+                                {filteredDoctors.length === 0 ? (
+                                    <div className="empty-pets-card">
+                                        <div className="empty-emoji">🔍</div>
+                                        <h3>No Doctors Found</h3>
+                                        <p>No veterinarian matching your search criteria was found.</p>
+                                    </div>
+                                ) : (
+                                    filteredDoctors.map((doc) => (
+                                        <div key={doc.id} className="pet-doctor-card">
+                                            <div className="doc-card-header">
+                                                <div className="doc-avatar-box" style={{ overflow: 'hidden', background: '#ecfdf5' }}>
+                                                    {doc.photoUrl
+                                                        ? <img src={doc.photoUrl} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                                        : <span style={{ fontSize: '1.8rem' }}>🩺</span>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    {(() => {
+                                                        const isOff = isDoctorOffDuty(doc);
+                                                        const isBusy = doc.status === 'BUSY';
+                                                        return (
+                                                            <span className={`doc-status-badge ${isOff ? 'unavailable' : isBusy ? 'busy' : 'available'}`} style={isOff ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' } : isBusy ? { background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' } : {}}>
+                                                                {isOff && '🔴 Off Duty'}
+                                                                {!isOff && isBusy && '🟡 In Consultation / Busy'}
+                                                                {!isOff && !isBusy && '🟢 On Duty'}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                    <h3 className="doc-name">{doc.name}</h3>
+                                                    <span className="doc-spec">{doc.specialization}</span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ margin: '12px 0', fontSize: '0.84rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span>🕒</span>
+                                                <strong>Hours:</strong> {doc.availableHours || 'Mon - Sun | 11:00 AM - 02:00 PM'}
+                                            </div>
+
+                                            <div className="doc-services-tags" style={{ marginBottom: '16px' }}>
+                                                {(doc.services || []).slice(0, 3).map((srv, i) => (
+                                                    <span key={i} className="service-tag">{srv}</span>
+                                                ))}
+                                                {(doc.services || []).length > 3 && (
+                                                    <span className="service-tag" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                                                        +{(doc.services || []).length - 3} more
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="doc-card-footer">
+                                                <button className="btn-view-profile" onClick={() => openDoctorProfile(doc)}>
+                                                    View Doctor Profile
+                                                </button>
+                                                <button className="btn-book-now" onClick={() => openBookingModal(doc)}>
+                                                    {isDoctorWorkingToday(doc) ? 'Book Visit →' : 'Book Future Date →'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* DEDICATED SUBPAGE: DOCTOR PROFILE */}
+                    {currentView === 'DOCTOR_PROFILE' && selectedDoctorDetail && (() => {
+                        const doc = selectedDoctorDetail;
+                        const isUnavailable = isDoctorOffDuty(doc);
+                        const isBusy = doc.status === 'BUSY';
+                        const serviceList = Array.isArray(doc.services)
+                            ? doc.services
+                            : (doc.services || '').split(',').map(s => s.trim()).filter(Boolean);
+
+                        const cleanExp = (text) => {
+                            if (!text) return 'Registered Veterinary Surgeon';
+                            let cleaned = text.replace(/B\.V\.Sc\.?\s*(\(Sri Lanka\))?\s*\|?\s*/gi, '').trim();
+                            if (cleaned.startsWith('|')) cleaned = cleaned.substring(1).trim();
+                            return cleaned || 'Registered Veterinary Surgeon';
+                        };
+
+                        const cleanBio = (bioText) => {
+                            if (!bioText) return 'Experienced veterinary specialist dedicated to providing the highest quality care for your pets.';
+                            return bioText
+                                .replace(/He obtained his Bachelor of Veterinary Science \(B\.V\.Sc\.\) qualification in Sri Lanka in 1991 and has been registered with the Veterinary Council of Sri Lanka since July 1992 under Registration No\. 694\.\s*/gi, '')
+                                .replace(/Bachelor of Veterinary Science \(B\.V\.Sc\.\)\s* qualification\s*/gi, '')
+                                .replace(/B\.V\.Sc\.?\s*(\(Sri Lanka\))?\s*/gi, '')
+                                .trim();
+                        };
+
+                        return (
+                            <section className="dedicated-subpage-section doctor-profile-page">
+                                {/* Back Button with spacing */}
+                                <div style={{ marginTop: '20px', marginBottom: '24px' }}>
+                                    <button
+                                        type="button"
+                                        className="btn-back-overview"
+                                        onClick={() => setCurrentView('FIND_DOCTOR')}
+                                    >
+                                        ← Back to Doctor List & Booking
+                                    </button>
+                                </div>
+
+                                {/* Hero Banner */}
+                                <div className="doc-profile-hero">
+                                    <div className="doc-profile-hero-left">
+                                        <div className="doc-profile-avatar-wrap">
+                                            {doc.photoUrl
+                                                ? <img src={doc.photoUrl} alt={doc.name} className="doc-profile-photo" />
+                                                : <div className="doc-profile-photo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', background: '#ecfdf5' }}>👨‍⚕️</div>
+                                            }
+                                            <span className={`doc-profile-status-dot ${isUnavailable ? 'unavailable' : isBusy ? 'busy' : 'available'}`}></span>
+                                        </div>
+                                        <div className="doc-profile-identity">
+                                            <span className={`doc-profile-status-pill ${isUnavailable ? 'unavailable' : isBusy ? 'busy' : 'available'}`}>
+                                                {isUnavailable && '🔴 Off Duty'}
+                                                {isBusy && '🟡 In Consultation'}
+                                                {!isUnavailable && !isBusy && '🟢 Available Today'}
+                                            </span>
+                                            <h1 className="doc-profile-name">{doc.name}</h1>
+                                            <p className="doc-profile-spec">{doc.specialization || doc.address || 'Veterinary Surgeon'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* All Fields — matching registration form */}
+                                <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '28px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', marginBottom: '20px' }}>
+
+                                    {/* Row 1: Name + Email */}
+                                    <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Doctor Full Name</span>
+                                            <p style={{ margin: '6px 0 0', fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>{doc.name}</p>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Hospital Email Address</span>
+                                            <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.email || 'Not listed'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Phone + Specialization */}
+                                    <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
+                                            <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.phone || 'Not listed'}</p>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Specialization / Department</span>
+                                            <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.specialization || doc.address || 'Not specified'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 3: Experience + Working Hours */}
+                                    <div className="doc-profile-grid" style={{ marginBottom: '20px' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Experience / Qualifications</span>
+                                            <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.experience || 'Registered Veterinary Surgeon'}</p>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Available Working Hours</span>
+                                            <p style={{ margin: '6px 0 0', color: '#334155' }}>{doc.availableHours || 'Mon – Fri | 08:00 AM – 05:00 PM'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Services */}
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Services Offered</span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                                            {serviceList.length > 0
+                                                ? serviceList.map((s, i) => (
+                                                    <span key={i} style={{ background: '#f0fdf4', color: '#059669', border: '1px solid #bbf7d0', padding: '5px 14px', borderRadius: '20px', fontSize: '0.83rem', fontWeight: 600 }}>{s}</span>
+                                                ))
+                                                : <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No services listed.</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    {/* Bio */}
+                                    <div>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Doctor Bio / Professional Description</span>
+                                        <p style={{ margin: '8px 0 0', color: '#334155', lineHeight: 1.75, fontSize: '0.9rem' }}>{cleanBio(doc.bio)}</p>
+                                    </div>
+                                </div>
+
+                                {/* Bottom CTA */}
+                                <div className="doc-profile-bottom-cta">
+                                    <p>Ready to schedule a visit with <strong>{doc.name}</strong>?</p>
+                                    <button className="btn-book-now doc-profile-book-btn" onClick={() => openBookingModal(doc)}>
+                                        {isUnavailable ? '📅 Book for a Future Date →' : '📅 Book a Consultation →'}
+                                    </button>
+                                </div>
+                            </section>
+                        );
+                    })()}
+
+
+
+                    {/* DEDICATED SUBPAGE: MY APPOINTMENTS & STATUS */}
+                    {currentView === 'MY_APPOINTMENTS' && (
+                        <section className="dedicated-subpage-section">
+                            <div className="pets-top-bar">
+                                <div>
+                                    <h1>📅 My Scheduled Appointments</h1>
+                                    <p>Track upcoming hospital visits, consultation reasons, and approval status.</p>
+                                </div>
+                                <button className="btn-add-pet" onClick={() => setCurrentView('FIND_DOCTOR')}>+ Request New Appointment</button>
+                            </div>
+
+                            {userAppointments.length === 0 ? (
+                                <div className="empty-pets-card">
+                                    <div className="empty-emoji">📅</div>
+                                    <h3>No Appointments Booked</h3>
+                                    <p>You haven't requested any hospital consultations yet.</p>
+                                    <button className="btn-add-pet-large" onClick={() => setCurrentView('FIND_DOCTOR')}>
+                                        + Book Your First Consultation
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="appointments-roster">
+                                    {userAppointments.map((apt) => (
+                                        <div
+                                            key={apt.id}
+                                            className="appointment-card"
+                                            style={{ cursor: 'pointer', transition: 'all 0.25s ease' }}
+                                            onClick={() => setSelectedApptDetail(apt)}
+                                        >
+                                            <div className="apt-header">
+                                                <div>
+                                                    <span className="apt-id-tag">{apt.id}</span>
+                                                    <h3 className="apt-pet-name">🐾 {apt.petName} ({apt.species || 'Pet'})</h3>
+                                                </div>
+                                                <span className={`apt-status-chip ${apt.status}`}>
+                                                    {apt.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : apt.status === 'APPROVED' ? 'APPROVED' : apt.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
+                                                </span>
+                                            </div>
+
+                                            <div className="apt-grid-meta">
+                                                <div>
+                                                    <strong>Assigned Veterinarian</strong>
+                                                    <span>{apt.doctorName || 'Assigned Specialist'}</span>
+                                                </div>
+                                                <div>
+                                                    <strong>Service Type</strong>
+                                                    <span>{apt.serviceType}</span>
+                                                </div>
+                                                <div>
+                                                    <strong>Date & Time Slot</strong>
+                                                    <span>{apt.date} at {apt.timeSlot}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="apt-reason-box">
+                                                <strong>Reason for Visit:</strong> {apt.reason}
+                                            </div>
+
+                                            {(apt.status === 'REJECTED' || apt.rejectReason) && (
+                                                <div style={{ marginTop: '12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '10px 14px', color: '#991b1b', fontSize: '0.85rem' }}>
+                                                    <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', color: '#dc2626', fontWeight: 700 }}>
+                                                        <span>❌ Rejection Reason:</span>
+                                                    </strong>
+                                                    <span style={{ color: '#7f1d1d', fontWeight: 600 }}>{apt.rejectReason || 'Hospital schedule full for requested time slot.'}</span>
+                                                </div>
+                                            )}
+
+                                            <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    🔍 <span style={{ color: '#475569' }}>Click card for appointment details</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedApptDetail(apt); }}
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                                        color: '#ffffff',
+                                                        border: 'none',
+                                                        padding: '8px 18px',
+                                                        borderRadius: '10px',
+                                                        fontSize: '0.82rem',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        boxShadow: '0 2px 8px rgba(4, 120, 87, 0.25)',
+                                                        flexShrink: 0,
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    📋 View Booking Details
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {/* MY PROFILE VIEW (US 1.3 & US 1.4) */}
+                    {currentView === 'PROFILE' && (
+                        <section className="pets-panel-card profile-panel" style={{ marginTop: '28px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                            <div className="panel-card-header" style={{ marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+                                        👤
                                     </div>
                                     <div>
-                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
-                                            {selectedNotifDetail.type} NOTIFICATION
-                                        </span>
-                                        <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>
-                                            {selectedNotifDetail.title}
-                                        </h3>
+                                        <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>My Pet Owner Profile</h2>
+                                        <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>Manage your personal details, contact info, and account password.</p>
                                     </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="modal-close-btn"
-                                    onClick={() => setSelectedNotifDetail(null)}
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                                <p style={{ margin: 0, color: '#334155', fontSize: '0.95rem', lineHeight: 1.6, fontWeight: 500 }}>
-                                    {selectedNotifDetail.message}
-                                </p>
-                                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', fontSize: '0.8rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Received: <strong>{selectedNotifDetail.timestamp}</strong></span>
-                                    <span>Status: <strong style={{ color: selectedNotifDetail.read ? '#059669' : '#dc2626' }}>{selectedNotifDetail.read ? 'READ' : 'UNREAD'}</strong></span>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                                {selectedNotifDetail.type === 'APPOINTMENT' && (
-                                    <button
-                                        type="button"
-                                        className="btn-add-pet"
-                                        onClick={() => {
-                                            setSelectedNotifDetail(null);
-                                            setCurrentView('MY_APPOINTMENTS');
-                                        }}
-                                    >
-                                        Go to Appointments →
-                                    </button>
-                                )}
-                                {selectedNotifDetail.type === 'VACCINE' && (
-                                    <button
-                                        type="button"
-                                        className="btn-add-pet"
-                                        onClick={() => {
-                                            setSelectedNotifDetail(null);
-                                            setCurrentView('PETS_LIST');
-                                        }}
-                                    >
-                                        Go to My Pets →
-                                    </button>
-                                )}
-                                <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-                                    <button
-                                        type="button"
-                                        className="btn-notif-action delete"
-                                        onClick={() => handleDeleteNotification(selectedNotifDetail.id)}
-                                    >
-                                        🗑️ Delete
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-save"
-                                        onClick={() => setSelectedNotifDetail(null)}
-                                    >
-                                        Close
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* APPOINTMENT BOOKING DETAILS MODAL */}
-                {selectedApptDetail && (
-                    <div className="modal-overlay" onClick={() => setSelectedApptDetail(null)}>
-                        <div
-                            className="modal-content"
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                                maxWidth: '640px',
-                                width: '90%',
-                                background: '#ffffff',
-                                borderRadius: '24px',
-                                padding: '32px',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                border: '1px solid #e2e8f0',
-                                maxHeight: '90vh',
-                                overflowY: 'auto'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                                        <span style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800 }}>
-                                            {selectedApptDetail.id}
-                                        </span>
-                                        <span className={`apt-status-chip ${selectedApptDetail.status}`}>
-                                            {selectedApptDetail.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : selectedApptDetail.status === 'APPROVED' ? 'APPROVED' : selectedApptDetail.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
-                                        </span>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                if (newPassword) {
+                                    const passErr = validatePasswordComplexity(newPassword);
+                                    if (passErr) {
+                                        showToast(`❌ ${passErr}`, 'error');
+                                        return;
+                                    }
+                                    if (newPassword !== confirmPassword) {
+                                        showToast('❌ Passwords do not match.', 'error');
+                                        return;
+                                    }
+                                }
+                                showToast('Profile details updated successfully!', 'success');
+                                setNewPassword('');
+                                setConfirmPassword('');
+                                setCurrentView('OVERVIEW');
+                            }} className="profile-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                                    <div className="form-group">
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Full Name *</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={currentUser?.name || 'Dinethmi Peiris'}
+                                            required
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
+                                        />
                                     </div>
-                                    <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: 800 }}>
-                                        Hospital Appointment Booking Details
-                                    </h2>
-                                </div>
-                                <button
-                                    onClick={() => setSelectedApptDetail(null)}
-                                    style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                    ✕
-                                </button>
-                            </div>
 
-                            {/* Main Details Cards */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                                {/* REJECTION REASON CARD IF REJECTED */}
-                                {(selectedApptDetail.status === 'REJECTED' || selectedApptDetail.rejectReason) && (
-                                    <div style={{ background: '#fef2f2', borderRadius: '16px', padding: '20px', border: '1px solid #fecaca', boxShadow: '0 2px 10px rgba(239, 68, 68, 0.05)' }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
-                                            ❌ Rejection Reason & Hospital Notice
-                                        </h4>
-                                        <p style={{ margin: 0, color: '#7f1d1d', fontSize: '0.94rem', fontWeight: 700, lineHeight: 1.5 }}>
-                                            {selectedApptDetail.rejectReason || 'Hospital schedule full for requested time slot.'}
-                                        </p>
-                                        <p style={{ margin: '10px 0 0', fontSize: '0.82rem', color: '#991b1b', lineHeight: 1.4 }}>
-                                            💡 <strong>Next Steps:</strong> You may request a new appointment for another date/time or select a different veterinarian from the Find a Doctor panel.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Card 1: Visit Schedule & Assigned Doctor */}
-                                <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ margin: '0 0 14px', fontSize: '0.95rem', color: '#059669', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        📅 Visit Schedule & Doctor
-                                    </h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '0.9rem' }}>
-                                        <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Date & Time</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '1rem' }}>📅 {selectedApptDetail.date}</strong>
-                                            <div style={{ color: '#059669', fontWeight: 700, fontSize: '0.9rem', marginTop: '2px' }}>⏰ {selectedApptDetail.timeSlot}</div>
-                                        </div>
-                                        <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Assigned Specialist</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '1rem' }}>👨‍⚕️ {selectedApptDetail.doctorName || 'Assigned Doctor'}</strong>
-                                        </div>
-                                        <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Service Category</span>
-                                            <strong style={{ color: '#0f172a' }}>🩺 {selectedApptDetail.serviceType}</strong>
-                                        </div>
+                                    <div className="form-group">
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Email Address (Account Identifier)</label>
+                                        <input
+                                            type="email"
+                                            defaultValue={currentUser?.email || 'thinupeiris04@gmail.com'}
+                                            disabled
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontSize: '0.92rem' }}
+                                        />
                                     </div>
                                 </div>
 
-                                {/* Card 2: Patient & Owner Profile */}
-                                <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                                    <h4 style={{ margin: '0 0 14px', fontSize: '0.95rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        🐾 Patient & Owner Information
-                                    </h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '0.9rem' }}>
-                                        <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Pet Patient Name</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '1.05rem' }}>🐾 {selectedApptDetail.petName}</strong>
-                                            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem' }}>Species: {selectedApptDetail.species || 'Pet'}</span>
-                                        </div>
-                                        <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Registered Owner</span>
-                                            <strong style={{ color: '#0f172a' }}>👤 {(!selectedApptDetail.ownerName || selectedApptDetail.ownerName === 'Not Specified') ? (currentUser?.name || 'Pet Owner') : selectedApptDetail.ownerName}</strong>
-                                            <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem' }}>📞 {(!selectedApptDetail.ownerPhone || selectedApptDetail.ownerPhone === 'Not Specified') ? ((currentUser?.phone && currentUser.phone !== 'Not Specified') ? currentUser.phone : '0771234567') : selectedApptDetail.ownerPhone}</span>
-                                        </div>
+                                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                                    <div className="form-group">
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Phone Number *</label>
+                                        <input
+                                            type="tel"
+                                            defaultValue="0771234567"
+                                            placeholder="e.g. 0771234567"
+                                            required
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Residential Address</label>
+                                        <input
+                                            type="text"
+                                            defaultValue="No. 45, Rajagiriya Road, Colombo"
+                                            placeholder="e.g. 123 Main St, City"
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
+                                        />
                                     </div>
                                 </div>
 
-                                {/* Card 3: Consultation Reason & Clinical Notes */}
-                                <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                                    <h4 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        📝 Visit Reason & Clinical Notes
-                                    </h4>
-                                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
-                                        <span style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Stated Reason for Visit:</span>
-                                        <p style={{ margin: 0, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>{selectedApptDetail.reason || 'General Consultation'}</p>
+                                {/* Password Change Box */}
+                                <div className="password-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '16px', marginTop: '10px' }}>
+                                    <h4 style={{ margin: '0 0 6px', fontSize: '0.95rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>🔒 Account Security & Password</h4>
+                                    <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#64748b' }}>Update your secret password to keep your pet records secure.</p>
+
+                                    <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>New Password</label>
+                                            <input
+                                                type="password"
+                                                placeholder="Enter new secret password"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Confirm New Password</label>
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm new password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
+                                            />
+                                        </div>
                                     </div>
-                                    {selectedApptDetail.diagnosis && (
-                                        <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
-                                            <span style={{ color: '#059669', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Doctor Diagnosis & RX Notes:</span>
-                                            <p style={{ margin: 0, color: '#065f46', fontSize: '0.9rem', fontWeight: 600 }}>{selectedApptDetail.diagnosis}</p>
-                                            {selectedApptDetail.prescription && (
-                                                <p style={{ margin: '6px 0 0', color: '#047857', fontSize: '0.85rem' }}><strong>Prescription:</strong> {selectedApptDetail.prescription}</p>
-                                            )}
+                                    {newPassword && (
+                                        <div style={{ marginTop: '12px', padding: '10px 12px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.78rem', color: '#475569' }}>
+                                            <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1e293b' }}>Password Requirements:</div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '4px' }}>
+                                                <span style={{ color: newPassword.length >= 6 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                                    {newPassword.length >= 6 ? '✓' : '✗'} Min. 6 characters
+                                                </span>
+                                                <span style={{ color: /[A-Z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                                    {/[A-Z]/.test(newPassword) ? '✓' : '✗'} Uppercase (A-Z)
+                                                </span>
+                                                <span style={{ color: /[a-z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                                    {/[a-z]/.test(newPassword) ? '✓' : '✗'} Lowercase (a-z)
+                                                </span>
+                                                <span style={{ color: /[0-9]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                                    {/[0-9]/.test(newPassword) ? '✓' : '✗'} Number (0-9)
+                                                </span>
+                                                <span style={{ color: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                                    {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '✗'} Special character (!@#...)
+                                                </span>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Card 4: Hospital Location & Instructions (Hidden for Rejected Appointments) */}
-                                {selectedApptDetail.status !== 'REJECTED' && !selectedApptDetail.rejectReason && (
-                                    <div style={{ background: '#eff6ff', borderRadius: '16px', padding: '16px 20px', border: '1px solid #bfdbfe' }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: '0.88rem', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            🏥 Hospital Arrival Instructions
+                                <div className="form-actions-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                    <button type="button" onClick={() => setCurrentView('OVERVIEW')} style={{ padding: '10px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                    <button type="submit" style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: '#10b981', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}>Save Profile Changes</button>
+                                </div>
+                            </form>
+
+                            {/* DANGER ZONE (ACCOUNT DELETION) */}
+                            <div className="danger-zone-card" style={{ marginTop: '32px', border: '1px solid #fecaca', background: '#fff5f5', padding: '24px', borderRadius: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                    <div>
+                                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            ⚠️ Danger Zone — Permanently Delete Account
                                         </h4>
-                                        <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#1e3a8a', lineHeight: 1.5 }}>
-                                            <strong>Location:</strong> Sri Jayawardenapura Animal Hospital, No 34 Parliament Road, Ethul Kotte, Kotte.
-                                        </p>
-                                        <p style={{ margin: 0, fontSize: '0.83rem', color: '#2563eb' }}>
-                                            💡 Please arrive 10-15 minutes before your scheduled slot. Bring your pet's vaccination booklet.
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#7f1d1d' }}>
+                                            Once deleted, all registered pet profiles, medical histories, and consultation appointments will be permanently removed.
                                         </p>
                                     </div>
-                                )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setConfirmDeleteText('');
+                                            setDeleteModalOpen(true);
+                                        }}
+                                        style={{
+                                            padding: '10px 20px',
+                                            borderRadius: '12px',
+                                            border: '1px solid #dc2626',
+                                            background: '#dc2626',
+                                            color: '#ffffff',
+                                            fontWeight: 700,
+                                            fontSize: '0.88rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#b91c1c'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#dc2626'}
+                                    >
+                                        🗑️ Delete My Account
+                                    </button>
+                                </div>
                             </div>
+                        </section>
+                    )}
 
-                            {/* Modal Actions */}
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                                <button
-                                    onClick={() => setSelectedApptDetail(null)}
-                                    style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
-                                >
-                                    Close Details
-                                </button>
+                    {/* DOCTOR PROFILE MODAL */}
+                    {selectedDoctorForModal && (
+                        <div className="modal-overlay" onClick={() => setSelectedDoctorForModal(null)}>
+                            <div className="modal-content doctor-profile-modal" onClick={(e) => e.stopPropagation()}>
+                                <button className="modal-close-btn" onClick={() => setSelectedDoctorForModal(null)}>✕</button>
+                                <div className="doc-modal-header">
+                                    <div className="doc-modal-avatar-box">🩺</div>
+                                    <div>
+                                        {(() => {
+                                            const isOff = isDoctorOffDuty(selectedDoctorForModal);
+                                            const isBusy = selectedDoctorForModal.status === 'BUSY';
+                                            return (
+                                                <span className={`doc-status-badge ${isOff ? 'unavailable' : isBusy ? 'busy' : 'available'}`} style={isOff ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' } : isBusy ? { background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' } : {}}>
+                                                    {isOff && '🔴 Off Duty'}
+                                                    {!isOff && isBusy && '🟡 In Consultation / Busy'}
+                                                    {!isOff && !isBusy && '🟢 On Duty'}
+                                                </span>
+                                            );
+                                        })()}
+                                        <h2>{selectedDoctorForModal.name}</h2>
+                                        <p className="modal-doc-spec">{selectedDoctorForModal.specialization}</p>
+                                        <span className="modal-doc-exp">{selectedDoctorForModal.experience}</span>
+                                    </div>
+                                </div>
+
+                                <div className="doc-modal-body">
+                                    <h4>About Doctor</h4>
+                                    <p>{selectedDoctorForModal.bio}</p>
+
+                                    <h4>Available Hours</h4>
+                                    <p className="hours-text">🕒 {selectedDoctorForModal.availableHours}</p>
+
+                                    <h4>Services Offered</h4>
+                                    <div className="doc-services-tags">
+                                        {selectedDoctorForModal.services.map((s, i) => (
+                                            <span key={i} className="service-tag">{s}</span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="doc-modal-footer">
+                                    <button className="btn-cancel" onClick={() => setSelectedDoctorForModal(null)}>Close</button>
+                                    {isDoctorOffDuty(selectedDoctorForModal) ? (
+                                        <button className="btn-book-now disabled" disabled style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8' }}>
+                                            🔴 Doctor Off Duty
+                                        </button>
+                                    ) : (
+                                        <button className="btn-book-now" onClick={() => {
+                                            const d = selectedDoctorForModal;
+                                            setSelectedDoctorForModal(null);
+                                            openBookingModal(d);
+                                        }}>
+                                            Book Visit with {selectedDoctorForModal.name} →
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                {currentView === 'ADMISSIONS' && (
-                    <PetOwnerAdmissionsPage hideHeader={true} />
-                )}
-                
-                {(currentView === 'BILLING' || currentView === 'INVOICES') && (
-                    <PetOwnerPortal initialView="invoices" hideHeader={true} />
-                )}
+                    )}
 
-                {currentView === 'PAYMENTS' && (
-                    <PetOwnerPortal initialView="payments" hideHeader={true} />
-                )}
+                    {/* MULTI-STEP APPOINTMENT BOOKING MODAL */}
+                    {bookingModalOpen && (
+                        <div className="modal-overlay">
+                            <div className="modal-content booking-wizard-modal">
+                                <div className="wizard-header">
+                                    <div>
+                                        <h2>Book Hospital Appointment</h2>
+                                        <p>Step {bookingStep} of 3 — Complete your consultation request details.</p>
+                                    </div>
+                                    <button className="modal-close-btn" onClick={() => setBookingModalOpen(false)}>✕</button>
+                                </div>
 
-                {currentView === 'CONSULTATIONS' && (
-                    <section style={{ padding: '0' }}>
-                        <PetOwnerConsultations />
-                    </section>
-                )}
+                                {/* Stepper Progress Bar */}
+                                <div className="stepper-progress">
+                                    {[1, 2, 3].map((s) => (
+                                        <div key={s} className={`step-dot${bookingStep >= s ? ' active' : ''}${bookingStep === s ? ' current' : ''}`}>
+                                            {s}
+                                        </div>
+                                    ))}
+                                </div>
 
-                {currentView === 'MEDICAL_HISTORY' && (
-                    <section style={{ padding: '0' }}>
-                        <PetOwnerMedicalHistory />
-                    </section>
-                )}
-            </main>
+                                <form onSubmit={handleBookingSubmit} className="wizard-form-body">
+                                    {/* STEP 1: DOCTOR, DATE & TIME SLOT PICKER */}
+                                    {bookingStep === 1 && (() => {
+                                        const selectedDoc = doctors.find(d => d.id === bookingData.doctorId || d.name === bookingData.doctorName || (d.email && d.email === bookingData.doctorId));
+
+                                        let isDocDeactivated = selectedDoc ? (selectedDoc.status === 'INACTIVE' || selectedDoc.status === 'DEACTIVATED') : false;
+
+                                        const now = new Date();
+                                        const yyyy = now.getFullYear();
+                                        const mm = String(now.getMonth() + 1).padStart(2, '0');
+                                        const dd = String(now.getDate()).padStart(2, '0');
+                                        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+                                        const minDateAllowed = todayStr;
+                                        const isDateToday = bookingData.date === todayStr;
+
+                                        const doctorWorkingDaysMap = JSON.parse(localStorage.getItem('vhms_doctor_working_days') || '{}');
+                                        let activeWorkingDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                        if (selectedDoc) {
+                                            const keysToTry = [
+                                                selectedDoc.id,
+                                                String(selectedDoc.id),
+                                                selectedDoc.email,
+                                                selectedDoc.email ? selectedDoc.email.toLowerCase() : null,
+                                                selectedDoc.name,
+                                                selectedDoc.name ? selectedDoc.name.toLowerCase() : null,
+                                                bookingData.doctorId,
+                                                bookingData.doctorName
+                                            ].filter(Boolean);
+
+                                            for (const key of keysToTry) {
+                                                if (doctorWorkingDaysMap[key]) {
+                                                    activeWorkingDays = doctorWorkingDaysMap[key];
+                                                    break;
+                                                }
+                                            }
+                                            if (activeWorkingDays.length === 7) {
+                                                const matchedKey = Object.keys(doctorWorkingDaysMap).find(k =>
+                                                    (selectedDoc.name && (k.toLowerCase().includes(selectedDoc.name.toLowerCase()) || selectedDoc.name.toLowerCase().includes(k.toLowerCase()))) ||
+                                                    (selectedDoc.email && (k.toLowerCase().includes(selectedDoc.email.toLowerCase()) || selectedDoc.email.toLowerCase().includes(k.toLowerCase())))
+                                                );
+                                                if (matchedKey) activeWorkingDays = doctorWorkingDaysMap[matchedKey];
+                                            }
+                                        }
+
+                                        const dateParts = (bookingData.date || '').split('-').map(Number);
+                                        const dateObj = dateParts.length === 3 ? new Date(dateParts[0], dateParts[1] - 1, dateParts[2]) : null;
+                                        const dayNamesList = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                        const dayName = dateObj ? dayNamesList[dateObj.getDay()] : null;
+
+                                        const isOffDutyDay = Boolean(dayName && !activeWorkingDays.some(d => String(d).toLowerCase().startsWith(dayName.toLowerCase())));
+                                        const isDateSelectionValid = Boolean(bookingData.date && bookingData.date >= minDateAllowed && !isOffDutyDay && !isDocDeactivated);
+
+                                        return (
+                                            <div className="wizard-step-panel">
+                                                <h3>Step 1: Select Date & Time Slot</h3>
+
+                                                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                        DOC
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Consultant</span>
+                                                        <strong style={{ display: 'block', color: '#0f172a', fontSize: '1.05rem', marginTop: '2px' }}>{bookingData.doctorName || (selectedDoc && selectedDoc.name) || 'Not Selected'}</strong>
+                                                    </div>
+                                                </div>
+
+
+
+                                                <div className="form-group">
+                                                    <label>Preferred Appointment Date *</label>
+                                                    <input
+                                                        type="date"
+                                                        value={bookingData.date}
+                                                        min={minDateAllowed}
+                                                        onChange={(e) => setBookingData({ ...bookingData, date: e.target.value, timeSlot: '' })}
+                                                        required
+                                                        disabled={!bookingData.doctorId}
+                                                    />
+                                                </div>
+
+                                                {bookingData.doctorId && bookingData.date && (
+                                                    <div className="form-group">
+                                                        <label>Available Consultation Time Slots *</label>
+                                                        <div className="time-slots-grid">
+                                                            {(() => {
+                                                                const selectedDocObj = doctors.find(d => d.id === bookingData.doctorId || d.name === bookingData.doctorName || d.email === bookingData.doctorId);
+                                                                const isChanna = selectedDocObj && (
+                                                                    (selectedDocObj.name && selectedDocObj.name.toLowerCase().includes('channa')) ||
+                                                                    (selectedDocObj.email && selectedDocObj.email.toLowerCase().includes('channa'))
+                                                                );
+                                                                const isNimal = selectedDocObj && (
+                                                                    (selectedDocObj.name && selectedDocObj.name.toLowerCase().includes('nimal')) ||
+                                                                    (selectedDocObj.email && selectedDocObj.email.toLowerCase().includes('nimal'))
+                                                                );
+
+                                                                const shift1 = ['11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM'];
+                                                                const shift2 = ['03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'];
+
+                                                                const findDoctorSchedule = (docId, dateStr) => {
+                                                                    if (!docId || !dateStr || !globalSchedules) return undefined;
+                                                                    const keysToTry = [
+                                                                        docId,
+                                                                        String(docId),
+                                                                        selectedDocObj?.id,
+                                                                        selectedDocObj?.id ? String(selectedDocObj.id) : null,
+                                                                        selectedDocObj?.email,
+                                                                        selectedDocObj?.email ? selectedDocObj.email.toLowerCase() : null,
+                                                                        selectedDocObj?.name
+                                                                    ].filter(Boolean);
+
+                                                                    for (const key of keysToTry) {
+                                                                        if (globalSchedules[key] && globalSchedules[key][dateStr] !== undefined) {
+                                                                            return globalSchedules[key][dateStr];
+                                                                        }
+                                                                    }
+                                                                    return undefined;
+                                                                };
+                                                                const rawDaySched = findDoctorSchedule(bookingData.doctorId, bookingData.date);
+                                                                const hasExplicitSched = rawDaySched !== undefined;
+
+                                                                const defaultTimes = (isChanna || isNimal) ? shift1 : [...shift1, ...shift2];
+
+                                                                let slotsToRender = isOffDutyDay
+                                                                    ? []
+                                                                    : (hasExplicitSched
+                                                                        ? rawDaySched
+                                                                        : defaultTimes.map(t => ({ time: t, booked: false })));
+
+                                                                if ((isChanna || isNimal) && !isOffDutyDay && slotsToRender.length > 0) {
+                                                                    slotsToRender = slotsToRender.filter(s => shift1.includes(typeof s === 'string' ? s : s.time));
+                                                                }
+
+                                                                const checkPastSlot = (timeStr, dateStr) => {
+                                                                    if (!dateStr) return false;
+                                                                    const now = new Date();
+                                                                    const yyyy = now.getFullYear();
+                                                                    const mm = String(now.getMonth() + 1).padStart(2, '0');
+                                                                    const dd = String(now.getDate()).padStart(2, '0');
+                                                                    const todayStrFormatted = `${yyyy}-${mm}-${dd}`;
+                                                                    if (dateStr !== todayStrFormatted) return false;
+
+                                                                    const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+                                                                    if (!match) return false;
+                                                                    let [_, hStr, mStr, period] = match;
+                                                                    let hours = parseInt(hStr, 10);
+                                                                    const minutes = parseInt(mStr, 10);
+                                                                    if (period) {
+                                                                        const p = period.toUpperCase();
+                                                                        if (p === 'PM' && hours < 12) hours += 12;
+                                                                        if (p === 'AM' && hours === 12) hours = 0;
+                                                                    }
+                                                                    const curH = now.getHours();
+                                                                    const curM = now.getMinutes();
+                                                                    if (hours < curH) return true;
+                                                                    if (hours === curH && minutes <= curM) return true;
+                                                                    return false;
+                                                                };
+
+                                                                if (slotsToRender.length === 0) {
+                                                                    return (
+                                                                        <p style={{ gridColumn: '1 / -1', width: '100%', color: '#dc2626', fontWeight: 600, fontSize: '0.88rem', margin: '6px 0', background: '#fef2f2', padding: '12px 16px', borderRadius: '10px', border: '1px solid #fca5a5' }}>
+                                                                            ⚠️ Doctor is <strong>Off Duty</strong> on {dayName ? `${dayName}s` : 'this day'}. Working Duty Days: <strong>{activeWorkingDays.join(', ')}</strong>.
+                                                                        </p>
+                                                                    );
+                                                                }
+
+                                                                if (!bookingData.timeSlot && slotsToRender.length > 0) {
+                                                                    const firstValid = slotsToRender.find(s => {
+                                                                        const isB = typeof s === 'object' ? s.booked : false;
+                                                                        const slotTime = typeof s === 'object' ? s.time : s;
+                                                                        const isP = checkPastSlot(slotTime, bookingData.date);
+                                                                        return !isB && !isP;
+                                                                    });
+                                                                    if (firstValid) {
+                                                                        const slotTime = typeof firstValid === 'object' ? firstValid.time : firstValid;
+                                                                        setTimeout(() => {
+                                                                            setBookingData(prev => prev.timeSlot ? prev : { ...prev, timeSlot: slotTime });
+                                                                        }, 0);
+                                                                    }
+                                                                }
+
+                                                                return slotsToRender.map((slotData) => {
+                                                                    const isBooked = typeof slotData === 'object' ? slotData.booked : false;
+                                                                    const slotTime = typeof slotData === 'object' ? slotData.time : slotData;
+                                                                    const isPast = checkPastSlot(slotTime, bookingData.date);
+                                                                    const isDisabled = isBooked || isPast;
+
+                                                                    return (
+                                                                        <button
+                                                                            key={slotTime}
+                                                                            type="button"
+                                                                            className={`time-slot-btn${bookingData.timeSlot === slotTime ? ' selected' : ''}`}
+                                                                            onClick={() => !isDisabled && setBookingData({ ...bookingData, timeSlot: slotTime })}
+                                                                            disabled={isDisabled}
+                                                                            style={isDisabled ? { opacity: 0.45, cursor: 'not-allowed', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #cbd5e1' } : {}}
+                                                                        >
+                                                                            {slotTime}{isBooked ? ' (Booked)' : isPast ? ' (Passed)' : ''}
+                                                                        </button>
+                                                                    );
+                                                                });
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="wizard-footer">
+                                                    <button type="button" className="btn-cancel" onClick={() => setBookingModalOpen(false)}>Cancel</button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-save"
+                                                        onClick={() => setBookingStep(2)}
+                                                        disabled={!bookingData.doctorId || !isDateSelectionValid || !bookingData.timeSlot || isOffDutyDay}
+                                                        style={(!bookingData.doctorId || !isDateSelectionValid || !bookingData.timeSlot || isOffDutyDay) ? { opacity: 0.5, cursor: 'not-allowed', background: '#94a3b8' } : {}}
+                                                    >
+                                                        Next: Select Pet & Service →
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* STEP 2: PET & SERVICE DETAILS */}
+                                    {bookingStep === 2 && (
+                                        <div className="wizard-step-panel">
+                                            <h3>Step 2: Select Pet & Service Details</h3>
+
+                                            <div className="form-group">
+                                                <label>Select Pet Profile *</label>
+                                                {pets.length === 0 ? (
+                                                    <p className="no-pets-warn">⚠️ You have no registered pets. Please register a pet profile first!</p>
+                                                ) : (
+                                                    <select
+                                                        value={bookingData.petId}
+                                                        onChange={(e) => setBookingData({ ...bookingData, petId: e.target.value })}
+                                                        required
+                                                    >
+                                                        <option value="" disabled>-- Select your pet --</option>
+                                                        {pets.map((p) => (
+                                                            <option key={p.id} value={p.id}>
+                                                                🐾 {p.name} ({p.species} - {p.breed})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label>Appointment / Service Type *</label>
+                                                <select
+                                                    value={bookingData.serviceType}
+                                                    onChange={(e) => setBookingData({ ...bookingData, serviceType: e.target.value })}
+                                                >
+                                                    <option value="General Consultation">General Wellness Consultation 🩺</option>
+                                                    <option value="Vaccination & Immunization">Vaccination & Immunization 💉</option>
+                                                    <option value="Veterinary Surgery">Veterinary Surgery & Procedures ✂️</option>
+                                                    <option value="Ophthalmology & Eye Care">Ophthalmology & Eye Care 👁️</option>
+                                                    <option value="Emergency & Critical Care">Emergency & Critical Care 🚑</option>
+                                                </select>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label>Additional Booking Notes / Medical Context (Optional)</label>
+                                                <textarea
+                                                    placeholder="Specify any dietary habits, recent symptoms, or special care requirements..."
+                                                    value={bookingData.notes}
+                                                    onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
+                                                    rows={3}
+                                                />
+                                            </div>
+
+                                            <div className="wizard-footer">
+                                                <button type="button" className="btn-cancel" onClick={() => setBookingStep(1)}>← Back</button>
+                                                <button
+                                                    type="button"
+                                                    className="btn-save"
+                                                    disabled={pets.length === 0}
+                                                    onClick={() => setBookingStep(3)}
+                                                >
+                                                    Next: Review Booking →
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* STEP 3: REVIEW & SUBMIT */}
+                                    {bookingStep === 3 && (
+                                        <div className="wizard-step-panel">
+                                            <h3>Step 3: Review & Confirm Booking Request</h3>
+
+                                            <div className="booking-summary-card">
+                                                <div className="summary-row">
+                                                    <strong>Date & Time Slot:</strong>
+                                                    <span>📅 {bookingData.date} at {bookingData.timeSlot}</span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <strong>Pet Profile:</strong>
+                                                    <span>
+                                                        🐾 {pets.find(p => p.id === bookingData.petId)?.name || 'Selected Pet'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <strong>Requested Service:</strong>
+                                                    <span>{bookingData.serviceType}</span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <strong>Assigned Doctor:</strong>
+                                                    <span>🩺 {bookingData.doctorName || 'Not Selected'}</span>
+                                                </div>
+                                                {bookingData.notes && (
+                                                    <div className="summary-row">
+                                                        <strong>Notes:</strong>
+                                                        <span>{bookingData.notes}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="wizard-footer">
+                                                <button type="button" className="btn-cancel" onClick={() => setBookingStep(2)}>← Back to Edit</button>
+                                                <button type="submit" className="btn-save">Submit Appointment Request</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                    {/* DELETE ACCOUNT CONFIRMATION MODAL */}
+                    {deleteModalOpen && (
+                        <div className="modal-overlay" onClick={() => setDeleteModalOpen(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', background: '#ffffff', borderRadius: '24px', padding: '28px', border: '1px solid #fecaca' }}>
+                                <button className="modal-close-btn" onClick={() => setDeleteModalOpen(false)}>✕</button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                    <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                                        ⚠️
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.25rem' }}>Delete Account Permanently?</h3>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#7f1d1d' }}>This action cannot be undone.</p>
+                                    </div>
+                                </div>
+
+                                <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: 1.5, marginBottom: '16px' }}>
+                                    Are you sure you want to delete your Pet Owner account (<strong>{currentUser?.email}</strong>)? All registered pet data and appointment schedules will be erased immediately.
+                                </p>
+
+                                <div className="form-group" style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                                        Type <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#dc2626' }}>DELETE</code> to confirm:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={confirmDeleteText}
+                                        onChange={(e) => setConfirmDeleteText(e.target.value)}
+                                        placeholder="Type DELETE here"
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontWeight: 'bold' }}
+                                    />
+                                </div>
+
+                                <div className="form-actions-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={() => setDeleteModalOpen(false)} style={{ padding: '10px 18px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmDeleteAccount}
+                                        style={{
+                                            padding: '10px 22px',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            background: confirmDeleteText.trim().toUpperCase() === 'DELETE' ? '#dc2626' : '#fca5a5',
+                                            color: '#ffffff',
+                                            fontWeight: 700,
+                                            cursor: confirmDeleteText.trim().toUpperCase() === 'DELETE' ? 'pointer' : 'not-allowed',
+                                        }}
+                                        disabled={confirmDeleteText.trim().toUpperCase() !== 'DELETE'}
+                                    >
+                                        Confirm Account Deletion
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DEDICATED SUBPAGE: CENTRALIZED NOTIFICATION CENTER (US 1.27, US 1.28, US 1.29) */}
+                    {currentView === 'NOTIFICATIONS' && (
+                        <section className="dedicated-subpage-section">
+                            {/* Banner */}
+                            <div className="notif-center-banner">
+                                <div className="notif-banner-text">
+                                    <h1>Centralized Notification Center 🔔</h1>
+                                    <p>Stay updated on appointment approvals, medical reminders, and hospital service updates.</p>
+                                </div>
+                                <div className="notif-banner-actions">
+                                    {unreadNotifCount > 0 && (
+                                        <button
+                                            type="button"
+                                            className="btn-banner-action"
+                                            onClick={handleMarkAllAsRead}
+                                        >
+                                            ✓ Mark All as Read ({unreadNotifCount})
+                                        </button>
+                                    )}
+                                    {notifications.some(n => n.read) && (
+                                        <button
+                                            type="button"
+                                            className="btn-banner-action danger"
+                                            onClick={handleClearReadNotifications}
+                                        >
+                                            🗑️ Clear Read
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Toolbar with Filters & Search */}
+                            <div className="notif-toolbar-card">
+                                <div className="notif-filter-pills">
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'ALL' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('ALL')}
+                                    >
+                                        <Bell size={15} />
+                                        <span>All</span>
+                                        <span className="pill-count-tag">{notifications.length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'UNREAD' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('UNREAD')}
+                                    >
+                                        <span className="pill-unread-dot"></span>
+                                        <span>Unread</span>
+                                        <span className="pill-count-tag unread-tag">{unreadNotifCount}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'APPOINTMENTS' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('APPOINTMENTS')}
+                                    >
+                                        <Calendar size={15} />
+                                        <span>Appointments</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'APPOINTMENT').length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'VACCINES' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('VACCINES')}
+                                    >
+                                        <ShieldCheck size={15} />
+                                        <span>Vaccines & Care</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'VACCINE').length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'SYSTEM' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('SYSTEM')}
+                                    >
+                                        <Info size={15} />
+                                        <span>System Alerts</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'SYSTEM' || n.type === 'PET_PROFILE').length}</span>
+                                    </button>
+                                </div>
+
+                                <div className="notif-search-wrap">
+                                    <Search size={16} className="notif-search-icon" color="#10b981" />
+                                    <input
+                                        type="text"
+                                        className="notif-search-input"
+                                        placeholder="Search notifications..."
+                                        value={notifSearch}
+                                        onChange={(e) => setNotifSearch(e.target.value)}
+                                    />
+                                    {notifSearch && (
+                                        <button type="button" className="btn-clear-search" onClick={() => setNotifSearch('')}>
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Notification Cards List */}
+                            <div className="notif-cards-list">
+                                {(() => {
+                                    const filtered = notifications.filter(n => {
+                                        const matchesFilter =
+                                            notifFilter === 'ALL' ? true :
+                                                notifFilter === 'UNREAD' ? !n.read :
+                                                    notifFilter === 'APPOINTMENTS' ? n.type === 'APPOINTMENT' :
+                                                        notifFilter === 'VACCINES' ? n.type === 'VACCINE' :
+                                                            (n.type === 'SYSTEM' || n.type === 'PET_PROFILE');
+
+                                        const query = notifSearch.toLowerCase().trim();
+                                        const matchesSearch = !query ||
+                                            (n.title && n.title.toLowerCase().includes(query)) ||
+                                            (n.message && n.message.toLowerCase().includes(query));
+
+                                        return matchesFilter && matchesSearch;
+                                    });
+
+                                    if (filtered.length === 0) {
+                                        return (
+                                            <div className="empty-pets-card" style={{ background: '#ffffff', borderRadius: '24px', padding: '48px 24px', textAlign: 'center' }}>
+                                                <div className="empty-emoji">🔔</div>
+                                                <h3>No notifications found</h3>
+                                                <p>You have no {notifFilter !== 'ALL' ? notifFilter.toLowerCase() : ''} notifications matching your current filters.</p>
+                                                {notifFilter !== 'ALL' && (
+                                                    <button type="button" className="btn-add-pet" onClick={() => { setNotifFilter('ALL'); setNotifSearch(''); }}>
+                                                        View All Notifications
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    return filtered.map((n) => {
+                                        const isUnread = !n.read;
+                                        const iconEmoji = n.type === 'APPOINTMENT' ? '📅' : n.type === 'VACCINE' ? '💉' : n.type === 'PET_PROFILE' ? '🐾' : '⚙️';
+                                        const iconClass = n.type === 'APPOINTMENT' ? 'type-bg-appointment' : n.type === 'VACCINE' ? 'type-bg-vaccine' : n.type === 'PET_PROFILE' ? 'type-bg-pet' : 'type-bg-system';
+
+                                        return (
+                                            <div key={n.id} className={`notif-card-item ${isUnread ? 'unread' : ''}`}>
+                                                <div className={`notif-type-icon-box ${iconClass}`}>
+                                                    {iconEmoji}
+                                                </div>
+
+                                                <div className="notif-card-body">
+                                                    <div className="notif-card-header-row">
+                                                        <h4 className="notif-card-title">
+                                                            {n.title}
+                                                            {isUnread && (
+                                                                <span style={{
+                                                                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                                                    color: '#ffffff',
+                                                                    padding: '3px 10px',
+                                                                    borderRadius: '12px',
+                                                                    fontSize: '0.72rem',
+                                                                    fontWeight: 900,
+                                                                    letterSpacing: '0.04em',
+                                                                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                }}>
+                                                                    ⚡ UNREAD
+                                                                </span>
+                                                            )}
+                                                        </h4>
+                                                        <span className="notif-type-pill" style={{ background: isUnread ? '#ecfdf5' : '#f1f5f9', color: isUnread ? '#059669' : '#64748b' }}>
+                                                            {n.type}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="notif-card-message">{n.message}</p>
+
+                                                    <div className="notif-card-meta-row">
+                                                        <span className="notif-timestamp-tag">
+                                                            🕒 {n.timestamp}
+                                                        </span>
+
+                                                        <div className="notif-actions-group">
+                                                            {/* US 1.27 Detail View Button */}
+                                                            <button
+                                                                type="button"
+                                                                className="btn-notif-action primary"
+                                                                onClick={() => {
+                                                                    if (isUnread) handleMarkAsRead(n.id);
+                                                                    setSelectedNotifDetail(n);
+                                                                }}
+                                                            >
+                                                                👁️ View Details
+                                                            </button>
+
+                                                            {/* US 1.28 Toggle Read/Unread */}
+                                                            <button
+                                                                type="button"
+                                                                className="btn-notif-action"
+                                                                onClick={() => handleToggleReadStatus(n.id)}
+                                                            >
+                                                                {isUnread ? '✓ Mark as Read' : '↺ Mark Unread'}
+                                                            </button>
+
+                                                            {/* US 1.29 Delete Button */}
+                                                            <button
+                                                                type="button"
+                                                                className="btn-notif-action delete"
+                                                                onClick={() => handleDeleteNotification(n.id)}
+                                                                title="Delete notification"
+                                                            >
+                                                                🗑️ Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* NOTIFICATION DETAIL MODAL (US 1.27) */}
+                    {selectedNotifDetail && (
+                        <div className="modal-overlay" onClick={() => setSelectedNotifDetail(null)}>
+                            <div className="modal-content notif-detail-modal-card" onClick={(e) => e.stopPropagation()}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div className={`notif-type-icon-box ${selectedNotifDetail.type === 'APPOINTMENT' ? 'type-bg-appointment' : selectedNotifDetail.type === 'VACCINE' ? 'type-bg-vaccine' : 'type-bg-system'}`}>
+                                            {selectedNotifDetail.type === 'APPOINTMENT' ? '📅' : selectedNotifDetail.type === 'VACCINE' ? '💉' : '⚙️'}
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
+                                                {selectedNotifDetail.type} NOTIFICATION
+                                            </span>
+                                            <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>
+                                                {selectedNotifDetail.title}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="modal-close-btn"
+                                        onClick={() => setSelectedNotifDetail(null)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+                                    <p style={{ margin: 0, color: '#334155', fontSize: '0.95rem', lineHeight: 1.6, fontWeight: 500 }}>
+                                        {selectedNotifDetail.message}
+                                    </p>
+                                    <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', fontSize: '0.8rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Received: <strong>{selectedNotifDetail.timestamp}</strong></span>
+                                        <span>Status: <strong style={{ color: selectedNotifDetail.read ? '#059669' : '#dc2626' }}>{selectedNotifDetail.read ? 'READ' : 'UNREAD'}</strong></span>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                                    {selectedNotifDetail.type === 'APPOINTMENT' && (
+                                        <button
+                                            type="button"
+                                            className="btn-add-pet"
+                                            onClick={() => {
+                                                setSelectedNotifDetail(null);
+                                                setCurrentView('MY_APPOINTMENTS');
+                                            }}
+                                        >
+                                            Go to Appointments →
+                                        </button>
+                                    )}
+                                    {selectedNotifDetail.type === 'VACCINE' && (
+                                        <button
+                                            type="button"
+                                            className="btn-add-pet"
+                                            onClick={() => {
+                                                setSelectedNotifDetail(null);
+                                                setCurrentView('PETS_LIST');
+                                            }}
+                                        >
+                                            Go to My Pets →
+                                        </button>
+                                    )}
+                                    <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
+                                        <button
+                                            type="button"
+                                            className="btn-notif-action delete"
+                                            onClick={() => handleDeleteNotification(selectedNotifDetail.id)}
+                                        >
+                                            🗑️ Delete
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn-save"
+                                            onClick={() => setSelectedNotifDetail(null)}
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* APPOINTMENT BOOKING DETAILS MODAL */}
+                    {selectedApptDetail && (
+                        <div className="modal-overlay" onClick={() => setSelectedApptDetail(null)}>
+                            <div
+                                className="modal-content"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    maxWidth: '640px',
+                                    width: '90%',
+                                    background: '#ffffff',
+                                    borderRadius: '24px',
+                                    padding: '32px',
+                                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                    border: '1px solid #e2e8f0',
+                                    maxHeight: '90vh',
+                                    overflowY: 'auto'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                                            <span style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800 }}>
+                                                {selectedApptDetail.id}
+                                            </span>
+                                            <span className={`apt-status-chip ${selectedApptDetail.status}`}>
+                                                {selectedApptDetail.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : selectedApptDetail.status === 'APPROVED' ? 'APPROVED' : selectedApptDetail.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
+                                            </span>
+                                        </div>
+                                        <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: 800 }}>
+                                            Hospital Appointment Booking Details
+                                        </h2>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedApptDetail(null)}
+                                        style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Main Details Cards */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                                    {/* REJECTION REASON CARD IF REJECTED */}
+                                    {(selectedApptDetail.status === 'REJECTED' || selectedApptDetail.rejectReason) && (
+                                        <div style={{ background: '#fef2f2', borderRadius: '16px', padding: '20px', border: '1px solid #fecaca', boxShadow: '0 2px 10px rgba(239, 68, 68, 0.05)' }}>
+                                            <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                                                ❌ Rejection Reason & Hospital Notice
+                                            </h4>
+                                            <p style={{ margin: 0, color: '#7f1d1d', fontSize: '0.94rem', fontWeight: 700, lineHeight: 1.5 }}>
+                                                {selectedApptDetail.rejectReason || 'Hospital schedule full for requested time slot.'}
+                                            </p>
+                                            <p style={{ margin: '10px 0 0', fontSize: '0.82rem', color: '#991b1b', lineHeight: 1.4 }}>
+                                                💡 <strong>Next Steps:</strong> You may request a new appointment for another date/time or select a different veterinarian from the Find a Doctor panel.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Card 1: Visit Schedule & Assigned Doctor */}
+                                    <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0' }}>
+                                        <h4 style={{ margin: '0 0 14px', fontSize: '0.95rem', color: '#059669', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            📅 Visit Schedule & Doctor
+                                        </h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '0.9rem' }}>
+                                            <div>
+                                                <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Date & Time</span>
+                                                <strong style={{ color: '#0f172a', fontSize: '1rem' }}>📅 {selectedApptDetail.date}</strong>
+                                                <div style={{ color: '#059669', fontWeight: 700, fontSize: '0.9rem', marginTop: '2px' }}>⏰ {selectedApptDetail.timeSlot}</div>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Assigned Specialist</span>
+                                                <strong style={{ color: '#0f172a', fontSize: '1rem' }}>👨‍⚕️ {selectedApptDetail.doctorName || 'Assigned Doctor'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Service Category</span>
+                                                <strong style={{ color: '#0f172a' }}>🩺 {selectedApptDetail.serviceType}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 2: Patient & Owner Profile */}
+                                    <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                                        <h4 style={{ margin: '0 0 14px', fontSize: '0.95rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            🐾 Patient & Owner Information
+                                        </h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '0.9rem' }}>
+                                            <div>
+                                                <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Pet Patient Name</span>
+                                                <strong style={{ color: '#0f172a', fontSize: '1.05rem' }}>🐾 {selectedApptDetail.petName}</strong>
+                                                <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem' }}>Species: {selectedApptDetail.species || 'Pet'}</span>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b', display: 'block', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Registered Owner</span>
+                                                <strong style={{ color: '#0f172a' }}>👤 {(!selectedApptDetail.ownerName || selectedApptDetail.ownerName === 'Not Specified') ? (currentUser?.name || 'Pet Owner') : selectedApptDetail.ownerName}</strong>
+                                                <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem' }}>📞 {(!selectedApptDetail.ownerPhone || selectedApptDetail.ownerPhone === 'Not Specified') ? ((currentUser?.phone && currentUser.phone !== 'Not Specified') ? currentUser.phone : '0771234567') : selectedApptDetail.ownerPhone}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 3: Consultation Reason & Clinical Notes */}
+                                    <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                                        <h4 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            📝 Visit Reason & Clinical Notes
+                                        </h4>
+                                        <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
+                                            <span style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Stated Reason for Visit:</span>
+                                            <p style={{ margin: 0, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>{selectedApptDetail.reason || 'General Consultation'}</p>
+                                        </div>
+                                        {selectedApptDetail.diagnosis && (
+                                            <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
+                                                <span style={{ color: '#059669', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Doctor Diagnosis & RX Notes:</span>
+                                                <p style={{ margin: 0, color: '#065f46', fontSize: '0.9rem', fontWeight: 600 }}>{selectedApptDetail.diagnosis}</p>
+                                                {selectedApptDetail.prescription && (
+                                                    <p style={{ margin: '6px 0 0', color: '#047857', fontSize: '0.85rem' }}><strong>Prescription:</strong> {selectedApptDetail.prescription}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Card 4: Hospital Location & Instructions (Hidden for Rejected Appointments) */}
+                                    {selectedApptDetail.status !== 'REJECTED' && !selectedApptDetail.rejectReason && (
+                                        <div style={{ background: '#eff6ff', borderRadius: '16px', padding: '16px 20px', border: '1px solid #bfdbfe' }}>
+                                            <h4 style={{ margin: '0 0 8px', fontSize: '0.88rem', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                🏥 Hospital Arrival Instructions
+                                            </h4>
+                                            <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                                                <strong>Location:</strong> Sri Jayawardenapura Animal Hospital, No 34 Parliament Road, Ethul Kotte, Kotte.
+                                            </p>
+                                            <p style={{ margin: 0, fontSize: '0.83rem', color: '#2563eb' }}>
+                                                💡 Please arrive 10-15 minutes before your scheduled slot. Bring your pet's vaccination booklet.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Actions */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                                    <button
+                                        onClick={() => setSelectedApptDetail(null)}
+                                        style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
+                                    >
+                                        Close Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {currentView === 'ADMISSIONS' && (
+                        <PetOwnerAdmissionsPage hideHeader={true} />
+                    )}
+
+                    {(currentView === 'BILLING' || currentView === 'INVOICES') && (
+                        <PetOwnerPortal initialView="invoices" hideHeader={true} />
+                    )}
+
+                    {currentView === 'PAYMENTS' && (
+                        <PetOwnerPortal initialView="payments" hideHeader={true} />
+                    )}
+
+                    {currentView === 'CONSULTATIONS' && (
+                        <section style={{ padding: '0' }}>
+                            <PetOwnerConsultations />
+                        </section>
+                    )}
+
+                    {currentView === 'MEDICAL_HISTORY' && (
+                        <section style={{ padding: '0' }}>
+                            <PetOwnerMedicalHistory />
+                        </section>
+                    )}
+                </main>
             </div>
 
             <div className={`toast${toast.show ? ' show' : ''} ${toast.type}`} id="toast">{toast.message}</div>

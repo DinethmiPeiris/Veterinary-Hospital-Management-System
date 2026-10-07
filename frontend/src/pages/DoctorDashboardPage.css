@@ -258,13 +258,7 @@
 
 /* Doctor Unified Sidebar Layout */
 .doc-unified-layout {
-    display: flex;
-    min-height: calc(100vh - 72px);
-    width: 100%;
-}
-
-@media (max-width: 768px) {
-    .doc-unified-layout {
-        flex-direction: column;
-    }
+    width: calc(100% - 64px);
+    max-width: 1500px;
+    margin: 0 auto;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { epic3Service } from '../services/epic3Service'
+import { Search as IconSearch } from 'lucide-react'
 import './ModuleStyles.css'
 
 export default function AdminInventoryPage({ hideHeader = false }) {
@@ -136,24 +137,48 @@ export default function AdminInventoryPage({ hideHeader = false }) {
   }
 
   return (
-    <div className="module-page-container">
-      <main className="page-content">
-        {!hideHeader && (
-        <div className="page-header">
+    <div style={{ wwidth: '100%' }}>
+      <section className="modern-section">
+        <div className="section-title-row flex-wrap">
           <div>
-            <h1 className="page-title">Inventory Management</h1>
-            <p className="page-subtitle">Manage hospital medicines and medical supplies stock levels.</p>
+            <h2 className="section-heading">Inventory Management</h2>
+            <p className="section-sub">Manage hospital medicines and medical supplies stock levels.</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button className="btn-refresh" onClick={loadInventory} disabled={loading}>
-              {loading ? 'Refreshing...' : '\u21bb Refresh'}
-            </button>
-            <button className="btn-primary" onClick={handleOpenAddModal}>
-              + Add Item
-            </button>
+
+          <div className="filter-group">
+            <div className="search-box">
+              <span className="search-icon"><IconSearch size={18} /></span>
+              <input
+                type="text"
+                placeholder="Search by item name or code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input-modern"
+              />
+            </div>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="select-modern"
+            >
+              <option value="ALL">All Categories</option>
+              <option value="MEDICINE">Medicines</option>
+              <option value="MEDICAL_SUPPLY">Medical Supplies</option>
+            </select>
+            <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '0.5rem' }}>
+              <button
+                onClick={loadInventory} disabled={loading}
+                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0 1rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
+                {loading ? '...' : '\u21bb'}
+              </button>
+              <button
+                onClick={handleOpenAddModal}
+                style={{ background: '#0d9488', border: 'none', borderRadius: '10px', padding: '0.6rem 1.25rem', color: '#fff', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                + Add Item
+              </button>
+            </div>
           </div>
         </div>
-        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>
@@ -162,85 +187,95 @@ export default function AdminInventoryPage({ hideHeader = false }) {
           </div>
         )}
 
-        <div className="filter-bar">
-          <input
-            type="text"
-            className="form-input search-input"
-            placeholder="Search by item name or code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-
-          <select
-            className="form-select"
-            style={{ width: 'auto' }}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="ALL">All Categories</option>
-            <option value="MEDICINE">Medicines</option>
-            <option value="MEDICAL_SUPPLY">Medical Supplies</option>
-          </select>
-        </div>
-
-        <div className="content-card">
+        <div className="table-glass-wrapper" style={{ marginTop: '20px' }}>
           {loading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading inventory items...</p>
+            <p style={{ color: 'var(--text-muted)', padding: '1.5rem' }}>Loading inventory items...</p>
           ) : items.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)' }}>No inventory items found.</p>
+            <table className="modern-table">
+              <tbody>
+                <tr><td className="table-empty">No inventory items found.</td></tr>
+              </tbody>
+            </table>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Item Code</th>
-                    <th>Item Name</th>
-                    <th>Category</th>
-                    <th>Current Quantity</th>
-                    <th>Unit</th>
-                    <th>Stock Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => {
-                    const status = getStockStatus(item)
-                    return (
-                      <tr key={item.id}>
-                        <td><strong>{item.itemCode}</strong></td>
-                        <td>{item.itemName}</td>
-                        <td>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            {item.category === 'MEDICINE' ? 'Medicine' : 'Medical Supply'}
-                          </span>
-                        </td>
-                        <td><strong>{item.quantity}</strong></td>
-                        <td>{item.unit}</td>
-                        <td>
-                          <span className={`status-badge ${status.className}`}>
-                            {status.label}
-                          </span>
-                        </td>
-                        <td style={{ display: 'flex', gap: '0.5rem' }}>
+            <table className="modern-table">
+              <thead>
+                <tr>
+                  <th>Item Code</th>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>Current Quantity</th>
+                  <th>Unit</th>
+                  <th>Stock Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const qty = item.quantity !== undefined ? item.quantity : 0;
+                  const minLevel = item.minimumStockLevel !== undefined ? item.minimumStockLevel : 10;
+                  const isOutOfStock = qty === 0;
+                  const isLowStock = !isOutOfStock && qty <= minLevel;
+                  const isHealthy = !isOutOfStock && !isLowStock;
+
+                  return (
+                    <tr key={item.id} className="table-row-hover">
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="avatar-chip" style={{ background: item.category === 'MEDICINE' ? '#e0e7ff' : '#fce7f3', color: item.category === 'MEDICINE' ? '#4f46e5' : '#db2777' }}>
+                            {item.category === 'MEDICINE' ? 'M' : 'S'}
+                          </div>
+                          <strong className="user-name-text">{item.itemCode}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <strong style={{ fontSize: '0.95rem', color: '#0f172a', display: 'block' }}>{item.itemName}</strong>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>
+                          {item.category === 'MEDICINE' ? 'Medicine' : 'Medical Supply'}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ fontSize: '1.05rem', color: isOutOfStock ? '#ef4444' : isLowStock ? '#d97706' : '#0f172a' }}>
+                          {item.quantity}
+                        </strong>
+                      </td>
+                      <td><span style={{ color: '#475569', fontSize: '0.85rem' }}>{item.unit}</span></td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                          background: isOutOfStock ? '#fef2f2' : isLowStock ? '#fef3c7' : '#dcfce7',
+                          color: isOutOfStock ? '#dc2626' : isLowStock ? '#d97706' : '#15803d',
+                          border: `1px solid ${isOutOfStock ? '#fecaca' : isLowStock ? '#fde68a' : '#bbf7d0'}`
+                        }}>
+                          {isOutOfStock ? 'OUT OF STOCK' : isLowStock ? 'LOW STOCK' : 'IN STOCK'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button
-                            className="btn-action request"
                             onClick={() => handleOpenEditModal(item)}
+                            style={{ padding: '6px 14px', borderRadius: '10px', background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                           >
                             Edit
                           </button>
                           <button
-                            className="btn-action reject"
                             onClick={() => handleDeleteItem(item)}
+                            style={{ padding: '6px 14px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = '#ffe4e6'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
                           >
                             Delete
                           </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 
@@ -352,7 +387,7 @@ export default function AdminInventoryPage({ hideHeader = false }) {
             </div>
           </div>
         )}
-      </main>
+      </section>
     </div>
   )
 }

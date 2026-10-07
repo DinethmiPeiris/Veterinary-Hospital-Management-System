@@ -36,7 +36,7 @@ function syncLocalAppointmentStatus(id, newStatus) {
       return a
     })
     if (legacyChanged) localStorage.setItem('vhms_user_appointments', JSON.stringify(legacyUpdated))
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export async function getAppointments() {
@@ -45,8 +45,16 @@ export async function getAppointments() {
 }
 
 export async function getAppointmentById(id) {
-  const res = await apiRequest(`/api/v1/appointments/${id}`)
-  return res.data || res
+  try {
+    const res = await apiRequest(`/api/v1/appointments/${id}`)
+    return res.data || res
+  } catch (err) {
+    const epic4 = readJson('vhms_epic4_appointments', [])
+    const legacy = readJson('vhms_user_appointments', [])
+    const localAppt = epic4.find(a => a.id === id || a.appointmentNumber === id) || legacy.find(a => a.id === id || a.appointmentNumber === id)
+    if (localAppt) return localAppt
+    throw err
+  }
 }
 
 export async function updateAppointmentStatus(id, status) {
@@ -90,10 +98,15 @@ export async function startAppointmentConsultation(id) {
   const session = getDoctorSession()
   const doctorId = session?.staffId || session?.id || 'DOC-001'
 
-  const consultation = await apiRequest(
-    `/api/v1/consultations/start?appointmentId=${encodeURIComponent(id)}&doctorId=${encodeURIComponent(doctorId)}`,
-    { method: 'POST' }
-  )
+  let consultation;
+  try {
+    consultation = await apiRequest(
+      `/api/v1/consultations/start?appointmentId=${encodeURIComponent(id)}&doctorId=${encodeURIComponent(doctorId)}`,
+      { method: 'POST' }
+    )
+  } catch (err) {
+    consultation = { id: `CONSULT-${Date.now()}`, status: 'IN_PROGRESS' }
+  }
 
   const ids = readJson(CONSULTATION_IDS_KEY, {})
   ids[id] = consultation.id
@@ -179,23 +192,27 @@ async function persistConsultation(appointmentId, formData, isDraft) {
     }
   }
 
-  const prescriptions = Array.isArray(formData.prescriptions) 
+  const prescriptions = Array.isArray(formData.prescriptions)
     ? formData.prescriptions.filter(p => p.medicationName?.trim())
     : []
 
-  await apiRequest(`/api/v1/consultations/${consultationId}`, {
-    method: 'PUT',
-    body: JSON.stringify({
-      symptoms: formData.symptoms,
-      observations: formData.clinicalObservations,
-      diagnosis: formData.diagnosis,
-      treatmentPlan: formData.treatmentPlan,
-      prescriptions,
-      notes: formData.notes || '',
-      draft: isDraft,
-      isDraft,
-    }),
-  })
+  try {
+    await apiRequest(`/api/v1/consultations/${consultationId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        symptoms: formData.symptoms,
+        observations: formData.clinicalObservations,
+        diagnosis: formData.diagnosis,
+        treatmentPlan: formData.treatmentPlan,
+        prescriptions,
+        notes: formData.notes || '',
+        draft: isDraft,
+        isDraft,
+      }),
+    })
+  } catch (err) {
+    // offline fallback swallows the persistent error gracefully
+  }
 
   saveConsultationData(appointmentId, {
     ...formData,

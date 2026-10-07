@@ -657,80 +657,13 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
 
 
 
-    // Open Pet Medical Profile Inspector Modal
+    // Open Pet Medical Profile Inspector Modal (Now redirects to EMR)
     const handleViewPetProfile = async (appt) => {
-        let petDetails = {
-            name: appt.petName || 'Patient Pet',
-            species: appt.species || 'Canine',
-            breed: appt.breed || 'Crossbreed',
-            age: appt.age || '3 Years',
-            weight: appt.weight || '12.5 kg',
-            ownerName: appt.ownerName || 'Pet Owner',
-            notes: appt.notes || 'No known drug allergies reported.',
-            history: [
-                { date: appt.date, service: appt.serviceType, diagnosis: appt.diagnosis || 'Pending physical examination', doctor: name }
-            ]
-        };
-
-        try {
-            const allPets = await api.getPets();
-            if (Array.isArray(allPets)) {
-                const found = allPets.find(p => p.name?.toLowerCase() === appt.petName?.toLowerCase());
-                if (found) {
-                    petDetails = { ...petDetails, ...found };
-                }
-            }
-        } catch (e) {
-            console.error('Failed to fetch pets for profile modal', e);
+        if (appt.petId) {
+            navigate(`/doctor/pet/${appt.petId}/history?appointmentId=${appt.id || appt.appointmentId || appt.appointmentNumber}`);
+        } else {
+            showToast('Pet ID not available for this appointment.', 'error');
         }
-
-        // Clean up formatting for display
-        if (petDetails.weight && !String(petDetails.weight).toLowerCase().includes('kg')) {
-            petDetails.weight = `${petDetails.weight} kg`;
-        }
-
-        if (petDetails.dateOfBirth) {
-            try {
-                let cleanDob = typeof petDetails.dateOfBirth === 'string' ? petDetails.dateOfBirth.replace(/ [A-Z]{3,4} /, ' ') : petDetails.dateOfBirth;
-                const d = new Date(cleanDob);
-                const today = new Date();
-                if (!isNaN(d.getTime())) {
-                    let years = today.getFullYear() - d.getFullYear();
-                    let months = today.getMonth() - d.getMonth();
-                    if (today.getDate() < d.getDate()) months--;
-                    if (months < 0) { years--; months += 12; }
-                    if (years <= 0) {
-                        const totalM = Math.max(1, months);
-                        petDetails.age = `${totalM} ${totalM === 1 ? 'Month' : 'Months'}`;
-                    } else if (months > 0) {
-                        petDetails.age = `${years} ${years === 1 ? 'Year' : 'Years'} ${months} ${months === 1 ? 'Month' : 'Months'}`;
-                    } else {
-                        petDetails.age = `${years} ${years === 1 ? 'Year' : 'Years'}`;
-                    }
-                    petDetails.dateOfBirth = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                } else if (typeof petDetails.dateOfBirth === 'string') {
-                    const parts = petDetails.dateOfBirth.split(' ');
-                    if (parts.length >= 6) {
-                        petDetails.dateOfBirth = `${parts[1]} ${parts[2]}, ${parts[parts.length - 1]}`;
-                    }
-                }
-            } catch { }
-        }
-
-        let ageStr = String(petDetails.age || '0');
-        if (!ageStr.toLowerCase().includes('year') && !ageStr.toLowerCase().includes('month') && !ageStr.toLowerCase().includes('yr')) {
-            const num = parseFloat(ageStr);
-            if (num === 0) {
-                petDetails.age = '1 Month';
-            } else if (!isNaN(num) && num < 1) {
-                const months = Math.max(1, Math.round(num * 12));
-                petDetails.age = `${months} ${months === 1 ? 'Month' : 'Months'}`;
-            } else {
-                petDetails.age = `${ageStr} ${ageStr === '1' ? 'Year' : 'Years'}`;
-            }
-        }
-
-        setSelectedPetForProfile(petDetails);
     };
 
     // Open Owner Contact Profile Inspector Modal
@@ -938,6 +871,15 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                     </div>
                                     <div className="bento-number" style={{ fontSize: '1.5rem' }}>Admissions</div>
                                     <div className="bento-footer text-muted">Manage Inpatient Care</div>
+                                </div>
+
+                                <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #8b5cf6' }} onClick={() => setCurrentView('RECOMMEND_ADMISSION')}>
+                                    <div className="bento-head">
+                                        <span className="bento-label" style={{ fontWeight: 800 }}>Hospitalization Requests</span>
+                                        <span className="bento-icon-wrap purple"><IconStethoscope size={22} /></span>
+                                    </div>
+                                    <div className="bento-number" style={{ fontSize: '1.5rem' }}>Recommend</div>
+                                    <div className="bento-footer text-muted">Recommend Pet Admission</div>
                                 </div>
 
                                 <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #f59e0b' }} onClick={() => setCurrentView('BILLING')}>
@@ -1341,7 +1283,7 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                     ← Back to Booking Requests
                                 </button>
                             </div>
-                            <ConsultationPage appointmentId={selectedConsultationId} />
+                            <ConsultationPage appointmentId={selectedConsultationId} onExit={() => setCurrentView('BILLING')} />
                         </div>
                     )}
 

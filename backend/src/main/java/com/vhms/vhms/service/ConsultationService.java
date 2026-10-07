@@ -14,6 +14,8 @@ import com.vhms.vhms.repository.AppointmentRepository;
 import com.vhms.vhms.repository.ConsultationRepository;
 import com.vhms.vhms.repository.DoctorRepository;
 import com.vhms.vhms.repository.MedicalRecordRepository;
+import com.vhms.vhms.repository.PetRepository;
+import com.vhms.vhms.model.Pet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,7 @@ public class ConsultationService {
     private final MedicalRecordRepository medicalRecordRepository;
     private final AppointmentRepository appointmentRepository;
     private final DoctorRepository doctorRepository;
+    private final PetRepository petRepository;
 
     public ConsultationResponseDTO startConsultation(String appointmentId, String doctorId) {
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
@@ -71,17 +74,30 @@ public class ConsultationService {
         final String breed;
         final Integer petAge;
         final Double petWeight;
+        
+        Pet pet = petRepository.findById(petId).orElse(null);
+        
         if (appointment != null) {
-            // AppointmentService.normalizeSpeciesBreed(appointment);
             species = appointment.getPetSpecies() != null ? appointment.getPetSpecies() : "Unknown";
             breed = appointment.getBreed() != null ? appointment.getBreed() : "";
-            petAge = appointment.getAge();
-            petWeight = appointment.getWeight();
+            
+            Integer resolvedAge = null;
+            if (appointment.getAge() != null && appointment.getAge() > 0) {
+                resolvedAge = appointment.getAge();
+            } else if (appointment.getPetAge() != null && !appointment.getPetAge().isBlank()) {
+                try {
+                    int parsed = Integer.parseInt(appointment.getPetAge().replaceAll("[^0-9]", ""));
+                    if (parsed > 0) resolvedAge = parsed;
+                } catch (NumberFormatException ignored) { }
+            }
+            
+            petAge = (pet != null && pet.getAge() > 0) ? pet.getAge() : resolvedAge;
+            petWeight = (pet != null && pet.getWeight() > 0) ? pet.getWeight() : appointment.getWeight();
         } else {
             species = "Unknown";
             breed = "";
-            petAge = 0;
-            petWeight = 0.0;
+            petAge = (pet != null) ? pet.getAge() : 0;
+            petWeight = (pet != null) ? pet.getWeight() : 0.0;
         }
 
         MedicalRecord record = medicalRecordRepository.findByPetId(petId).orElseGet(() -> {

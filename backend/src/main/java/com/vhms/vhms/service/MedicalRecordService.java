@@ -9,6 +9,8 @@ import com.vhms.vhms.model.MedicalRecord;
 import com.vhms.vhms.repository.AppointmentRepository;
 import com.vhms.vhms.repository.ConsultationRepository;
 import com.vhms.vhms.repository.MedicalRecordRepository;
+import com.vhms.vhms.repository.PetRepository;
+import com.vhms.vhms.model.Pet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,7 @@ public class MedicalRecordService {
     private final MedicalRecordRepository medicalRecordRepository;
     private final ConsultationRepository consultationRepository;
     private final AppointmentRepository appointmentRepository;
+    private final PetRepository petRepository;
 
     public MedicalRecordResponseDTO getMedicalRecordByPetId(String petId) {
         MedicalRecord record = medicalRecordRepository.findByPetId(petId)
@@ -121,6 +124,11 @@ public class MedicalRecordService {
         record.setUpdatedAt(LocalDateTime.now());
         medicalRecordRepository.save(record);
 
+        petRepository.findById(petId).ifPresent(pet -> {
+            pet.setWeight(weight);
+            petRepository.save(pet);
+        });
+
         appointmentRepository.findAll().stream()
                 .filter(a -> petId.equals(a.getPetId()))
                 .forEach(appointment -> {
@@ -180,26 +188,58 @@ public class MedicalRecordService {
         }
     }
 
-    private MedicalRecord fillMissingDemographics(MedicalRecord record, String petId) {
-        Appointment appointment = appointmentRepository.findAll().stream()
-                .filter(a -> petId.equals(a.getPetId()))
-                .findFirst()
-                .orElse(null);
-        if (appointment == null) return record;
+    private Integer resolveAge(Appointment appointment) {
+        // Prefer the legacy Integer field if it has a real value
+        if (appointment.getAge() != null && appointment.getAge() > 0) {
+            return appointment.getAge();
+        }
+        // Fall back to the primary petAge (String) field
+        if (appointment.getPetAge() != null && !appointment.getPetAge().isBlank()) {
+            try {
+                int parsed = Integer.parseInt(appointment.getPetAge().replaceAll("[^0-9]", ""));
+                if (parsed > 0) return parsed;
+            } catch (NumberFormatException ignored) { }
+        }
+        return null;
+    }
 
+    private MedicalRecord fillMissingDemographics(MedicalRecord record, String petId) {
         boolean dirty = false;
-        if (record.getAge() == null || record.getAge() == 0) {
-            if (appointment.getAge() != null && appointment.getAge() > 0) {
-                record.setAge(appointment.getAge());
+        
+        Pet pet = petRepository.findById(petId).orElse(null);
+        if (pet != null) {
+            if ((record.getAge() == null || record.getAge() == 0) && pet.getAge() > 0) {
+                record.setAge(pet.getAge());
+                dirty = true;
+            }
+            if ((record.getWeight() == null || record.getWeight() == 0) && pet.getWeight() > 0) {
+                record.setWeight(pet.getWeight());
                 dirty = true;
             }
         }
-        if (record.getWeight() == null || record.getWeight() == 0) {
-            if (appointment.getWeight() != null && appointment.getWeight() > 0) {
-                record.setWeight(appointment.getWeight());
-                dirty = true;
+
+        if (record.getAge() == null || record.getAge() == 0 || record.getWeight() == null || record.getWeight() == 0) {
+            Appointment appointment = appointmentRepository.findAll().stream()
+                    .filter(a -> petId.equals(a.getPetId()))
+                    .findFirst()
+                    .orElse(null);
+            if (appointment != null) {
+                if (record.getAge() == null || record.getAge() == 0) {
+                    Integer resolvedAge = resolveAge(appointment);
+                    if (resolvedAge != null && resolvedAge > 0) {
+                        record.setAge(resolvedAge);
+                        dirty = true;
+                    }
+                }
+                if (record.getWeight() == null || record.getWeight() == 0) {
+                    if (appointment.getWeight() != null && appointment.getWeight() > 0) {
+                        record.setWeight(appointment.getWeight());
+                        dirty = true;
+                    }
+                }
             }
         }
+        
         if (dirty) {
             record.setUpdatedAt(LocalDateTime.now());
             return medicalRecordRepository.save(record);
@@ -213,15 +253,18 @@ public class MedicalRecordService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found for petId: " + petId));
 
-        // AppointmentService.normalizeSpeciesBreed(appointment);
+        Pet pet = petRepository.findById(petId).orElse(null);
+        Integer resolvedAge = resolveAge(appointment);
+        int finalAge = (pet != null && pet.getAge() > 0) ? pet.getAge() : (resolvedAge != null ? resolvedAge : 0);
+        double finalWeight = (pet != null && pet.getWeight() > 0) ? pet.getWeight() : (appointment.getWeight() != null ? appointment.getWeight() : 0.0);
 
         MedicalRecord record = new MedicalRecord();
         record.setPetId(petId);
         record.setPetName(appointment.getPetName());
         record.setSpecies(appointment.getPetSpecies() != null ? appointment.getPetSpecies() : "Unknown");
         record.setBreed(appointment.getBreed() != null ? appointment.getBreed() : "");
-        record.setAge(appointment.getAge() != null ? appointment.getAge() : 0);
-        record.setWeight(appointment.getWeight() != null ? appointment.getWeight() : 0.0);
+        record.setAge(finalAge);
+        record.setWeight(finalWeight);
         record.setOwnerName(appointment.getOwnerName());
         record.setCreatedAt(LocalDateTime.now());
         record.setUpdatedAt(LocalDateTime.now());

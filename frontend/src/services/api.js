@@ -246,13 +246,13 @@ export const api = {
     // NOTIFICATIONS
     async getNotifications(userId, userEmail) {
         try {
-            const query = [];
-            if (userId) query.push(`userId=${encodeURIComponent(userId)}`);
-            if (userEmail) query.push(`userEmail=${encodeURIComponent(userEmail)}`);
-            const qStr = query.length > 0 ? `?${query.join('&')}` : '';
-            const res = await fetch(`${API_BASE_URL}/notifications${qStr}`);
+            // The backend endpoint is /api/v1/notifications/recipient/{recipientId}
+            if (!userId) return null;
+            const res = await fetch(`${API_BASE_URL}/notifications/recipient/${encodeURIComponent(userId)}`);
             if (res.ok) {
-                return await res.json();
+                const json = await res.json();
+                // The backend returns an ApiResponse wrapper: { data: [...] }
+                return json.data || json;
             }
         } catch (e) {
             console.warn("Backend getNotifications error, using local fallback", e);
@@ -262,7 +262,7 @@ export const api = {
 
     async markNotificationRead(id) {
         try {
-            const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, { method: 'PUT' });
+            const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, { method: 'PATCH' });
             if (res.ok) return await res.json();
         } catch (e) {
             console.warn("Backend markNotificationRead error", e);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import StatusBadge from '../../shared/StatusBadge'
-import { getMedicalRecordByPetId, updatePetWeight, addVaccination, addDocument } from '../../../utils/appointmentStore'
+import { getMedicalRecordByPetId, updatePetWeight } from '../../../utils/appointmentStore'
 import './PetMedicalHistory.css'
 
 const PetMedicalHistory = () => {
@@ -14,14 +14,7 @@ const PetMedicalHistory = () => {
   const [weightInput, setWeightInput] = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [weightMessage, setWeightMessage] = useState('')
-
-  const [vaccineForm, setVaccineForm] = useState({ vaccineName: '', dateAdministered: '', nextDueDate: '', administeredBy: '', notes: '' })
-  const [savingVaccine, setSavingVaccine] = useState(false)
-  const [vaccineMessage, setVaccineMessage] = useState('')
-
-  const [documentForm, setDocumentForm] = useState({ fileName: '', fileType: '', base64Data: '', description: '' })
-  const [savingDocument, setSavingDocument] = useState(false)
-  const [documentMessage, setDocumentMessage] = useState('')
+  const [viewerDocument, setViewerDocument] = useState(null)
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -62,66 +55,6 @@ const PetMedicalHistory = () => {
       setWeightMessage(err.message || 'Could not update weight.')
     } finally {
       setSavingWeight(false)
-    }
-  }
-
-  const handleAddVaccination = async (e) => {
-    e.preventDefault()
-    if (!vaccineForm.vaccineName.trim() || !vaccineForm.dateAdministered) {
-      setVaccineMessage('Vaccine name and date are required.')
-      return
-    }
-    setSavingVaccine(true)
-    setVaccineMessage('')
-    try {
-      const updated = await addVaccination(record.petId, vaccineForm)
-      setRecord(updated)
-      setVaccineForm({ vaccineName: '', dateAdministered: '', nextDueDate: '', administeredBy: '', notes: '' })
-      setVaccineMessage('Vaccination added successfully.')
-    } catch (err) {
-      setVaccineMessage(err.message || 'Could not add vaccination.')
-    } finally {
-      setSavingVaccine(false)
-    }
-  }
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setDocumentForm(prev => ({
-          ...prev,
-          fileName: file.name,
-          fileType: file.type,
-          base64Data: reader.result
-        }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleAddDocument = async (e) => {
-    e.preventDefault()
-    if (!documentForm.base64Data) {
-      setDocumentMessage('Please select a file to upload.')
-      return
-    }
-    setSavingDocument(true)
-    setDocumentMessage('')
-    try {
-      const updated = await addDocument(record.petId, documentForm)
-      setRecord(updated)
-      setDocumentForm({ fileName: '', fileType: '', base64Data: '', description: '' })
-      setDocumentMessage('Document uploaded successfully.')
-      // Reset file input
-      if (document.getElementById('document-file')) {
-        document.getElementById('document-file').value = ''
-      }
-    } catch (err) {
-      setDocumentMessage(err.message || 'Could not upload document.')
-    } finally {
-      setSavingDocument(false)
     }
   }
 
@@ -268,63 +201,6 @@ const PetMedicalHistory = () => {
             ) : (
               <p className="empty-state">No vaccination records found.</p>
             )}
-
-            <form className="vaccination-form mt-4" onSubmit={handleAddVaccination}>
-              <h4 className="mb-2">Add Vaccination</h4>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Vaccine Name *"
-                  className="form-input"
-                  value={vaccineForm.vaccineName}
-                  onChange={e => setVaccineForm({...vaccineForm, vaccineName: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group grid-2">
-                <div>
-                  <label>Date Administered *</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={vaccineForm.dateAdministered}
-                    onChange={e => setVaccineForm({...vaccineForm, dateAdministered: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <label>Next Due Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={vaccineForm.nextDueDate}
-                    onChange={e => setVaccineForm({...vaccineForm, nextDueDate: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Administered By (Doctor/Staff)"
-                  className="form-input"
-                  value={vaccineForm.administeredBy}
-                  onChange={e => setVaccineForm({...vaccineForm, administeredBy: e.target.value})}
-                />
-              </div>
-              <div className="form-group">
-                <textarea
-                  placeholder="Additional Notes"
-                  className="form-input"
-                  rows="2"
-                  value={vaccineForm.notes}
-                  onChange={e => setVaccineForm({...vaccineForm, notes: e.target.value})}
-                ></textarea>
-              </div>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={savingVaccine}>
-                {savingVaccine ? 'Adding...' : '+ Add Record'}
-              </button>
-              {vaccineMessage && <p className="vaccine-message mt-2">{vaccineMessage}</p>}
-            </form>
           </div>
         </div>
 
@@ -339,7 +215,9 @@ const PetMedicalHistory = () => {
                 {record.documents.map((doc, idx) => (
                   <li key={idx} className="document-item">
                     <div className="document-header flex-between">
-                      <h4>{doc.fileName}</h4>
+                      <h4 onClick={() => setViewerDocument(doc)} style={{ cursor: 'pointer', color: '#2563eb', textDecoration: 'underline' }}>
+                        {doc.fileName}
+                      </h4>
                       <a href={doc.base64Data} download={doc.fileName} className="btn btn-sm">Download</a>
                     </div>
                     <p><strong>Type:</strong> {doc.fileType}</p>
@@ -351,35 +229,28 @@ const PetMedicalHistory = () => {
             ) : (
               <p className="empty-state">No documents attached.</p>
             )}
-
-            <form className="document-form mt-4" onSubmit={handleAddDocument}>
-              <h4 className="mb-2">Upload Document</h4>
-              <div className="form-group">
-                <input
-                  type="file"
-                  id="document-file"
-                  className="form-input"
-                  onChange={handleFileChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <textarea
-                  placeholder="Document Description"
-                  className="form-input"
-                  rows="2"
-                  value={documentForm.description}
-                  onChange={e => setDocumentForm({...documentForm, description: e.target.value})}
-                ></textarea>
-              </div>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={savingDocument || !documentForm.base64Data}>
-                {savingDocument ? 'Uploading...' : 'Upload Document'}
-              </button>
-              {documentMessage && <p className="document-message mt-2">{documentMessage}</p>}
-            </form>
           </div>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewerDocument && (
+        <div className="modal-overlay" onClick={() => setViewerDocument(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="document-modal" onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '12px', padding: '20px', width: '90%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#1f2937' }}>{viewerDocument.fileName}</h3>
+              <button onClick={() => setViewerDocument(null)} className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>Close</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', padding: '10px' }}>
+              {(viewerDocument.fileType?.includes('pdf') || viewerDocument.base64Data?.includes('application/pdf')) ? (
+                <iframe src={viewerDocument.base64Data} width="100%" height="600px" style={{ border: 'none' }} title={viewerDocument.fileName} />
+              ) : (
+                <img src={viewerDocument.base64Data} alt={viewerDocument.fileName} style={{ maxWidth: '100%', maxHeight: '600px', objectFit: 'contain' }} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

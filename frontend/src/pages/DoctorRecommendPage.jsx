@@ -11,21 +11,79 @@ export default function DoctorRecommendPage() {
   const [toast, setToast] = useState({ message: '', type: '' })
 
   const [pets, setPets] = useState([])
+  const [ownerMap, setOwnerMap] = useState({}) // ownerId -> ownerName
   const [selectedPet, setSelectedPet] = useState(null)
   const [form, setForm] = useState({
     petName: getEpic3Session().petName,
     petSpecies: getEpic3Session().petSpecies,
     ownerName: getEpic3Session().ownerName,
     doctorName: getEpic3Session().doctorName,
-    recommendationReason: 'Severe dehydration and gastrointestinal monitoring required after surgery.'
+    recommendationReason: ''
   })
 
   useEffect(() => {
     loadRecommendations()
-    fetch(`${API_BASE_URL}/api/pets`)
+
+    // Fetch all pets from the correct endpoint
+    fetch(`${API_BASE_URL}/api/v1/pets`)
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => setPets(Array.isArray(data) ? data : []))
       .catch(() => setPets([]))
+
+    // Fetch users to build ownerId -> ownerName map (indexed by id AND email)
+    fetch(`${API_BASE_URL}/api/v1/admin/users`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((users) => {
+        const map = {}
+        const buildMap = (list) => {
+          if (!Array.isArray(list)) return
+          list.forEach((u) => {
+            const displayName = u.name || u.fullName || u.email || u.id
+            if (u.id)    map[u.id]    = displayName
+            if (u.email) map[u.email] = displayName
+          })
+        }
+        buildMap(users)
+        // Also include locally registered/pending users (PO-XXXX IDs)
+        try {
+          const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
+          const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
+          buildMap(localReg)
+          buildMap(localPending)
+        } catch { /* ignore */ }
+        setOwnerMap(map)
+        setForm((f) => {
+          if (map[f.ownerName] && map[f.ownerName] !== f.ownerName) {
+            return { ...f, ownerName: map[f.ownerName] }
+          }
+          return f
+        })
+      })
+      .catch(() => {
+        // Fallback: just use local registered users
+        try {
+          const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
+          const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
+          const map = {}
+          const buildMapFallback = (list) => {
+            if (!Array.isArray(list)) return
+            list.forEach((u) => {
+              const displayName = u.name || u.email || u.id
+              if (u.id)    map[u.id]    = displayName
+              if (u.email) map[u.email] = displayName
+            })
+          }
+          buildMapFallback(localReg)
+          buildMapFallback(localPending)
+          setOwnerMap(map)
+          setForm((f) => {
+            if (map[f.ownerName] && map[f.ownerName] !== f.ownerName) {
+              return { ...f, ownerName: map[f.ownerName] }
+            }
+            return f
+          })
+        } catch { /* ignore */ }
+      })
   }, [])
 
   const handlePetSelect = (petId) => {
@@ -36,10 +94,11 @@ export default function DoctorRecommendPage() {
         ...f,
         petName: pet.name || f.petName,
         petSpecies: [pet.species, pet.breed].filter(Boolean).join(' / ') || f.petSpecies,
-        ownerName: pet.ownerName || f.ownerName
+        ownerName: ownerMap[pet.ownerId] || pet.ownerId || f.ownerName
       }))
     }
   }
+
 
   const loadRecommendations = async () => {
     setLoading(true)

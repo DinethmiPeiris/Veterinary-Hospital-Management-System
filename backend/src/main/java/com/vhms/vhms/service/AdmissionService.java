@@ -6,6 +6,7 @@ import com.vhms.vhms.exception.ResourceNotFoundException;
 import com.vhms.vhms.model.CageWard;
 import com.vhms.vhms.model.Hospitalization;
 import com.vhms.vhms.model.PetAdmission;
+import com.vhms.vhms.model.NotificationType;
 import com.vhms.vhms.repository.CageWardRepository;
 import com.vhms.vhms.repository.HospitalizationRepository;
 import com.vhms.vhms.repository.PetAdmissionRepository;
@@ -22,6 +23,7 @@ public class AdmissionService {
     private final PetAdmissionRepository admissionRepository;
     private final CageWardRepository cageWardRepository;
     private final HospitalizationRepository hospitalizationRepository;
+    private final NotificationService notificationService;
 
     public PetAdmission recommendAdmission(RecommendAdmissionRequest request) {
         PetAdmission admission = PetAdmission.builder()
@@ -38,7 +40,23 @@ public class AdmissionService {
             .doctorName(request.getDoctorName() != null ? request.getDoctorName() : "Dr. Nimal Fernando")
             .build();
 
-        return admissionRepository.save(admission);
+        PetAdmission saved = admissionRepository.save(admission);
+
+        // Send notification to Pet Owner
+        notificationService.sendNotification(
+                saved.getPetOwnerId(),
+                "PET_OWNER",
+                null,
+                null,
+                NotificationType.HOSPITALIZATION_RECOMMENDED,
+                "Hospitalization Recommended 🏥",
+                String.format("Dr. %s has recommended hospitalization for %s. Please review and approve the request.",
+                        saved.getDoctorName().replace("Dr. ", ""), saved.getPetName()),
+                "ADMISSION",
+                saved.getId()
+        );
+
+        return saved;
     }
 
     public PetAdmission requestAdmission(String admissionId) {

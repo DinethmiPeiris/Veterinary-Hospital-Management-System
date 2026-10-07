@@ -7,7 +7,7 @@ import { PetAvatar, SpeciesPill, PetCell } from '../../utils/petBadgeHelper';
 import NotificationBell from './NotificationBell';
 import './Epic4.css';
 
-export default function PetOwnerPortal() {
+export default function PetOwnerPortal({ initialView = null, hideHeader = false }) {
   const ownerId = 'USR-5001';
   const ownerName = 'Hansani Malshi';
   const ownerEmail = 'john.doe@example.com';
@@ -25,7 +25,13 @@ export default function PetOwnerPortal() {
   };
 
   // Tabs: 'appointments' | 'invoices' | 'payments'
-  const [activeTab, setActiveTab] = useState('appointments');
+  const [activeTab, setActiveTab] = useState(initialView || 'appointments');
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveTab(initialView);
+    }
+  }, [initialView]);
 
   const [appointments, setAppointments] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -174,7 +180,13 @@ export default function PetOwnerPortal() {
       ]);
 
       if (apptRes && apptRes.success) {
-        setAppointments(apptRes.data || []);
+        setAppointments((apptRes.data || []).map(a => {
+          let s = a.status ? a.status.toUpperCase() : 'REQUESTED';
+          if (['PENDING', 'WAITING'].includes(s)) s = 'REQUESTED';
+          if (['APPROVED', 'ACCEPTED', 'SCHEDULED'].includes(s)) s = 'CONFIRMED';
+          if (['DONE'].includes(s)) s = 'COMPLETED';
+          return { ...a, status: s };
+        }));
       }
       if (invRes && invRes.success) setInvoices(invRes.data || []);
       if (payRes && payRes.success) setPayments(payRes.data || []);
@@ -651,7 +663,7 @@ export default function PetOwnerPortal() {
   const pastAppts = appointments.filter((a) => a.status === 'COMPLETED' || a.status === 'CANCELLED' || a.status === 'EXPIRED' || a.status === 'NO_SHOW');
 
   return (
-    <div className="epic-container">
+    <div className="epic-container" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
       {/* Toast Alert */}
       {toast.show && (
         <div
@@ -674,6 +686,7 @@ export default function PetOwnerPortal() {
       )}
 
       {/* Header */}
+      {!hideHeader && (
       <div className="epic-header">
         <div className="epic-title-group">
           <h1>🐾 Pet Owner Portal</h1>
@@ -686,6 +699,7 @@ export default function PetOwnerPortal() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Tabs */}
       <div className="epic-tabs">

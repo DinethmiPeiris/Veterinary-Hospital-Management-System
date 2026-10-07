@@ -3,7 +3,7 @@ import { epic3Service } from '../services/epic3Service'
 import { getEpic3Session } from '../services/demoConfig'
 import './ModuleStyles.css'
 
-export default function DoctorHospitalizedPetsPage() {
+export default function DoctorHospitalizedPetsPage({ hideHeader = false }) {
   const [hospitalizations, setHospitalizations] = useState([])
   const [selectedPet, setSelectedPet] = useState(null)
   const [activeTab, setActiveTab] = useState('treatment') // 'treatment' | 'recovery' | 'medication' | 'supply' | 'discharge'
@@ -266,6 +266,7 @@ export default function DoctorHospitalizedPetsPage() {
   return (
     <div className="module-page-container">
       <main className="page-content">
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Hospitalized Pets</h1>
@@ -284,6 +285,7 @@ export default function DoctorHospitalizedPetsPage() {
             {loading ? 'Refreshing...' : '\u21bb Refresh'}
           </button>
         </div>
+        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>

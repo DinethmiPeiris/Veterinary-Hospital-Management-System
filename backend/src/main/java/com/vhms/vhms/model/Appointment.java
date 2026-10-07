@@ -25,7 +25,7 @@ public class Appointment {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed(unique = true, sparse = true)
     private String appointmentNumber; // e.g. APT-20260827-001
 
     @Indexed

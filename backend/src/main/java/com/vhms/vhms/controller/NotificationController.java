@@ -20,7 +20,7 @@ import com.vhms.vhms.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/api/v1/notifications")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class NotificationController {

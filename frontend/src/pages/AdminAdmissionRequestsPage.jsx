@@ -3,7 +3,7 @@ import { epic3Service } from '../services/epic3Service'
 import { triggerAdminBadgeRefresh } from '../hooks/useAdminPendingCounts'
 import './ModuleStyles.css'
 
-export default function AdminAdmissionRequestsPage() {
+export default function AdminAdmissionRequestsPage({ hideHeader = false }) {
   const [requests, setRequests] = useState([])
   const [availableCages, setAvailableCages] = useState([])
   const [allCages, setAllCages] = useState([])
@@ -137,6 +137,7 @@ export default function AdminAdmissionRequestsPage() {
   return (
     <div className="module-page-container">
       <main className="page-content">
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Admission Requests</h1>
@@ -146,6 +147,7 @@ export default function AdminAdmissionRequestsPage() {
             {loading ? 'Refreshing...' : '\u21bb Refresh'}
           </button>
         </div>
+        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>

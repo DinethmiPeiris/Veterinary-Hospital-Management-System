@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import DoctorHospitalizedPetsPage from './DoctorHospitalizedPetsPage';
+import DoctorPortal from './epic4/DoctorPortal';
+import DoctorRecommendPage from './DoctorRecommendPage';
+import ConsultationPage from './doctor/workflow/ConsultationPage';
 import './DoctorDashboardPage.css';
 
 // SVG Icons
@@ -75,13 +79,19 @@ const IconX = ({ size = 20 }) => (
     </svg>
 );
 
-export default function DoctorDashboardPage() {
+export default function DoctorDashboardPage({ initialView = null, hideHeader = false }) {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     // View state — always default to OVERVIEW on load/navigation
     const DOCTOR_VIEW_KEY = 'vhms_doctor_view';
-    const [currentView, setCurrentViewRaw] = useState('OVERVIEW');
+    const [currentView, setCurrentViewRaw] = useState(initialView || 'OVERVIEW');
     const setCurrentView = (v) => { try { localStorage.setItem(DOCTOR_VIEW_KEY, v); } catch { } setCurrentViewRaw(v); window.scrollTo({ top: 0, behavior: 'instant' }); };
+
+    useEffect(() => {
+        if (initialView) {
+            setCurrentViewRaw(initialView);
+        }
+    }, [initialView]);
 
     // Doctor Availability Status: 'AVAILABLE' | 'BUSY' | 'UNAVAILABLE'
     const [availabilityStatus, setAvailabilityStatus] = useState('AVAILABLE');
@@ -91,6 +101,7 @@ export default function DoctorDashboardPage() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [department, setDepartment] = useState('');
+    const [selectedConsultationId, setSelectedConsultationId] = useState(null);
     const [doctorProfile, setDoctorProfile] = useState(null);
 
     // Password change state
@@ -782,7 +793,7 @@ export default function DoctorDashboardPage() {
     });
 
     const filteredAppointments = myAppointments.filter(a => {
-        if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
+        if (statusFilter !== 'ALL' && a.status !== statusFilter && !(statusFilter === 'APPROVED' && a.status === 'CONFIRMED')) return false;
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             return (a.petName || '').toLowerCase().includes(q) ||
@@ -795,8 +806,9 @@ export default function DoctorDashboardPage() {
     const userInitial = name ? name.replace('Dr. ', '').charAt(0).toUpperCase() : 'D';
 
     return (
-        <div className="admin-page doctor-theme">
+        <div className="admin-page doctor-theme" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* Header */}
+            {!hideHeader && (
             <header className="admin-header">
                 <div className="admin-shell">
                     <div className="admin-brand">
@@ -854,8 +866,40 @@ export default function DoctorDashboardPage() {
                     </div>
                 </div>
             </header>
+            )}
 
-            <main className="admin-main admin-shell">
+            <div className="doc-unified-layout">
+            {/* UNIFIED LEFT SIDEBAR NAVIGATION */}
+            {!hideHeader && (
+            <aside className="po-sidebar">
+                <nav className="po-sidebar-nav">
+                    <div className="po-sidebar-group-label">CLINICAL</div>
+                    <button className={`po-sidebar-item${currentView === 'OVERVIEW' ? ' active' : ''}`} onClick={() => setCurrentView('OVERVIEW')}>
+                        <span className="po-sidebar-icon">📊</span> Dashboard
+                    </button>
+
+                    <div className="po-sidebar-group-label">APPOINTMENTS</div>
+                    <button className={`po-sidebar-item${currentView === 'BILLING' ? ' active' : ''}`} onClick={() => setCurrentView('BILLING')}>
+                        <span className="po-sidebar-icon">🔔</span> Booking Requests
+                    </button>
+
+                    <div className="po-sidebar-group-label">HOSPITAL</div>
+                    <button className={`po-sidebar-item${currentView === 'RECOMMEND_ADMISSION' ? ' active' : ''}`} onClick={() => setCurrentView('RECOMMEND_ADMISSION')}>
+                        <span className="po-sidebar-icon">🏥</span> Recommend Admission
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'HOSPITALIZED_PETS' ? ' active' : ''}`} onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
+                        <span className="po-sidebar-icon">🐾</span> Hospitalized Pets
+                    </button>
+
+                    <div className="po-sidebar-group-label">ACCOUNT</div>
+                    <button className={`po-sidebar-item${currentView === 'PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('PROFILE')}>
+                        <span className="po-sidebar-icon">👨‍⚕️</span> My Profile
+                    </button>
+                </nav>
+            </aside>
+            )}
+
+            <main className="admin-main admin-shell po-main-content" style={hideHeader ? { padding: '10px 0' } : {}}>
                 {currentView !== 'OVERVIEW' && (
                     <div className="back-navigation-bar">
                         <button className="btn-back-overview" onClick={() => setCurrentView('OVERVIEW')}>
@@ -916,7 +960,26 @@ export default function DoctorDashboardPage() {
                                 </div>
                                 <div className="bento-footer text-muted">Live Consultation Toggle</div>
                             </div>
+                            
+                            <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #3b82f6' }} onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
+                                <div className="bento-head">
+                                    <span className="bento-label" style={{ fontWeight: 800 }}>Hospitalized Patients</span>
+                                    <span className="bento-icon-wrap blue"><IconCalendar size={22} /></span>
+                                </div>
+                                <div className="bento-number">Admissions</div>
+                                <div className="bento-footer text-muted">Manage Inpatient Care</div>
+                            </div>
+
+                            <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #f59e0b' }} onClick={() => setCurrentView('BILLING')}>
+                                <div className="bento-head">
+                                    <span className="bento-label" style={{ fontWeight: 800 }}>Billing & Appointments</span>
+                                    <span className="bento-icon-wrap" style={{ background: '#fef3c7', color: '#d97706' }}><IconCheckCircle size={22} /></span>
+                                </div>
+                                <div className="bento-number">Requests</div>
+                                <div className="bento-footer text-muted">Issue Treatment Invoices</div>
+                            </div>
                         </section>
+
 
                         {/* Live Availability Duty Control */}
                         <section className="admin-panel-card" style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '28px' }}>
@@ -993,7 +1056,7 @@ export default function DoctorDashboardPage() {
                                         Total: {myAppointments.length}
                                     </span>
                                     <span style={{ background: '#dcfce7', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, color: '#15803d', border: '1px solid #bbf7d0' }}>
-                                        Approved: {myAppointments.filter(a => a.status === 'APPROVED').length}
+                                        Approved: {myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length}
                                     </span>
                                 </div>
                             </div>
@@ -1019,7 +1082,7 @@ export default function DoctorDashboardPage() {
                                             }}
                                         >
                                             {st === 'ALL' && `All Patients (${myAppointments.length})`}
-                                            {st === 'APPROVED' && `Approved (${myAppointments.filter(a => a.status === 'APPROVED').length})`}
+                                            {st === 'APPROVED' && `Approved (${myAppointments.filter(a => ['APPROVED', 'CONFIRMED'].includes(a.status)).length})`}
                                             {st === 'COMPLETED' && `Completed (${myAppointments.filter(a => a.status === 'COMPLETED').length})`}
                                         </button>
                                     ))}
@@ -1075,11 +1138,11 @@ export default function DoctorDashboardPage() {
                                                         borderRadius: '100px',
                                                         fontSize: '0.75rem',
                                                         fontWeight: 800,
-                                                        background: appt.status === 'COMPLETED' ? '#e0f2fe' : appt.status === 'APPROVED' ? '#dcfce7' : appt.status === 'REJECTED' ? '#fef2f2' : '#fef3c7',
-                                                        color: appt.status === 'COMPLETED' ? '#0284c7' : appt.status === 'APPROVED' ? '#16a34a' : appt.status === 'REJECTED' ? '#dc2626' : '#b45309',
-                                                        border: `1px solid ${appt.status === 'COMPLETED' ? '#bae6fd' : appt.status === 'APPROVED' ? '#bbf7d0' : appt.status === 'REJECTED' ? '#fca5a5' : '#fde68a'}`
+                                                        background: appt.status === 'COMPLETED' ? '#e0f2fe' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#dcfce7' : appt.status === 'REJECTED' ? '#fef2f2' : '#fef3c7',
+                                                        color: appt.status === 'COMPLETED' ? '#0284c7' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#16a34a' : appt.status === 'REJECTED' ? '#dc2626' : '#b45309',
+                                                        border: `1px solid ${appt.status === 'COMPLETED' ? '#bae6fd' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#bbf7d0' : appt.status === 'REJECTED' ? '#fca5a5' : '#fde68a'}`
                                                     }}>
-                                                        {appt.status === 'COMPLETED' ? 'Completed' : appt.status === 'APPROVED' ? 'Approved' : appt.status === 'REJECTED' ? 'Declined' : 'Pending Approval'}
+                                                        {appt.status === 'COMPLETED' ? 'Completed' : ['APPROVED', 'CONFIRMED'].includes(appt.status) ? 'Approved' : ['REJECTED', 'CANCELLED', 'EXPIRED', 'NO_SHOW'].includes(appt.status) ? 'Declined' : 'Pending Approval'}
                                                     </span>
                                                 </div>
 
@@ -1123,11 +1186,14 @@ export default function DoctorDashboardPage() {
                                                     Inspect Pet Profile
                                                 </button>
 
-                                                {appt.status === 'APPROVED' ? (
+                                                {['APPROVED', 'CONFIRMED', 'IN_PROGRESS'].includes(appt.status) ? (
                                                     <button
                                                         type="button"
                                                         disabled={appt.date > new Date().toISOString().split('T')[0]}
-                                                        onClick={() => handleCompleteAppointment(appt.id, appt.petName)}
+                                                        onClick={() => {
+                                                            setSelectedConsultationId(appt.id || appt.appointmentId || appt.appointmentNumber);
+                                                            setCurrentView('CONSULTATION');
+                                                        }}
                                                         style={{
                                                             flex: 1,
                                                             padding: '9px 12px',
@@ -1142,7 +1208,9 @@ export default function DoctorDashboardPage() {
                                                             textAlign: 'center'
                                                         }}
                                                     >
-                                                        {appt.date > new Date().toISOString().split('T')[0] ? `Wait until ${appt.date}` : '✓ Complete Visit'}
+                                                        {appt.date > new Date().toISOString().split('T')[0] 
+                                                            ? `Wait until ${appt.date}` 
+                                                            : (appt.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation')}
                                                     </button>
                                                 ) : appt.status === 'COMPLETED' ? (
                                                     <span style={{
@@ -1295,7 +1363,37 @@ export default function DoctorDashboardPage() {
                         </div>
                     </section>
                 )}
+
+                {currentView === 'HOSPITALIZED_PETS' && (
+                    <DoctorHospitalizedPetsPage hideHeader={true} />
+                )}
+                
+                {currentView === 'BILLING' && (
+                    <DoctorPortal 
+                        hideHeader={true} 
+                        onStartConsultation={(id) => {
+                            setSelectedConsultationId(id);
+                            setCurrentView('CONSULTATION');
+                        }}
+                    />
+                )}
+
+                {currentView === 'CONSULTATION' && selectedConsultationId && (
+                    <div style={{ padding: '20px' }}>
+                        <div className="back-navigation-bar" style={{ marginBottom: '20px' }}>
+                            <button className="btn-back-overview" onClick={() => setCurrentView('BILLING')}>
+                                ← Back to Booking Requests
+                            </button>
+                        </div>
+                        <ConsultationPage appointmentId={selectedConsultationId} />
+                    </div>
+                )}
+
+                {currentView === 'RECOMMEND_ADMISSION' && (
+                    <DoctorRecommendPage />
+                )}
             </main>
+            </div>
 
             {/* PET MEDICAL PROFILE INSPECTOR MODAL */}
             {selectedPetForProfile && (

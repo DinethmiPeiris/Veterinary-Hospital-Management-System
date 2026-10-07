@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/api/v1/invoices")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class InvoiceController {

@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PawPrint, Calendar, ShieldCheck, Heart, Plus, ChevronDown, ChevronRight, ArrowRight, Shield, Bell, Check, CheckCheck, Trash2, Filter, Search, Mail, Info, AlertCircle, X, Clock } from 'lucide-react';
 import { api } from '../services/api';
+import PetOwnerConsultations from './petowner/PetOwnerConsultations';
+import PetOwnerMedicalHistory from './petowner/PetOwnerMedicalHistory';
+import PetOwnerAdmissionsPage from './PetOwnerAdmissionsPage';
+import PetOwnerPortal from './epic4/PetOwnerPortal';
 import './PetManagementPage.css';
 import './saas-dashboard.css';
 
@@ -229,17 +233,26 @@ const FooterQuote = () => (
     </div>
 );
 
-export default function PetManagementPage() {
+export default function PetManagementPage({ initialView = null, hideHeader = false }) {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [pets, setPets] = useState([]);
     const [loading, setLoading] = useState(true);
     // View state — persisted across refreshes
     const PET_VIEW_KEY = 'vhms_pet_view';
-    const safePetViews = ['OVERVIEW', 'PETS_LIST', 'FIND_DOCTOR', 'MY_APPOINTMENTS', 'PROFILE', 'NOTIFICATIONS'];
-    const initPetView = (() => { try { const v = localStorage.getItem(PET_VIEW_KEY); return safePetViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } })();
+    const safePetViews = ['OVERVIEW', 'PETS_LIST', 'FIND_DOCTOR', 'MY_APPOINTMENTS', 'CONSULTATIONS', 'MEDICAL_HISTORY', 'PROFILE', 'NOTIFICATIONS', 'ADMISSIONS', 'BILLING', 'INVOICES', 'PAYMENTS'];
+    const initPetView = (() => { 
+        if (initialView) return initialView;
+        try { const v = localStorage.getItem(PET_VIEW_KEY); return safePetViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } 
+    })();
     const [currentView, setCurrentViewRaw] = useState(initPetView);
     const setCurrentView = (v) => { if (safePetViews.includes(v)) { try { localStorage.setItem(PET_VIEW_KEY, v); } catch { } } setCurrentViewRaw(v); window.scrollTo({ top: 0, behavior: 'instant' }); };
+
+    useEffect(() => {
+        if (initialView) {
+            setCurrentViewRaw(initialView);
+        }
+    }, [initialView]);
 
     // Doctor Roster & Search State
     const [doctors, setDoctors] = useState([]);
@@ -1441,8 +1454,9 @@ export default function PetManagementPage() {
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     return (
-        <div className="pets-page">
+        <div className="pets-page" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* SAAS PORTAL HEADER */}
+            {!hideHeader && (
             <PortalHeader
                 currentUser={currentUser}
                 isDropdownOpen={isDropdownOpen}
@@ -1464,8 +1478,61 @@ export default function PetManagementPage() {
                 markAllAsRead={handleMarkAllAsRead}
                 setSelectedNotifDetail={setSelectedNotifDetail}
             />
+            )}
 
-            <main className="pets-main saas-shell">
+            <div className="pet-owner-unified-layout">
+            {/* UNIFIED LEFT SIDEBAR NAVIGATION */}
+            {!hideHeader && (
+            <aside className="po-sidebar">
+                <nav className="po-sidebar-nav">
+                    <div className="po-sidebar-group-label">MAIN</div>
+                    <button className={`po-sidebar-item${currentView === 'OVERVIEW' ? ' active' : ''}`} onClick={() => setCurrentView('OVERVIEW')}>
+                        <span className="po-sidebar-icon">🐾</span> Dashboard
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'PETS_LIST' || currentView === 'ADD_PET' || currentView === 'PET_PROFILE_DETAIL' ? ' active' : ''}`} onClick={() => setCurrentView('PETS_LIST')}>
+                        <span className="po-sidebar-icon">🐶</span> My Pets
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'FIND_DOCTOR' || currentView === 'DOCTOR_PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('FIND_DOCTOR')}>
+                        <span className="po-sidebar-icon">🔍</span> Find Doctor & Book
+                    </button>
+
+                    <div className="po-sidebar-group-label">APPOINTMENTS</div>
+                    <button className={`po-sidebar-item${currentView === 'MY_APPOINTMENTS' ? ' active' : ''}`} onClick={() => setCurrentView('MY_APPOINTMENTS')}>
+                        <span className="po-sidebar-icon">📅</span> My Appointments
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'CONSULTATIONS' ? ' active' : ''}`} onClick={() => setCurrentView('CONSULTATIONS')}>
+                        <span className="po-sidebar-icon">📋</span> Consultations
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'MEDICAL_HISTORY' ? ' active' : ''}`} onClick={() => setCurrentView('MEDICAL_HISTORY')}>
+                        <span className="po-sidebar-icon">❤️</span> Medical History
+                    </button>
+
+                    <div className="po-sidebar-group-label">HOSPITAL</div>
+                    <button className={`po-sidebar-item${currentView === 'ADMISSIONS' ? ' active' : ''}`} onClick={() => setCurrentView('ADMISSIONS')}>
+                        <span className="po-sidebar-icon">🏥</span> Admissions
+                    </button>
+
+                    <div className="po-sidebar-group-label">BILLING</div>
+                    <button className={`po-sidebar-item${currentView === 'INVOICES' || currentView === 'BILLING' ? ' active' : ''}`} onClick={() => setCurrentView('INVOICES')}>
+                        <span className="po-sidebar-icon">💳</span> Invoices
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'PAYMENTS' ? ' active' : ''}`} onClick={() => setCurrentView('PAYMENTS')}>
+                        <span className="po-sidebar-icon">💰</span> Payments
+                    </button>
+
+                    <div className="po-sidebar-group-label">ACCOUNT</div>
+                    <button className={`po-sidebar-item${currentView === 'NOTIFICATIONS' ? ' active' : ''}`} onClick={() => setCurrentView('NOTIFICATIONS')}>
+                        <span className="po-sidebar-icon">🔔</span> Notifications
+                        {unreadNotifCount > 0 && <span className="po-sidebar-badge">{unreadNotifCount}</span>}
+                    </button>
+                    <button className={`po-sidebar-item${currentView === 'PROFILE' ? ' active' : ''}`} onClick={() => setCurrentView('PROFILE')}>
+                        <span className="po-sidebar-icon">👤</span> My Profile
+                    </button>
+                </nav>
+            </aside>
+            )}
+
+            <main className="pets-main saas-shell po-main-content" style={hideHeader ? { padding: '10px 0' } : {}}>
                 {/* Back to Registered Pets Header when viewing pet profile or edit form */}
                 {(currentView === 'ADD_PET' || currentView === 'PET_PROFILE_DETAIL') && (
                     <div className="back-navigation-bar">
@@ -1599,7 +1666,7 @@ export default function PetManagementPage() {
                                 </div>
 
                                 {/* CARD 5: HOSPITAL ADMISSIONS (Epic 3) */}
-                                <div className="portal-card appointments-portal-card" id="admissions-portal-card" onClick={() => navigate('/pet-owner/admissions')}>
+                                <div className="portal-card appointments-portal-card" id="admissions-portal-card" onClick={() => setCurrentView('ADMISSIONS')}>
                                     <div className="portal-card-top">
                                         <div className="portal-icon-box icon-blue-box">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"></path><path d="M12 9v6"></path><path d="M9 12h6"></path><path d="M3 21h18"></path></svg>
@@ -1612,6 +1679,23 @@ export default function PetManagementPage() {
                                     </p>
                                     <div className="portal-card-footer">
                                         <span className="link-text">View Admissions →</span>
+                                    </div>
+                                </div>
+
+                                {/* CARD 6: INVOICES & PAYMENTS (Epic 4) */}
+                                <div className="portal-card" id="billing-portal-card" onClick={() => setCurrentView('BILLING')} style={{ borderTop: '4px solid #f59e0b' }}>
+                                    <div className="portal-card-top">
+                                        <div className="portal-icon-box" style={{ background: '#fef3c7', color: '#d97706' }}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                        </div>
+                                        <span className="portal-badge" style={{ background: '#fef3c7', color: '#d97706' }}>Billing</span>
+                                    </div>
+                                    <h3 className="portal-card-title">Bookings & Invoices</h3>
+                                    <p className="portal-card-desc">
+                                        View and securely pay hospital invoices for completed consultations and treatments.
+                                    </p>
+                                    <div className="portal-card-footer">
+                                        <span className="link-text" style={{ color: '#d97706' }}>View Invoices →</span>
                                     </div>
                                 </div>
 
@@ -3399,7 +3483,31 @@ export default function PetManagementPage() {
                         </div>
                     </div>
                 )}
+                {currentView === 'ADMISSIONS' && (
+                    <PetOwnerAdmissionsPage hideHeader={true} />
+                )}
+                
+                {(currentView === 'BILLING' || currentView === 'INVOICES') && (
+                    <PetOwnerPortal initialView="invoices" hideHeader={true} />
+                )}
+
+                {currentView === 'PAYMENTS' && (
+                    <PetOwnerPortal initialView="payments" hideHeader={true} />
+                )}
+
+                {currentView === 'CONSULTATIONS' && (
+                    <section style={{ padding: '0' }}>
+                        <PetOwnerConsultations />
+                    </section>
+                )}
+
+                {currentView === 'MEDICAL_HISTORY' && (
+                    <section style={{ padding: '0' }}>
+                        <PetOwnerMedicalHistory />
+                    </section>
+                )}
             </main>
+            </div>
 
             <div className={`toast${toast.show ? ' show' : ''} ${toast.type}`} id="toast">{toast.message}</div>
         </div >

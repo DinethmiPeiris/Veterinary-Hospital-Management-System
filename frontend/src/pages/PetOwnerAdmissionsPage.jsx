@@ -47,7 +47,7 @@ function getRecoveryBadgeClass(status) {
   }
 }
 
-export default function PetOwnerAdmissionsPage() {
+export default function PetOwnerAdmissionsPage({ hideHeader = false }) {
   const [admissions, setAdmissions] = useState([])
   const [hospitalizationsMap, setHospitalizationsMap] = useState({})
   const [loading, setLoading] = useState(false)
@@ -287,6 +287,7 @@ export default function PetOwnerAdmissionsPage() {
       <main className="page-content">
 
         {/* ── Page Header with Notification Bell ── */}
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Pet Admission &amp; Hospitalization</h1>
@@ -378,6 +379,7 @@ export default function PetOwnerAdmissionsPage() {
             </button>
           </div>
         </div>
+        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>

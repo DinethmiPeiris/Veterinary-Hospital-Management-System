@@ -28,7 +28,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping("/api/v1/appointments")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class AppointmentController {

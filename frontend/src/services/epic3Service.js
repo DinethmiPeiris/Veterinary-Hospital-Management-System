@@ -1,6 +1,6 @@
 import { API_BASE_URL as BACKEND_URL } from '../config/api'
 
-const API_BASE_URL = `${BACKEND_URL}/api/epic3`
+const API_BASE_URL = `${BACKEND_URL}/api/v1`
 
 async function handleResponse(response) {
   if (!response.ok) {

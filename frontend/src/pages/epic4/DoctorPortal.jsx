@@ -14,7 +14,7 @@ const SERVICES_MAP = {
   VACCINATION: ['Rabies Vaccine', 'DHLPP Vaccine', 'FVRCP Vaccine', 'Bordetella Vaccine']
 };
 
-export default function DoctorPortal() {
+export default function DoctorPortal({ initialView = null, hideHeader = false, onStartConsultation = null }) {
   const doctorsList = [
     { id: 'DOC-2001', name: 'Dr. Natasha Silva', spec: 'Small Animal Specialist' },
     { id: 'DOC-2002', name: 'Dr. Rohan Fernando', spec: 'Veterinary Surgeon' },
@@ -32,13 +32,32 @@ export default function DoctorPortal() {
     return species.charAt(0).toUpperCase() + species.slice(1);
   };
 
-  const [selectedDoctorId, setSelectedDoctorId] = useState('DOC-2001');
-  const currentDoc = doctorsList.find(d => d.id === selectedDoctorId) || doctorsList[0];
-  const doctorId = currentDoc.id;
-  const doctorName = currentDoc.name;
-  const specialization = currentDoc.spec;
+  const [selectedDoctorId, setSelectedDoctorId] = useState(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('vhms_user'));
+      if (user && user.id) return user.id;
+    } catch(e) {}
+    return 'DOC-2001';
+  });
 
-  const [activeTab, setActiveTab] = useState('new');
+  const doctorName = (() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('vhms_user'));
+      if (user && user.name) return user.name;
+    } catch(e) {}
+    return 'Dr. Kasun Perera';
+  })();
+
+  const doctorId = selectedDoctorId;
+  const specialization = 'Veterinary Surgeon';
+
+  const [activeTab, setActiveTab] = useState(initialView || 'new');
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveTab(initialView);
+    }
+  }, [initialView]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [agenda, setAgenda] = useState([]);
   const [allAssigned, setAllAssigned] = useState([]);
@@ -156,8 +175,24 @@ export default function DoctorPortal() {
         });
       };
 
-      if (agendaRes && agendaRes.success) setAgenda(attachServices(agendaRes.data || []));
-      if (allRes && allRes.success) setAllAssigned(attachServices(allRes.data || []));
+      if (agendaRes && agendaRes.success) {
+        setAgenda(attachServices(agendaRes.data || []).map(a => {
+          let s = a.status ? a.status.toUpperCase() : 'REQUESTED';
+          if (['PENDING', 'WAITING'].includes(s)) s = 'REQUESTED';
+          if (['APPROVED', 'ACCEPTED', 'SCHEDULED'].includes(s)) s = 'CONFIRMED';
+          if (['DONE'].includes(s)) s = 'COMPLETED';
+          return { ...a, status: s };
+        }));
+      }
+      if (allRes && allRes.success) {
+        setAllAssigned(attachServices(allRes.data || []).map(a => {
+          let s = a.status ? a.status.toUpperCase() : 'REQUESTED';
+          if (['PENDING', 'WAITING'].includes(s)) s = 'REQUESTED';
+          if (['APPROVED', 'ACCEPTED', 'SCHEDULED'].includes(s)) s = 'CONFIRMED';
+          if (['DONE'].includes(s)) s = 'COMPLETED';
+          return { ...a, status: s };
+        }));
+      }
       if (workloadRes && workloadRes.success) setWorkload(workloadRes.data);
     } catch (e) {
       console.error(e);
@@ -324,7 +359,7 @@ export default function DoctorPortal() {
   };
 
   return (
-    <div className="epic-container">
+    <div className="epic-container" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
       {/* Toast Alert */}
       {toast.show && (
         <div
@@ -347,6 +382,7 @@ export default function DoctorPortal() {
       )}
 
       {/* Header */}
+      {!hideHeader && (
       <div className="epic-header">
         <div className="epic-title-group">
           <h1>🩺 Veterinarian Portal</h1>
@@ -379,9 +415,11 @@ export default function DoctorPortal() {
           <NotificationBell recipientId={doctorId} />
         </div>
       </div>
+      )}
+
 
       {/* Stats Cards (US 4.34 Workload) */}
-      {workload && (
+      {!hideHeader && workload && (
         <div className="epic-stats-grid">
           <div className="epic-stat-card">
             <div className="stat-icon blue">📋</div>
@@ -495,11 +533,11 @@ export default function DoctorPortal() {
               </p>
             </div>
             <span style={{ fontSize: '0.85rem', background: '#eff6ff', color: '#1d4ed8', padding: '0.35rem 0.75rem', borderRadius: '8px', fontWeight: '600' }}>
-              {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING').length} Active Appointments
+              {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'REQUESTED' || a.status === 'IN_PROGRESS').length} Active Appointments
             </span>
           </div>
 
-          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING').length === 0 ? (
+          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'REQUESTED' || a.status === 'IN_PROGRESS').length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✨</div>
               <p style={{ margin: 0, fontWeight: '600', fontSize: '1rem', color: '#475569' }}>No pending or newly assigned appointments.</p>
@@ -635,9 +673,15 @@ export default function DoctorPortal() {
                                 </button>
                                 <button
                                   className="btn-sm-action btn-approve"
-                                  onClick={() => openCompleteModal(a)}
+                                  onClick={() => {
+                                      if (onStartConsultation) {
+                                          onStartConsultation(a.id || a.appointmentId || a.appointmentNumber);
+                                      } else {
+                                          openCompleteModal(a);
+                                      }
+                                  }}
                                 >
-                                  ✓ Complete Consultation
+                                  {a.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation'}
                                 </button>
                               </div>
                             )

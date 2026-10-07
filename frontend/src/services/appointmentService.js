@@ -47,7 +47,31 @@ function generateStandardSlots(startTime = '11:00', endTime = '14:00', duration 
 // Local mock store for instant reactivity
 const getLocalAppointments = () => {
   try {
-    return JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
+    const epic4 = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
+    const legacy = JSON.parse(localStorage.getItem('vhms_user_appointments') || '[]');
+    
+    const map = new Map();
+    // Normalize legacy appointments so they match Epic 4 structure
+    legacy.forEach(a => {
+        const id = a.id || a.appointmentNumber;
+        const statusMap = {
+            'APPROVED': 'CONFIRMED',
+            'PENDING_APPROVAL': 'REQUESTED'
+        };
+        map.set(id, {
+            ...a,
+            appointmentNumber: a.appointmentNumber || id,
+            appointmentDate: a.appointmentDate || a.date,
+            status: statusMap[a.status] || a.status
+        });
+    });
+    
+    epic4.forEach(a => {
+        const id = a.id || a.appointmentNumber;
+        map.set(id, a);
+    });
+    
+    return Array.from(map.values());
   } catch (e) {
     return [];
   }

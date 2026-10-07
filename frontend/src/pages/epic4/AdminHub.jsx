@@ -16,7 +16,7 @@ const SERVICES_MAP = {
   VACCINATION: ['Rabies Vaccine', 'DHLPP Vaccine', 'FVRCP Vaccine', 'Bordetella Vaccine']
 };
 
-export default function AdminHub() {
+export default function AdminHub({ initialView = null, hideHeader = false }) {
   const adminId = 'ADMIN-001';
 
   // Normalize raw species values (e.g. "Feline" → "Cat", "Canine" → "Dog")
@@ -32,7 +32,13 @@ export default function AdminHub() {
   };
 
   // Tabs: 'appointments' | 'schedules' | 'invoicing' | 'reports' | 'feedback'
-  const [activeTab, setActiveTab] = useState('appointments');
+  const [activeTab, setActiveTab] = useState(initialView || 'appointments');
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveTab(initialView);
+    }
+  }, [initialView]);
 
   const [appointments, setAppointments] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -274,7 +280,17 @@ export default function AdminHub() {
 
       const [apptRes, schedRes, invRes, payRes, fbRes, finRes] = results.map(r => r.status === 'fulfilled' ? r.value : { success: false });
 
-      if (apptRes && apptRes.success) setAppointments(apptRes.data || []);
+      if (apptRes && apptRes.success) {
+        setAppointments((apptRes.data || []).map(a => {
+          let s = a.status ? a.status.toUpperCase() : 'REQUESTED';
+          if (['PENDING', 'WAITING'].includes(s)) s = 'REQUESTED';
+          if (['APPROVED', 'ACCEPTED', 'SCHEDULED'].includes(s)) s = 'CONFIRMED';
+          if (['DONE'].includes(s)) s = 'COMPLETED';
+          return { ...a, status: s };
+        }));
+      } else {
+        setAppointments([]);
+      }
       if (schedRes && schedRes.success) setSchedules(schedRes.data || []);
       if (invRes && invRes.success) setInvoices(invRes.data || []);
       if (payRes && payRes.success) setPayments(payRes.data || []);
@@ -939,6 +955,7 @@ export default function AdminHub() {
       )}
 
       {/* Header */}
+      {!hideHeader && (
       <div className="epic-header">
         <div className="epic-title-group">
           <h1>🏥 Hospital Administration</h1>
@@ -948,8 +965,10 @@ export default function AdminHub() {
           <NotificationBell recipientId={adminId} />
         </div>
       </div>
+      )}
 
       {/* KPI Overview (US 4.20 & US 4.25) */}
+      {!hideHeader && (
       <div className="epic-stats-grid">
         <div className="epic-stat-card">
           <div className="stat-icon blue">📅</div>
@@ -980,6 +999,7 @@ export default function AdminHub() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Tabs */}
       <div className="epic-tabs">

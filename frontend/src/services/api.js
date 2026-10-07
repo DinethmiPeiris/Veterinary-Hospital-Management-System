@@ -1,7 +1,7 @@
 import { API_BASE_URL as BACKEND_URL } from '../config/api';
 
-// Pet-owner portal endpoints live under /api (IT24101204); doctor workflow endpoints under /api/v1.
-const API_BASE_URL = `${BACKEND_URL}/api`;
+// Pet-owner portal endpoints and doctor workflow endpoints now uniformly use /api/v1
+const API_BASE_URL = `${BACKEND_URL}/api/v1`;
 
 export const api = {
     // AUTH
@@ -136,7 +136,7 @@ export const api = {
     async getAppointments(ownerId) {
         let backendData = null;
         try {
-            const url = ownerId ? `${API_BASE_URL}/appointments/owner/${ownerId}` : `${API_BASE_URL}/appointments`;
+            const url = ownerId ? `${API_BASE_URL}/legacy/appointments/owner/${ownerId}` : `${API_BASE_URL}/legacy/appointments`;
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -205,7 +205,7 @@ export const api = {
             if (payload.id && (payload.id.startsWith('APT-') || payload.id.startsWith('APP-'))) {
                 delete payload.id;
             }
-            const res = await fetch(`${API_BASE_URL}/appointments`, {
+            const res = await fetch(`${API_BASE_URL}/legacy/appointments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -231,7 +231,7 @@ export const api = {
 
     async updateAppointment(id, data) {
         try {
-            const res = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/legacy/appointments/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),

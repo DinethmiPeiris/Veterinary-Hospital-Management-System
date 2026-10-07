@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import AdminAdmissionRequestsPage from './AdminAdmissionRequestsPage';
+import AdminHospitalizedPetsPage from './AdminHospitalizedPetsPage';
+import AdminCageOccupancyPage from './AdminCageOccupancyPage';
+import AdminInventoryPage from './AdminInventoryPage';
+import AdminHub from './epic4/AdminHub';
 import './AdminDashboardPage.css';
 
 const IconHospital = () => (
@@ -382,7 +387,7 @@ const PatientTypesChart = ({ pets = [] }) => {
     );
 };
 
-export default function AdminDashboardPage() {
+export default function AdminDashboardPage({ initialView = null, hideHeader = false }) {
     const navigate = useNavigate();
     const [pendingUsers, setPendingUsers] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -392,9 +397,18 @@ export default function AdminDashboardPage() {
     // View state — persisted across refreshes
     const ADMIN_VIEW_KEY = 'vhms_admin_view';
     const safeAdminViews = ['OVERVIEW', 'PENDING', 'DIRECTORY', 'DOCTOR_DIRECTORY', 'CREATE_DOCTOR', 'TIMESLOTS', 'SCHEDULE', 'APPOINTMENTS'];
-    const initAdminView = (() => { try { const v = localStorage.getItem(ADMIN_VIEW_KEY); return safeAdminViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } })();
+    const initAdminView = (() => { 
+        if (initialView) return initialView;
+        try { const v = localStorage.getItem(ADMIN_VIEW_KEY); return safeAdminViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } 
+    })();
     const [currentView, setCurrentViewRaw] = useState(initAdminView);
     const setCurrentView = (v) => { try { localStorage.setItem(ADMIN_VIEW_KEY, v); } catch { } setCurrentViewRaw(v); window.scrollTo({ top: 0, behavior: 'instant' }); };
+
+    useEffect(() => {
+        if (initialView) {
+            setCurrentViewRaw(initialView);
+        }
+    }, [initialView]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Doctor profile view/edit state
@@ -1480,8 +1494,9 @@ export default function AdminDashboardPage() {
     };
 
     return (
-        <div className="admin-page">
+        <div className="admin-page" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* Top Navigation Header */}
+            {!hideHeader && (
             <header className="admin-header">
                 <div className="admin-shell">
                     <div className="admin-brand" onClick={handleReturnToOverview} style={{ cursor: 'pointer' }} title="Return to Dashboard Overview">
@@ -1537,8 +1552,9 @@ export default function AdminDashboardPage() {
                     </div>
                 </div>
             </header>
+            )}
 
-            <main className="admin-main admin-shell">
+            <main className="admin-main admin-shell" style={hideHeader ? { padding: '10px 0' } : {}}>
 
 
                 {/* MAIN OVERVIEW VIEW */}
@@ -1730,7 +1746,7 @@ export default function AdminDashboardPage() {
                                     <span>HOSPITALIZATION & WARD MANAGEMENT</span>
                                 </div>
                                 <div className="nav-cards-grid">
-                                    <div className="feature-nav-card card-purple-hover" onClick={() => navigate('/admin/admission-requests')}>
+                                    <div className="feature-nav-card card-purple-hover" onClick={() => setCurrentView('ADMISSION_REQUESTS')}>
                                         <div className="nav-card-icon-badge purple">
                                             <IconCheck size={26} />
                                         </div>
@@ -1740,7 +1756,7 @@ export default function AdminDashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div className="feature-nav-card card-amber-hover" onClick={() => navigate('/admin/hospitalized-pets')}>
+                                    <div className="feature-nav-card card-amber-hover" onClick={() => setCurrentView('HOSPITALIZED_PETS')}>
                                         <div className="nav-card-icon-badge amber">
                                             <IconPaw size={26} />
                                         </div>
@@ -1750,7 +1766,7 @@ export default function AdminDashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div className="feature-nav-card card-emerald-hover" onClick={() => navigate('/admin/cage-occupancy')}>
+                                    <div className="feature-nav-card card-emerald-hover" onClick={() => setCurrentView('CAGE_OCCUPANCY')}>
                                         <div className="nav-card-icon-badge emerald">
                                             <IconGrid size={26} />
                                         </div>
@@ -1760,13 +1776,33 @@ export default function AdminDashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div className="feature-nav-card card-blue-hover" onClick={() => navigate('/admin/inventory')}>
+                                    <div className="feature-nav-card card-blue-hover" onClick={() => setCurrentView('INVENTORY')}>
                                         <div className="nav-card-icon-badge blue">
                                             <IconFolder size={26} />
                                         </div>
                                         <div className="nav-card-info">
                                             <h3>Pharmacy & Stock</h3>
                                             <span className="nav-card-sub">Manage medical inventory</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            {/* Group 4: Finance & Billing */}
+                            <div className="portal-group-clean" style={{ marginTop: '2rem' }}>
+                                <div className="clean-group-label">
+                                    <span className="dot-indicator" style={{ background: '#eab308', boxShadow: '0 0 8px rgba(234, 179, 8, 0.4)' }}></span>
+                                    <span>FINANCE & BILLING</span>
+                                </div>
+                                <div className="nav-cards-grid">
+                                    <div className="feature-nav-card card-amber-hover" onClick={() => setCurrentView('BILLING')}>
+                                        <div className="nav-card-icon-badge amber">
+                                            <IconFolder size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Admin Hub (Billing)</h3>
+                                            <span className="nav-card-sub">Manage invoices & payments</span>
                                         </div>
                                     </div>
                                 </div>
@@ -3662,13 +3698,13 @@ export default function AdminDashboardPage() {
                                                                 fontWeight: 700,
                                                                 padding: '4px 10px',
                                                                 borderRadius: '12px',
-                                                                background: appt.status === 'APPROVED' ? '#dcfce7' : appt.status === 'PENDING_APPROVAL' ? '#fef3c7' : appt.status === 'COMPLETED' ? '#e0e7ff' : '#fee2e2',
-                                                                color: appt.status === 'APPROVED' ? '#15803d' : appt.status === 'PENDING_APPROVAL' ? '#b45309' : appt.status === 'COMPLETED' ? '#4338ca' : '#b91c1c'
+                                                                background: ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#dcfce7' : ['PENDING_APPROVAL', 'REQUESTED', 'PENDING'].includes(appt.status) ? '#fef3c7' : appt.status === 'COMPLETED' ? '#e0e7ff' : '#fee2e2',
+                                                                color: ['APPROVED', 'CONFIRMED'].includes(appt.status) ? '#15803d' : ['PENDING_APPROVAL', 'REQUESTED', 'PENDING'].includes(appt.status) ? '#b45309' : appt.status === 'COMPLETED' ? '#4338ca' : '#b91c1c'
                                                             }}>
-                                                                {appt.status === 'PENDING_APPROVAL' && 'Pending Approval'}
-                                                                {appt.status === 'APPROVED' && 'Approved'}
+                                                                {['PENDING_APPROVAL', 'REQUESTED', 'PENDING'].includes(appt.status) && 'Pending Approval'}
+                                                                {['APPROVED', 'CONFIRMED'].includes(appt.status) && 'Approved'}
                                                                 {appt.status === 'COMPLETED' && 'Completed'}
-                                                                {appt.status === 'REJECTED' && 'Rejected'}
+                                                                {['REJECTED', 'CANCELLED', 'EXPIRED', 'NO_SHOW'].includes(appt.status) && (appt.status === 'REJECTED' ? 'Rejected' : appt.status)}
                                                             </span>
                                                         </div>
 
@@ -3683,7 +3719,7 @@ export default function AdminDashboardPage() {
                                                     </div>
 
                                                     <div style={{ display: 'flex', gap: '10px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-                                                        {appt.status === 'PENDING_APPROVAL' && (
+                                                        {['PENDING_APPROVAL', 'REQUESTED', 'PENDING'].includes(appt.status) && (
                                                             <>
                                                                 <button
                                                                     type="button"
@@ -3759,6 +3795,28 @@ export default function AdminDashboardPage() {
                         </section>
                     )
                 }
+
+                {/* ADMISSIONS & BILLING VIEWS (Embedded Epic 3 & Epic 4) */}
+                {currentView === 'ADMISSION_REQUESTS' && (
+                    <AdminAdmissionRequestsPage hideHeader={true} />
+                )}
+                
+                {currentView === 'HOSPITALIZED_PETS' && (
+                    <AdminHospitalizedPetsPage hideHeader={true} />
+                )}
+                
+                {currentView === 'CAGE_OCCUPANCY' && (
+                    <AdminCageOccupancyPage hideHeader={true} />
+                )}
+                
+                {currentView === 'INVENTORY' && (
+                    <AdminInventoryPage hideHeader={true} />
+                )}
+
+                {currentView === 'BILLING' && (
+                    <AdminHub hideHeader={true} />
+                )}
+
             </main>
 
             {/* ADMIN APPOINTMENT REJECTION REASON MODAL */}

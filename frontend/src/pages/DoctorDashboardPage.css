@@ -255,3 +255,16 @@
     border-color: #a7f3d0;
     box-shadow: 0 12px 28px -6px rgba(16, 185, 129, 0.12);
 }
+
+/* Doctor Unified Sidebar Layout */
+.doc-unified-layout {
+    display: flex;
+    min-height: calc(100vh - 72px);
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .doc-unified-layout {
+        flex-direction: column;
+    }
+}

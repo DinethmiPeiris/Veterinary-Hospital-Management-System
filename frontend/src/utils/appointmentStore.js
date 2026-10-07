@@ -13,19 +13,48 @@ function readJson(key, fallback) {
   }
 }
 
+function syncLocalAppointmentStatus(id, newStatus) {
+  try {
+    const epic4 = readJson('vhms_epic4_appointments', [])
+    let epic4Changed = false
+    const epic4Updated = epic4.map(a => {
+      if ((a.id === id || a.appointmentNumber === id) && a.status !== newStatus) {
+        epic4Changed = true
+        return { ...a, status: newStatus }
+      }
+      return a
+    })
+    if (epic4Changed) localStorage.setItem('vhms_epic4_appointments', JSON.stringify(epic4Updated))
+
+    const legacy = readJson('vhms_user_appointments', [])
+    let legacyChanged = false
+    const legacyUpdated = legacy.map(a => {
+      if ((a.id === id || a.appointmentNumber === id) && a.status !== newStatus) {
+        legacyChanged = true
+        return { ...a, status: newStatus }
+      }
+      return a
+    })
+    if (legacyChanged) localStorage.setItem('vhms_user_appointments', JSON.stringify(legacyUpdated))
+  } catch (e) {}
+}
+
 export async function getAppointments() {
-  return apiRequest('/api/v1/appointments')
+  const res = await apiRequest('/api/v1/appointments')
+  return res.data || res
 }
 
 export async function getAppointmentById(id) {
-  return apiRequest(`/api/v1/appointments/${id}`)
+  const res = await apiRequest(`/api/v1/appointments/${id}`)
+  return res.data || res
 }
 
 export async function updateAppointmentStatus(id, status) {
-  return apiRequest(`/api/v1/appointments/${id}/status`, {
+  const res = await apiRequest(`/api/v1/appointments/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   })
+  return res.data || res
 }
 
 export async function getMedicalRecordByPetId(petId) {
@@ -78,6 +107,8 @@ export async function startAppointmentConsultation(id) {
     prescriptions: Array.isArray(consultation.prescriptions) ? consultation.prescriptions : [],
     status: consultation.status || 'IN_PROGRESS',
   })
+
+  syncLocalAppointmentStatus(id, 'IN_PROGRESS')
 
   return getAppointmentById(id)
 }
@@ -170,6 +201,8 @@ async function persistConsultation(appointmentId, formData, isDraft) {
     ...formData,
     status: isDraft ? 'IN_PROGRESS' : 'COMPLETED',
   })
+
+  syncLocalAppointmentStatus(appointmentId, isDraft ? 'IN_PROGRESS' : 'COMPLETED')
 
   return getAppointmentById(appointmentId)
 }

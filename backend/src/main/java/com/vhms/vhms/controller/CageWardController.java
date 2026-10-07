@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/epic3/cages")
+@RequestMapping("/api/v1/cages")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 @RequiredArgsConstructor
 public class CageWardController {

@@ -23,35 +23,29 @@ const DoctorSidebar = () => {
                 <p>Doctor Portal</p>
             </div>
             <nav className="sidebar-nav">
-                <Link 
-                    to="/doctor/dashboard" 
-                    className={`nav-item ${location.pathname.includes('/dashboard') ? 'active' : ''}`}
-                >
+                <Link to="/doctor/dashboard" className={`nav-item ${location.pathname.includes('/dashboard') ? 'active' : ''}`}>
                     📊 Dashboard
                 </Link>
-                <Link 
-                    to="/doctor/appointments" 
-                    className={`nav-item ${location.pathname.includes('/appointments') ? 'active' : ''}`}
-                >
+                <Link to="/doctor/booking-requests" className={`nav-item ${location.pathname.includes('/booking-requests') ? 'active' : ''}`}>
+                    🔔 Booking Requests
+                </Link>
+                <Link to="/doctor/appointments" className={`nav-item ${location.pathname.includes('/appointments') ? 'active' : ''}`}>
                     📅 Appointments
                 </Link>
-                <Link
-                    to="/doctor/recommend-admission"
-                    className={`nav-item ${location.pathname.includes('/recommend-admission') ? 'active' : ''}`}
-                >
+                <Link to="/doctor/agenda" className={`nav-item ${location.pathname.includes('/agenda') ? 'active' : ''}`}>
+                    📋 Today's Agenda
+                </Link>
+                <Link to="/doctor/workload" className={`nav-item ${location.pathname.includes('/workload') ? 'active' : ''}`}>
+                    📊 Workload Analytics
+                </Link>
+                <Link to="/doctor/recommend-admission" className={`nav-item ${location.pathname.includes('/recommend-admission') ? 'active' : ''}`}>
                     🏥 Recommend Admission
                 </Link>
-                <Link
-                    to="/doctor/hospitalized-pets"
-                    className={`nav-item ${location.pathname.includes('/hospitalized-pets') ? 'active' : ''}`}
-                >
+                <Link to="/doctor/hospitalized-pets" className={`nav-item ${location.pathname.includes('/hospitalized-pets') ? 'active' : ''}`}>
                     🩺 Hospitalized Pets
                 </Link>
-                <Link 
-                    to="/doctor-portal" 
-                    className="nav-item"
-                >
-                    🗓️ Booking Requests
+                <Link to="/doctor/profile" className={`nav-item ${location.pathname.includes('/profile') ? 'active' : ''}`}>
+                    👨‍⚕️ My Profile
                 </Link>
             </nav>
             <div className="sidebar-footer">

@@ -38,43 +38,26 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       
-      {/* Doctor Routes */}
-      <Route path="/doctor" element={<DoctorLayout />}>
-        <Route path="dashboard" element={<DoctorDashboard />} />
-        <Route path="appointments" element={<DoctorAppointments />} />
-        <Route path="pet/:petId/history" element={<PetMedicalHistory />} />
-        <Route path="consultation/:appointmentId" element={<ConsultationPage />} />
-        <Route path="recommend-admission" element={<DoctorRecommendPage />} />
-        <Route path="hospitalized-pets" element={<DoctorHospitalizedPetsPage />} />
-      </Route>
+      {/* Doctor Routes - Unified Layout */}
+      <Route path="/doctor/pet/:petId/history" element={<PetMedicalHistory />} />
+      <Route path="/doctor/*" element={<DoctorDashboardPage />} />
+      <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
+      <Route path="/doctor/portal" element={<DoctorDashboardPage />} />
 
-      {/* Pet Owner Routes */}
-      <Route path="/pet-owner" element={<PetOwnerLayout />}>
-        <Route path="dashboard" element={<PetOwnerDashboard />} />
-        <Route path="consultations" element={<PetOwnerConsultations />} />
-        <Route path="medical-history" element={<PetOwnerMedicalHistory />} />
-        <Route path="admissions" element={<PetOwnerAdmissionsPage />} />
-      </Route>
+      {/* Pet Owner Routes - Unified Layout */}
+      <Route path="/pet-owner/*" element={<PetManagementPage />} />
+      <Route path="/pet-owner/dashboard" element={<PetManagementPage />} />
+      <Route path="/pet-owner/portal" element={<PetManagementPage />} />
 
-      {/* Admin Routes */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="consultations" element={<AdminConsultationList />} />
-        <Route path="reports" element={<AdminReports />} />
-        <Route path="services" element={<AdminServiceManagement />} />
-        <Route path="admission-requests" element={<AdminAdmissionRequestsPage />} />
-        <Route path="hospitalized-pets" element={<AdminHospitalizedPetsPage />} />
-        <Route path="medicine-requests" element={<AdminMedicineRequestsPage />} />
-        <Route path="inventory" element={<AdminInventoryPage />} />
-        <Route path="cage-occupancy" element={<AdminCageOccupancyPage />} />
-      </Route>
-
-      {/* Booking / approval portals (pet owner, doctor, admin) */}
-      <Route path="/pets" element={<><PetManagementPage /><PortalSwitch to="/pet-owner/dashboard" label="Consultations & Medical History" icon="📋" /></>} />
-      <Route path="/doctor-portal" element={<><DoctorDashboardPage /><PortalSwitch to="/doctor/dashboard" label="Consultation Workspace" icon="🩺" /></>} />
-      <Route path="/admin-portal" element={<><AdminDashboardPage /><PortalSwitch to="/admin/dashboard" label="Reports & Consultations" icon="📊" /></>} />
-
-      {/* Epic 4: Appointment Scheduling, Billing & Payment Management */}
+      {/* Admin Routes - Unified Layout */}
+      <Route path="/admin/*" element={<AdminDashboardPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin/portal" element={<AdminDashboardPage />} />
+      
+      {/* Fallback redirects for old paths */}
+      <Route path="/pets" element={<PetManagementPage />} />
+      <Route path="/doctor-portal" element={<DoctorDashboardPage />} />
+      <Route path="/admin-portal" element={<AdminDashboardPage />} />
       <Route path="/appointments" element={<PetOwnerPortal />} />
       <Route path="/invoices" element={<PetOwnerPortal />} />
       <Route path="/portal/owner" element={<PetOwnerPortal />} />

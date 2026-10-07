@@ -19,7 +19,7 @@ public interface ConsultationRepository extends MongoRepository<Consultation, St
     List<Consultation> findByDoctorIdOrderByConsultationDateDesc(String doctorId);
 
     /** Link to a specific appointment. */
-    Optional<Consultation> findByAppointmentId(String appointmentId);
+    List<Consultation> findByAppointmentIdOrderByConsultationDateDesc(String appointmentId);
 
     /** All consultations tied to an EMR. */
     List<Consultation> findByMedicalRecordIdOrderByConsultationDateDesc(String medicalRecordId);

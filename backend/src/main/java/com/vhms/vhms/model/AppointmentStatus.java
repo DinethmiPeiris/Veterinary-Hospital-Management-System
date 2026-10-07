@@ -9,5 +9,11 @@ public enum AppointmentStatus {
     REJECTED,
     RESCHEDULED,
     NO_SHOW,
-    EXPIRED
+    EXPIRED,
+    SCHEDULED,
+    PENDING,
+    WAITING,
+    APPROVED,
+    ACCEPTED,
+    DONE
 }

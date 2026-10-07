@@ -35,7 +35,7 @@ function cageCardAccentClass(status) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AdminCageOccupancyPage() {
+export default function AdminCageOccupancyPage({ hideHeader = false }) {
   const [cages, setCages] = useState([])
   const [hospitalizations, setHospitalizations] = useState([])
   const [loading, setLoading] = useState(false)
@@ -208,6 +208,7 @@ export default function AdminCageOccupancyPage() {
       <main className="page-content">
 
         {/* ── Page Header ── */}
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Cage &amp; Ward Occupancy</h1>
@@ -233,6 +234,7 @@ export default function AdminCageOccupancyPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* ── Page-level Error ── */}
         {error && (

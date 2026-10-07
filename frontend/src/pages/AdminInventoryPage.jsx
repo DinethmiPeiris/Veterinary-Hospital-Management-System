@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { epic3Service } from '../services/epic3Service'
 import './ModuleStyles.css'
 
-export default function AdminInventoryPage() {
+export default function AdminInventoryPage({ hideHeader = false }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('ALL')
@@ -138,6 +138,7 @@ export default function AdminInventoryPage() {
   return (
     <div className="module-page-container">
       <main className="page-content">
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Inventory Management</h1>
@@ -152,6 +153,7 @@ export default function AdminInventoryPage() {
             </button>
           </div>
         </div>
+        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>

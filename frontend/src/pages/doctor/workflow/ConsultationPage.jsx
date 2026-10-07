@@ -9,8 +9,9 @@ import {
   startAppointmentConsultation,
 } from '../../../utils/appointmentStore'
 
-const ConsultationPage = () => {
-  const { appointmentId } = useParams()
+const ConsultationPage = ({ appointmentId: appointmentIdProp }) => {
+  const params = useParams()
+  const appointmentId = params.appointmentId || appointmentIdProp
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

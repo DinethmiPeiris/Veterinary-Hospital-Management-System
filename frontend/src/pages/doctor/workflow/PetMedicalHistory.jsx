@@ -133,7 +133,7 @@ const PetMedicalHistory = () => {
     return (
       <div className="pet-medical-history">
         <header className="page-header">
-          <Link to="/doctor/appointments" className="back-link">← Back to Appointments</Link>
+          <Link to="/doctor/dashboard" className="back-link">← Back to Dashboard</Link>
           <h1>Medical History</h1>
           <p className="subtitle">{error || 'No medical history found for this pet.'}</p>
         </header>
@@ -144,14 +144,14 @@ const PetMedicalHistory = () => {
   return (
     <div className="pet-medical-history">
       <header className="page-header">
-        <Link to="/doctor/appointments" className="back-link">
-          ← Back to Appointments
+        <Link to="/doctor/dashboard" className="back-link">
+          ← Back to Dashboard
         </Link>
         <h1>Electronic Medical Record: {record.petName}</h1>
         <p className="subtitle">Owner: {record.ownerName} · Pet ID: {record.petId}</p>
         {appointmentId && (
-          <Link to={`/doctor/consultation/${appointmentId}`} className="back-link" style={{ marginTop: '0.75rem', display: 'inline-block' }}>
-            Continue to Consultation →
+          <Link to="/doctor/dashboard" className="back-link" style={{ marginTop: '0.75rem', display: 'inline-block' }}>
+            Resume Consultation from Dashboard →
           </Link>
         )}
       </header>

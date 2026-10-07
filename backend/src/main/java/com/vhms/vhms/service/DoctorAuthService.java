@@ -129,6 +129,9 @@ public class DoctorAuthService {
     private Optional<Doctor> findByIdentifier(String identifier) {
         Optional<Doctor> byUsername = doctorRepository.findFirstByUsernameIgnoreCase(identifier);
         if (byUsername.isPresent()) return byUsername;
+        
+        Optional<Doctor> byEmail = doctorRepository.findFirstByEmailIgnoreCase(identifier);
+        if (byEmail.isPresent()) return byEmail;
 
         return doctorRepository.findFirstByStaffIdIgnoreCase(identifier);
     }

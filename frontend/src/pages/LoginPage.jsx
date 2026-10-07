@@ -113,38 +113,14 @@ export default function LoginPage() {
       try {
         const docSession = await loginDoctor({ identifier: loginId.trim(), password: loginPass })
         localStorage.setItem('vhms_user', JSON.stringify({ ...docSession, success: true, role: 'DOCTOR', status: 'ACTIVE' }))
-        showToast(`Welcome, ${formatDoctorDisplayName(docSession.name)}! Redirecting...`, 'info')
-        setTimeout(() => navigate('/doctor/dashboard'), 1200)
+        localStorage.setItem('vhms_doctor_view', 'OVERVIEW')
+        showToast(`🏥 Welcome, ${formatDoctorDisplayName(docSession.name)}! Redirecting to Doctor Portal...`, 'info')
+        setTimeout(() => navigate('/doctor/portal'), 1200)
         return true
-      } catch { }
-
-      try {
-        const customDocs = JSON.parse(localStorage.getItem('vhms_custom_doctors') || '[]')
-        const customPasswords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}')
-        const firstLoginMap = JSON.parse(localStorage.getItem('vhms_first_login_doctors') || '{}')
-        const matchedDoc = customDocs.find(d => (d.email && d.email.toLowerCase() === cleanId) || (d.name && d.name.toLowerCase() === cleanId))
-        if (matchedDoc) {
-          if (matchedDoc.status === 'DEACTIVATED' || matchedDoc.status === 'INACTIVE') {
-            showToast('❌ Your account has been deactivated. Please contact the hospital administrator.', 'error')
-            return true
-          }
-          const storedPassword = customPasswords[loginId] || customPasswords[matchedDoc.email] || customPasswords[matchedDoc.name] || 'Doctor@123'
-          if (loginPass !== storedPassword) {
-            showToast('❌ Incorrect password. Please check your credentials.', 'error')
-            return true
-          }
-          const check1 = firstLoginMap[loginId]
-          const check2 = matchedDoc.email ? firstLoginMap[matchedDoc.email] : undefined
-          const check3 = matchedDoc.name ? firstLoginMap[matchedDoc.name] : undefined
-          const isFirstTime = (check1 === true || check2 === true || check3 === true) && check1 !== false && check2 !== false && check3 !== false
-          const session = { ...matchedDoc, success: true, role: 'DOCTOR', isFirstTimeLogin: isFirstTime }
-          localStorage.setItem('vhms_user', JSON.stringify(session))
-          localStorage.setItem('vhms_doctor_view', 'OVERVIEW')
-          showToast(`🏥 Welcome, ${matchedDoc.name}! Redirecting to Doctor Portal...`, 'info')
-          setTimeout(() => navigate('/doctor-portal'), 400)
-          return true
-        }
-      } catch { }
+      } catch (error) {
+        showToast(error.message || '❌ Invalid credentials for Doctor.', 'error')
+        return false
+      }
     }
 
     if (expectedRole === 'PET_OWNER' || expectedRole === 'ANY') {
@@ -194,15 +170,15 @@ export default function LoginPage() {
         localStorage.setItem('vhms_user', JSON.stringify(response))
         if (response.role === 'ADMIN') {
           showToast(`🔐 Welcome, Admin ${response.name}! Redirecting to Admin Dashboard...`, 'info')
-          setTimeout(() => navigate('/admin-portal'), 300)
+          setTimeout(() => navigate('/admin/portal'), 300)
         } else if (response.role === 'DOCTOR') {
           localStorage.setItem('vhms_doctor_view', 'OVERVIEW')
           showToast(`🏥 Welcome, ${response.name}! Redirecting to Doctor Portal...`, 'info')
-          setTimeout(() => navigate('/doctor-portal'), 400)
+          setTimeout(() => navigate('/doctor/portal'), 400)
         } else {
           localStorage.setItem('vhms_pet_view', 'OVERVIEW')
           showToast(`🐾 Welcome back, ${response.name || 'Pet Owner'}! Redirecting to Pet Owner Dashboard...`, 'success')
-          setTimeout(() => navigate('/pets'), 300)
+          setTimeout(() => navigate('/pet-owner/portal'), 300)
         }
         return true
       }
@@ -327,7 +303,7 @@ export default function LoginPage() {
     try {
       const session = await registerDoctor({ name: docRegName, username: docRegUsername, email: docRegEmail, specialty: docRegSpecialty, password: docRegPass })
       showToast(`Account created. Username: ${session.username}. Redirecting...`, 'success')
-      setTimeout(() => navigate('/doctor/dashboard'), 1500)
+      setTimeout(() => navigate('/portal/doctor'), 1500)
     } catch (err) { showToast(err.message || 'Registration failed.', 'error') }
     finally { setAuthBusy(false) }
   }

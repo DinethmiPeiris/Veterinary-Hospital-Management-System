@@ -16,7 +16,7 @@ import com.vhms.vhms.service.FinancialReportService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/v1/reports")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class FinancialReportController {

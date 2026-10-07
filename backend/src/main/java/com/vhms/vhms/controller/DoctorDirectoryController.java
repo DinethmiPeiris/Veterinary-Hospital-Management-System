@@ -20,7 +20,7 @@ import com.vhms.vhms.repository.DoctorRepository;
  * registered through the doctor workflow) without any credentials, so pet owners can book any active doctor.
  */
 @RestController
-@RequestMapping("/api/doctors")
+@RequestMapping("/api/v1/doctors")
 @CrossOrigin(origins = "*")
 public class DoctorDirectoryController {
 

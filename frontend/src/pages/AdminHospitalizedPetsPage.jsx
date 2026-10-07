@@ -3,7 +3,7 @@ import { epic3Service } from '../services/epic3Service'
 import { triggerAdminBadgeRefresh } from '../hooks/useAdminPendingCounts'
 import './ModuleStyles.css'
 
-export default function AdminHospitalizedPetsPage() {
+export default function AdminHospitalizedPetsPage({ hideHeader = false }) {
   const [hospitalizations, setHospitalizations] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState({ message: '', type: '' })
@@ -73,6 +73,7 @@ export default function AdminHospitalizedPetsPage() {
   return (
     <div className="module-page-container">
       <main className="page-content">
+        {!hideHeader && (
         <div className="page-header">
           <div>
             <h1 className="page-title">Hospitalized Pets</h1>
@@ -82,6 +83,7 @@ export default function AdminHospitalizedPetsPage() {
             {loading ? 'Refreshing...' : '\u21bb Refresh'}
           </button>
         </div>
+        )}
 
         {toast.message && (
           <div className={`alert-toast ${toast.type}`}>

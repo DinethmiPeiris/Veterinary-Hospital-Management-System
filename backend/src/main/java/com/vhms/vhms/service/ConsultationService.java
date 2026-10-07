@@ -34,8 +34,8 @@ public class ConsultationService {
                 .or(() -> doctorRepository.findFirstByStaffIdIgnoreCase(doctorId))
                 .orElse(null);
 
-        Consultation consultation = consultationRepository.findByAppointmentId(appointmentId)
-                .orElseGet(Consultation::new);
+        java.util.List<Consultation> consultations = consultationRepository.findByAppointmentIdOrderByConsultationDateDesc(appointmentId);
+        Consultation consultation = consultations.isEmpty() ? new Consultation() : consultations.get(0);
 
         consultation.setAppointmentId(appointmentId);
         consultation.setDoctorId(doctorId);
@@ -179,9 +179,11 @@ public class ConsultationService {
     }
 
     public ConsultationResponseDTO getConsultationByAppointmentId(String appointmentId) {
-        Consultation consultation = consultationRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Consultation not found for appointment: " + appointmentId));
+        java.util.List<Consultation> consultations = consultationRepository.findByAppointmentIdOrderByConsultationDateDesc(appointmentId);
+        if (consultations.isEmpty()) {
+            throw new ResourceNotFoundException("Consultation not found for appointment: " + appointmentId);
+        }
+        Consultation consultation = consultations.get(0);
         return mapToConsultationDTO(consultation);
     }
 

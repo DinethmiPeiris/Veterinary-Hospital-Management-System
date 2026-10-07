@@ -38,7 +38,7 @@ import com.vhms.vhms.repository.DoctorRepository;
  * typed fields the doctor/consultation workflow relies on.
  */
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping("/api/v1/legacy/appointments")
 @CrossOrigin(origins = "*")
 public class PetOwnerAppointmentController {
 

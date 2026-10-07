@@ -162,7 +162,6 @@ const PortalHeader = ({
                     </div>
                     {isDropdownOpen && (
                         <div className="saas-dropdown">
-                            <button onClick={() => { setCurrentView('NOTIFICATIONS'); setIsDropdownOpen(false); }}>Notification Center</button>
                             <button onClick={() => { setCurrentView('PROFILE'); setIsDropdownOpen(false); }}>My Profile</button>
                             <button className="text-red" onClick={() => { setIsDropdownOpen(false); handleLogout(); }}>Log Out</button>
                         </div>
@@ -195,11 +194,6 @@ const HeroSection = ({ currentUser }) => {
                 <div className="saas-blob"></div>
                 <PawPrint className="saas-decor d1" size={24} color="#bbf7d0" />
                 <PawPrint className="saas-decor d2" size={20} color="#bbf7d0" />
-                <img
-                    src="/hero-pets-clean.png"
-                    alt="Happy Pets"
-                    style={{ position: 'absolute', right: '35px', bottom: '-15px', height: '100%', objectFit: 'contain', zIndex: 5 }}
-                />
             </div>
         </section>
     );
@@ -840,6 +834,9 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
             // Default seed notifications for Pet Owner
             const petName = (pets && pets.length > 0) ? pets[0].name : 'Buddy';
+            const now = new Date();
+            const fmtTime = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const fmtDate = (d) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             const seed = [
                 {
                     id: 'NOTIF-101',
@@ -864,11 +861,66 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     relatedId: (pets && pets.length > 0) ? pets[0].id : ''
                 },
                 {
+                    id: 'NOTIF-104',
+                    userId: currentUser.id || 'usr-1',
+                    userEmail: currentUser.email || 'user@vhms.com',
+                    title: 'Invoice Ready for Payment 💳',
+                    message: `Invoice INV-2024-009 for ${petName}'s OPD consultation has been generated. Amount due: LKR 4,500. Please visit the Invoices section to pay.`,
+                    type: 'BILLING',
+                    read: false,
+                    timestamp: 'Today at 08:15 AM',
+                    relatedId: 'INV-2024-009'
+                },
+                {
+                    id: 'NOTIF-105',
+                    userId: currentUser.id || 'usr-1',
+                    userEmail: currentUser.email || 'user@vhms.com',
+                    title: 'Annual Health Checkup Reminder 🩺',
+                    message: `${petName}'s annual physical examination is due next week. Early detection of health issues can significantly improve treatment outcomes.`,
+                    type: 'REMINDER',
+                    read: false,
+                    timestamp: 'Yesterday at 10:00 AM',
+                    relatedId: (pets && pets.length > 0) ? pets[0].id : ''
+                },
+                {
+                    id: 'NOTIF-106',
+                    userId: currentUser.id || 'usr-1',
+                    userEmail: currentUser.email || 'user@vhms.com',
+                    title: 'Appointment Approved ✅',
+                    message: `Great news! Your consultation appointment (APT-1001) for ${petName} on ${fmtDate(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000))} has been approved by the hospital. Please arrive 10 minutes early with your pet's vaccination booklet.`,
+                    type: 'APPOINTMENT',
+                    read: true,
+                    timestamp: 'Yesterday at 03:45 PM',
+                    relatedId: 'APT-1001'
+                },
+                {
+                    id: 'NOTIF-107',
+                    userId: currentUser.id || 'usr-1',
+                    userEmail: currentUser.email || 'user@vhms.com',
+                    title: 'Payment Confirmed 🎉',
+                    message: `Payment of LKR 3,200 for Invoice INV-2024-007 (${petName} – General Consultation) has been received and confirmed. Thank you!`,
+                    type: 'BILLING',
+                    read: true,
+                    timestamp: '2 days ago',
+                    relatedId: 'INV-2024-007'
+                },
+                {
+                    id: 'NOTIF-108',
+                    userId: currentUser.id || 'usr-1',
+                    userEmail: currentUser.email || 'user@vhms.com',
+                    title: 'Discharge Reminder 🏥',
+                    message: `${petName}'s estimated discharge date from the hospital ward is approaching. Please coordinate with the front desk to arrange pickup and follow-up care.`,
+                    type: 'REMINDER',
+                    read: true,
+                    timestamp: '3 days ago',
+                    relatedId: ''
+                },
+                {
                     id: 'NOTIF-103',
                     userId: currentUser.id || 'usr-1',
                     userEmail: currentUser.email || 'user@vhms.com',
                     title: 'Welcome to VHMS Pet Owner Portal 🐾',
-                    message: 'Welcome to Sri Jayawardenapura Animal Hospital! Manage your pets, book doctor visits, and view medical records all in one place.',
+                    message: 'Welcome to Sri Jayawardenapura Animal Hospital! Manage your pets, book doctor visits, track invoices, and view medical records all in one place.',
                     type: 'SYSTEM',
                     read: true,
                     timestamp: 'Yesterday at 09:30 AM',
@@ -963,6 +1015,75 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         saveNotifications(unreadOnly);
         showToast('Cleared read notifications ✓', 'info');
     };
+
+    // =========================================================================
+    // APPOINTMENT STATUS CHANGE DETECTOR — generate notifications when admin
+    // changes status of an appointment owned by this pet owner
+    // =========================================================================
+    const [knownApptStatuses, setKnownApptStatuses] = useState(() => {
+        try {
+            const s = localStorage.getItem('vhms_known_appt_statuses');
+            return s ? JSON.parse(s) : {};
+        } catch { return {}; }
+    });
+
+    useEffect(() => {
+        if (!currentUser || appointments.length === 0) return;
+        const updatedStatuses = { ...knownApptStatuses };
+        let changed = false;
+
+        appointments.filter(a => isAppointmentForUser(a, currentUser)).forEach(appt => {
+            const prev = knownApptStatuses[appt.id];
+            const curr = appt.status;
+            if (!prev) {
+                updatedStatuses[appt.id] = curr;
+                changed = true;
+                return;
+            }
+            if (prev !== curr) {
+                changed = true;
+                updatedStatuses[appt.id] = curr;
+                const now = new Date();
+                const ts = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                if (curr === 'APPROVED') {
+                    addNotification(
+                        '✅ Appointment Approved',
+                        `Your appointment (${appt.id}) for ${appt.petName} on ${appt.date} at ${appt.timeSlot} with ${appt.doctorName} has been approved. Please arrive 10 minutes early with your pet's vaccination booklet.`,
+                        'APPOINTMENT',
+                        appt.id
+                    );
+                } else if (curr === 'REJECTED' || curr === 'DECLINED') {
+                    addNotification(
+                        '❌ Appointment Rejected',
+                        `Unfortunately your appointment (${appt.id}) for ${appt.petName} on ${appt.date} has been declined by the hospital. Please book a new slot or contact the front desk.`,
+                        'APPOINTMENT',
+                        appt.id
+                    );
+                } else if (curr === 'COMPLETED') {
+                    addNotification(
+                        '✔️ Visit Completed',
+                        `The hospital visit (${appt.id}) for ${appt.petName} with ${appt.doctorName} on ${appt.date} has been marked as completed. Your invoice will be generated shortly.`,
+                        'APPOINTMENT',
+                        appt.id
+                    );
+                } else if (curr === 'CANCELLED') {
+                    addNotification(
+                        '🚫 Appointment Cancelled',
+                        `Your appointment (${appt.id}) for ${appt.petName} on ${appt.date} has been cancelled. You may submit a new booking at any time.`,
+                        'APPOINTMENT',
+                        appt.id
+                    );
+                }
+            }
+        });
+
+        if (changed) {
+            setKnownApptStatuses(updatedStatuses);
+            try { localStorage.setItem('vhms_known_appt_statuses', JSON.stringify(updatedStatuses)); } catch { }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointments, currentUser]);
 
     const openDoctorProfile = (doc) => {
         setSelectedDoctorDetail(doc);
@@ -1060,6 +1181,12 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             }
             setPets(prev => prev.filter(p => p.id !== petId));
             showToast(`🗑️ ${petName || 'Pet'} profile deleted successfully.`, 'success');
+            addNotification(
+                `🗑️ Pet Profile Removed`,
+                `The profile for ${petName || 'your pet'} has been permanently removed from your account. All associated records have been archived.`,
+                'PET_PROFILE',
+                petId
+            );
             if (selectedPetDetail?.id === petId) {
                 setSelectedPetDetail(null);
                 setCurrentView('PETS_LIST');
@@ -1068,6 +1195,12 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             console.error(err);
             setPets(prev => prev.filter(p => p.id !== petId));
             showToast(`🗑️ ${petName || 'Pet'} profile removed.`, 'success');
+            addNotification(
+                `🗑️ Pet Profile Removed`,
+                `The profile for ${petName || 'your pet'} has been removed from your account.`,
+                'PET_PROFILE',
+                petId
+            );
             if (selectedPetDetail?.id === petId) {
                 setSelectedPetDetail(null);
                 setCurrentView('PETS_LIST');
@@ -1206,9 +1339,21 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             if (editingPet) {
                 const updated = await api.updatePet(editingPet.id, petData);
                 showToast(`🐾 ${updated.name}'s profile updated!`, 'success');
+                addNotification(
+                    `🐾 Pet Profile Updated`,
+                    `${updated.name}'s profile has been successfully updated. Weight: ${petData.weight} kg, DOB: ${petData.dateOfBirth}.`,
+                    'PET_PROFILE',
+                    updated.id || editingPet.id
+                );
             } else {
                 const added = await api.addPet(petData);
                 showToast(`🎉 ${added.name} added to your pet profiles!`, 'success');
+                addNotification(
+                    `🎉 New Pet Registered`,
+                    `${added.name} (${petData.species}${petData.breed ? ' – ' + petData.breed : ''}) has been registered to your account. You can now book hospital visits for them.`,
+                    'PET_PROFILE',
+                    added.id
+                );
             }
             loadPets(currentUser ? currentUser.id : null);
             setCurrentView('PETS_LIST');
@@ -1225,6 +1370,12 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     localStorage.setItem(localKey, JSON.stringify(stored));
                     setPets(prev => prev.map(p => p.id === editingPet.id ? updatedPet : p));
                     showToast(`🐾 ${petData.name}'s profile updated! (saved locally)`, 'success');
+                    addNotification(
+                        `🐾 Pet Profile Updated`,
+                        `${petData.name}'s profile has been updated locally. Weight: ${petData.weight} kg, DOB: ${petData.dateOfBirth}.`,
+                        'PET_PROFILE',
+                        editingPet.id
+                    );
                 } else {
                     const newPet = {
                         ...petData,
@@ -1236,6 +1387,12 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     localStorage.setItem(localKey, JSON.stringify(stored));
                     setPets(prev => [...prev, newPet]);
                     showToast(`🎉 ${petData.name} added to your pet profiles!`, 'success');
+                    addNotification(
+                        `🎉 New Pet Registered`,
+                        `${petData.name} (${petData.species}${petData.breed ? ' – ' + petData.breed : ''}) has been registered to your account. You can now book hospital visits for them.`,
+                        'PET_PROFILE',
+                        newPet.id
+                    );
                 }
                 setCurrentView('PETS_LIST');
             } catch (localErr) {
@@ -1353,7 +1510,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             status: 'PENDING_APPROVAL',
         };
 
-        api.createAppointment({
+        const finalAppt = await api.createAppointment({
             id: newApptId,
             petId: bookingData.petId,
             petName,
@@ -1370,14 +1527,17 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             timeSlot: bookingData.timeSlot,
             reason: bookingData.reason || 'General Health Consultation',
             status: 'PENDING_APPROVAL',
-        }).catch(err => console.warn("Error creating appointment in backend API", err));
+        }).catch(err => {
+            console.warn("Error creating appointment in backend API", err);
+            return newAppointment;
+        });
 
         setAppointments(prev => {
-            const updated = [newAppointment, ...prev];
-            try {
-                localStorage.setItem('vhms_user_appointments', JSON.stringify(updated));
-                window.dispatchEvent(new Event('storage'));
-            } catch { }
+            const isExists = prev.some(a => a.id === finalAppt.id || (a.date === finalAppt.date && a.timeSlot === finalAppt.timeSlot && a.petName === finalAppt.petName));
+            if (isExists) return prev;
+
+            const updated = [finalAppt, ...prev];
+            window.dispatchEvent(new Event('storage'));
             return updated;
         });
 
@@ -1445,7 +1605,23 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
     const userAppointments = useMemo(() => {
         if (!currentUser) return [];
-        return appointments.filter(a => isAppointmentForUser(a, currentUser));
+        const filtered = appointments.filter(a => isAppointmentForUser(a, currentUser));
+
+        // Deduplicate to clean up any existing legacy 'APT-xxx' collisions in local storage
+        const unique = [];
+        filtered.forEach(app => {
+            const exists = unique.find(u => u.date === app.date && u.timeSlot === app.timeSlot && u.petName === app.petName);
+            if (!exists) {
+                unique.push(app);
+            } else {
+                // Prioritize the real database ID over the temporary 'APT-' UI mock ID
+                if (!app.id.startsWith('APT-') && exists.id.startsWith('APT-')) {
+                    unique[unique.indexOf(exists)] = app;
+                }
+            }
+        });
+
+        return unique;
     }, [appointments, currentUser]);
 
     const todayDate = new Date().toISOString().split('T')[0];
@@ -2271,7 +2447,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                                     <h3 className="apt-pet-name">🐾 {apt.petName} ({apt.species || 'Pet'})</h3>
                                                 </div>
                                                 <span className={`apt-status-chip ${apt.status}`}>
-                                                    {apt.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : apt.status === 'APPROVED' ? 'APPROVED' : apt.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
+                                                    {(apt.status === 'PENDING_APPROVAL' || apt.status === 'PENDING' || apt.status === 'REQUESTED') ? 'PENDING APPROVAL' : apt.status === 'APPROVED' ? 'APPROVED' : apt.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
                                                 </span>
                                             </div>
 
@@ -3049,12 +3225,42 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
                                     <button
                                         type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'REMINDERS' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('REMINDERS')}
+                                    >
+                                        <Clock size={15} />
+                                        <span>Reminders</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'REMINDER').length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'BILLING' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('BILLING')}
+                                    >
+                                        <span>💳</span>
+                                        <span>Billing</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'BILLING').length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'PETS' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('PETS')}
+                                    >
+                                        <span>🐾</span>
+                                        <span>Pet Profiles</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'PET_PROFILE').length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
                                         className={`filter-pill-btn ${notifFilter === 'SYSTEM' ? 'active' : ''}`}
                                         onClick={() => setNotifFilter('SYSTEM')}
                                     >
                                         <Info size={15} />
-                                        <span>System Alerts</span>
-                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'SYSTEM' || n.type === 'PET_PROFILE').length}</span>
+                                        <span>System</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'SYSTEM').length}</span>
                                     </button>
                                 </div>
 
@@ -3084,7 +3290,10 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                                 notifFilter === 'UNREAD' ? !n.read :
                                                     notifFilter === 'APPOINTMENTS' ? n.type === 'APPOINTMENT' :
                                                         notifFilter === 'VACCINES' ? n.type === 'VACCINE' :
-                                                            (n.type === 'SYSTEM' || n.type === 'PET_PROFILE');
+                                                            notifFilter === 'REMINDERS' ? n.type === 'REMINDER' :
+                                                                notifFilter === 'BILLING' ? n.type === 'BILLING' :
+                                                                    notifFilter === 'PETS' ? n.type === 'PET_PROFILE' :
+                                                                        n.type === 'SYSTEM';
 
                                         const query = notifSearch.toLowerCase().trim();
                                         const matchesSearch = !query ||
@@ -3111,8 +3320,18 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
                                     return filtered.map((n) => {
                                         const isUnread = !n.read;
-                                        const iconEmoji = n.type === 'APPOINTMENT' ? '📅' : n.type === 'VACCINE' ? '💉' : n.type === 'PET_PROFILE' ? '🐾' : '⚙️';
-                                        const iconClass = n.type === 'APPOINTMENT' ? 'type-bg-appointment' : n.type === 'VACCINE' ? 'type-bg-vaccine' : n.type === 'PET_PROFILE' ? 'type-bg-pet' : 'type-bg-system';
+                                        const iconEmoji =
+                                            n.type === 'APPOINTMENT' ? '📅' :
+                                                n.type === 'VACCINE' ? '💉' :
+                                                    n.type === 'PET_PROFILE' ? '🐾' :
+                                                        n.type === 'REMINDER' ? '🔔' :
+                                                            n.type === 'BILLING' ? '💳' : '⚙️';
+                                        const iconClass =
+                                            n.type === 'APPOINTMENT' ? 'type-bg-appointment' :
+                                                n.type === 'VACCINE' ? 'type-bg-vaccine' :
+                                                    n.type === 'PET_PROFILE' ? 'type-bg-pet' :
+                                                        n.type === 'REMINDER' ? 'type-bg-reminder' :
+                                                            n.type === 'BILLING' ? 'type-bg-billing' : 'type-bg-system';
 
                                         return (
                                             <div key={n.id} className={`notif-card-item ${isUnread ? 'unread' : ''}`}>
@@ -3202,8 +3421,17 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                             <div className="modal-content notif-detail-modal-card" onClick={(e) => e.stopPropagation()}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div className={`notif-type-icon-box ${selectedNotifDetail.type === 'APPOINTMENT' ? 'type-bg-appointment' : selectedNotifDetail.type === 'VACCINE' ? 'type-bg-vaccine' : 'type-bg-system'}`}>
-                                            {selectedNotifDetail.type === 'APPOINTMENT' ? '📅' : selectedNotifDetail.type === 'VACCINE' ? '💉' : '⚙️'}
+                                        <div className={`notif-type-icon-box ${selectedNotifDetail.type === 'APPOINTMENT' ? 'type-bg-appointment' :
+                                            selectedNotifDetail.type === 'VACCINE' ? 'type-bg-vaccine' :
+                                                selectedNotifDetail.type === 'PET_PROFILE' ? 'type-bg-pet' :
+                                                    selectedNotifDetail.type === 'REMINDER' ? 'type-bg-reminder' :
+                                                        selectedNotifDetail.type === 'BILLING' ? 'type-bg-billing' : 'type-bg-system'
+                                            }`}>
+                                            {selectedNotifDetail.type === 'APPOINTMENT' ? '📅' :
+                                                selectedNotifDetail.type === 'VACCINE' ? '💉' :
+                                                    selectedNotifDetail.type === 'PET_PROFILE' ? '🐾' :
+                                                        selectedNotifDetail.type === 'REMINDER' ? '🔔' :
+                                                            selectedNotifDetail.type === 'BILLING' ? '💳' : '⚙️'}
                                         </div>
                                         <div>
                                             <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
@@ -3247,6 +3475,42 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         </button>
                                     )}
                                     {selectedNotifDetail.type === 'VACCINE' && (
+                                        <button
+                                            type="button"
+                                            className="btn-add-pet"
+                                            onClick={() => {
+                                                setSelectedNotifDetail(null);
+                                                setCurrentView('FIND_DOCTOR');
+                                            }}
+                                        >
+                                            Book Vaccination Visit →
+                                        </button>
+                                    )}
+                                    {selectedNotifDetail.type === 'REMINDER' && (
+                                        <button
+                                            type="button"
+                                            className="btn-add-pet"
+                                            onClick={() => {
+                                                setSelectedNotifDetail(null);
+                                                setCurrentView('FIND_DOCTOR');
+                                            }}
+                                        >
+                                            Book Appointment →
+                                        </button>
+                                    )}
+                                    {selectedNotifDetail.type === 'BILLING' && (
+                                        <button
+                                            type="button"
+                                            className="btn-add-pet"
+                                            onClick={() => {
+                                                setSelectedNotifDetail(null);
+                                                setCurrentView('BILLING');
+                                            }}
+                                        >
+                                            Go to Invoices →
+                                        </button>
+                                    )}
+                                    {selectedNotifDetail.type === 'PET_PROFILE' && (
                                         <button
                                             type="button"
                                             className="btn-add-pet"
@@ -3304,7 +3568,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                                 {selectedApptDetail.id}
                                             </span>
                                             <span className={`apt-status-chip ${selectedApptDetail.status}`}>
-                                                {selectedApptDetail.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : selectedApptDetail.status === 'APPROVED' ? 'APPROVED' : selectedApptDetail.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
+                                                {(selectedApptDetail.status === 'PENDING_APPROVAL' || selectedApptDetail.status === 'PENDING' || selectedApptDetail.status === 'REQUESTED') ? 'PENDING APPROVAL' : selectedApptDetail.status === 'APPROVED' ? 'APPROVED' : selectedApptDetail.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'}
                                             </span>
                                         </div>
                                         <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: 800 }}>

@@ -397,9 +397,9 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
     // View state — persisted across refreshes
     const ADMIN_VIEW_KEY = 'vhms_admin_view';
     const safeAdminViews = ['OVERVIEW', 'PENDING', 'DIRECTORY', 'DOCTOR_DIRECTORY', 'CREATE_DOCTOR', 'TIMESLOTS', 'SCHEDULE', 'APPOINTMENTS'];
-    const initAdminView = (() => { 
+    const initAdminView = (() => {
         if (initialView) return initialView;
-        try { const v = localStorage.getItem(ADMIN_VIEW_KEY); return safeAdminViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; } 
+        try { const v = localStorage.getItem(ADMIN_VIEW_KEY); return safeAdminViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; }
     })();
     const [currentView, setCurrentViewRaw] = useState(initAdminView);
     const setCurrentView = (v) => { try { localStorage.setItem(ADMIN_VIEW_KEY, v); } catch { } setCurrentViewRaw(v); window.scrollTo({ top: 0, behavior: 'instant' }); };
@@ -583,6 +583,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [toast, setToast] = useState({ message: '', type: '', show: false });
+    const [billingTab, setBillingTab] = useState('appointments');
     const [createdDoctorInfo, setCreatedDoctorInfo] = useState(null);
 
     // Doctor Schedules State
@@ -1298,15 +1299,24 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
         };
 
         try {
-            await api.createDoctorAccount({
+            const res = await api.createDoctorAccount({
                 name: formattedName,
                 email: docEmail,
                 phone: docPhone,
                 address: docDepartment || 'Veterinary Medicine Department',
                 password: tempPassword,
             });
+
+            if (res && res.success === false) {
+                showToast(`❌ ${res.message || 'Error occurred registering physician account.'}`, 'error');
+                setIsSubmittingDoctor(false);
+                return;
+            }
         } catch (err) {
             console.error(err);
+            showToast('❌ Network error while creating physician account.', 'error');
+            setIsSubmittingDoctor(false);
+            return;
         }
 
         setCreatedDoctorInfo({
@@ -1315,7 +1325,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
             tempPassword: tempPassword
         });
 
-        showToast(`${formattedName} registered! Temporary password generated.`, 'success');
+        showToast(`✅ ${formattedName} registered! Temporary password generated.`, 'success');
         resetDoctorForm();
         await loadData();
         setCurrentView('DOCTOR_DIRECTORY');
@@ -1497,61 +1507,61 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
         <div className="admin-page" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
             {/* Top Navigation Header */}
             {!hideHeader && (
-            <header className="admin-header">
-                <div className="admin-shell">
-                    <div className="admin-brand" onClick={handleReturnToOverview} style={{ cursor: 'pointer' }} title="Return to Dashboard Overview">
-                        <div className="brand-icon-glow">
-                            <span className="brand-icon"><IconHospital /></span>
-                        </div>
-                        <div>
-                            <strong className="brand-name">Sri Jayawardanapura Animal Hospital</strong>
-                            <span className="brand-subtitle">Admin Portal</span>
-                        </div>
-                    </div>
-
-                    <div className="admin-nav-right">
-                        <div className="admin-dropdown-wrapper" style={{ position: 'relative' }}>
-                            <div
-                                className={`admin-user-pill ${isDropdownOpen ? 'active' : ''}`}
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className="user-avatar-sm">
-                                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
-                                </div>
-                                <div className="user-meta">
-                                    <strong>{currentUser.name || 'System Admin'}</strong>
-                                    <span className="user-role-badge">Administrator</span>
-                                </div>
-                                <span className={`dropdown-caret ${isDropdownOpen ? 'open' : ''}`}>▾</span>
+                <header className="admin-header">
+                    <div className="admin-shell">
+                        <div className="admin-brand" onClick={handleReturnToOverview} style={{ cursor: 'pointer' }} title="Return to Dashboard Overview">
+                            <div className="brand-icon-glow">
+                                <span className="brand-icon"><IconHospital /></span>
                             </div>
+                            <div>
+                                <strong className="brand-name">Sri Jayawardanapura Animal Hospital</strong>
+                                <span className="brand-subtitle">Admin Portal</span>
+                            </div>
+                        </div>
 
-                            {isDropdownOpen && (
-                                <div className="admin-user-dropdown">
-                                    <button
-                                        className="dropdown-item"
-                                        onClick={() => {
-                                            setCurrentView('PROFILE');
-                                            setIsDropdownOpen(false);
-                                        }}
-                                    >
-                                        My Profile
-                                    </button>
-                                    <button
-                                        className="dropdown-item logout"
-                                        onClick={() => {
-                                            setIsDropdownOpen(false);
-                                            handleLogout();
-                                        }}
-                                    >
-                                        Log Out
-                                    </button>
+                        <div className="admin-nav-right">
+                            <div className="admin-dropdown-wrapper" style={{ position: 'relative' }}>
+                                <div
+                                    className={`admin-user-pill ${isDropdownOpen ? 'active' : ''}`}
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className="user-avatar-sm">
+                                        {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
+                                    </div>
+                                    <div className="user-meta">
+                                        <strong>{currentUser.name || 'System Admin'}</strong>
+                                        <span className="user-role-badge">Administrator</span>
+                                    </div>
+                                    <span className={`dropdown-caret ${isDropdownOpen ? 'open' : ''}`}>▾</span>
                                 </div>
-                            )}
+
+                                {isDropdownOpen && (
+                                    <div className="admin-user-dropdown">
+                                        <button
+                                            className="dropdown-item"
+                                            onClick={() => {
+                                                setCurrentView('PROFILE');
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            My Profile
+                                        </button>
+                                        <button
+                                            className="dropdown-item logout"
+                                            onClick={() => {
+                                                setIsDropdownOpen(false);
+                                                handleLogout();
+                                            }}
+                                        >
+                                            Log Out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
             )}
 
             <main className="admin-main admin-shell" style={hideHeader ? { padding: '10px 0' } : {}}>
@@ -1643,6 +1653,97 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                             <AppointmentVolumeChart appointments={adminAppointments} />
                         </section>
 
+                        {/* Admin Hub Modules */}
+                        <section className="admin-navigation-cards-section">
+                            <div className="section-title-row">
+                                <div>
+                                    <h2 className="section-heading">Admin Hub</h2>
+                                </div>
+                            </div>
+                            <div className="portal-group-clean">
+                                <div className="clean-group-label">
+                                    <span className="dot-indicator blue"></span>
+                                    <span>BILLING &amp; OPERATIONS MODULES</span>
+                                </div>
+                                <div className="nav-cards-grid">
+                                    <div
+                                        className="feature-nav-card card-amber-hover"
+                                        onClick={() => { setBillingTab('appointments'); setCurrentView('BILLING'); }}
+                                    >
+                                        <div className="nav-card-icon-badge amber">
+                                            <IconCalendar size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Appointment Pipeline</h3>
+                                            <span className="nav-card-sub">Review &amp; approve requests</span>
+                                        </div>
+                                        {pendingApptsCount > 0 && (
+                                            <span style={{
+                                                position: 'absolute', top: '-7px', right: '-7px',
+                                                background: '#dc2626', color: '#fff',
+                                                borderRadius: '999px', padding: '0.1rem 0.45rem',
+                                                fontSize: '0.7rem', fontWeight: '800',
+                                                border: '2px solid #fff',
+                                                boxShadow: '0 2px 6px rgba(220,38,38,0.4)'
+                                            }}>{pendingApptsCount}</span>
+                                        )}
+                                    </div>
+
+                                    <div
+                                        className="feature-nav-card card-blue-hover"
+                                        onClick={() => { setBillingTab('invoicing'); setCurrentView('BILLING'); }}
+                                    >
+                                        <div className="nav-card-icon-badge blue">
+                                            <IconFolder size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Invoices &amp; Payments</h3>
+                                            <span className="nav-card-sub">Manage billing records</span>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="feature-nav-card card-emerald-hover"
+                                        onClick={() => { setBillingTab('schedules'); setCurrentView('BILLING'); }}
+                                    >
+                                        <div className="nav-card-icon-badge emerald">
+                                            <IconClock size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Veterinarian Schedules</h3>
+                                            <span className="nav-card-sub">View &amp; configure shifts</span>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="feature-nav-card card-purple-hover"
+                                        onClick={() => { setBillingTab('reports'); setCurrentView('BILLING'); }}
+                                    >
+                                        <div className="nav-card-icon-badge purple">
+                                            <IconBarChart size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Financial Analytics</h3>
+                                            <span className="nav-card-sub">&amp; Reports</span>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="feature-nav-card card-amber-hover"
+                                        onClick={() => { setBillingTab('feedback'); setCurrentView('BILLING'); }}
+                                    >
+                                        <div className="nav-card-icon-badge amber">
+                                            <IconSparkles size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Customer Reviews</h3>
+                                            <span className="nav-card-sub">Patient feedback</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
                         {/* Quick Portals - Spacious & Minimalist */}
                         <section className="admin-navigation-cards-section">
                             <div className="section-title-row">
@@ -1678,15 +1779,6 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                         </div>
                                     </div>
 
-                                    <div className="feature-nav-card card-amber-hover" onClick={() => setCurrentView('APPOINTMENTS')}>
-                                        <div className="nav-card-icon-badge amber">
-                                            <IconCalendar size={26} />
-                                        </div>
-                                        <div className="nav-card-info">
-                                            <h3>Appointment Approvals</h3>
-                                            <span className="nav-card-sub">Review & approve requests</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
@@ -1717,25 +1809,6 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                         </div>
                                     </div>
 
-                                    <div className="feature-nav-card card-blue-hover" onClick={() => setCurrentView('MANAGE_SCHEDULES')}>
-                                        <div className="nav-card-icon-badge blue">
-                                            <IconCalendar size={26} />
-                                        </div>
-                                        <div className="nav-card-info">
-                                            <h3>Shift & Schedules</h3>
-                                            <span className="nav-card-sub">Configure treatment time slots</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="feature-nav-card card-emerald-hover" onClick={() => setCurrentView('VIEW_ALL_SCHEDULES')}>
-                                        <div className="nav-card-icon-badge emerald">
-                                            <IconCalendar size={26} />
-                                        </div>
-                                        <div className="nav-card-info">
-                                            <h3>All Doctor Schedules</h3>
-                                            <span className="nav-card-sub">View master vet timetables</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
@@ -1788,26 +1861,8 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                 </div>
                             </div>
 
-
-                            {/* Group 4: Finance & Billing */}
-                            <div className="portal-group-clean" style={{ marginTop: '2rem' }}>
-                                <div className="clean-group-label">
-                                    <span className="dot-indicator" style={{ background: '#eab308', boxShadow: '0 0 8px rgba(234, 179, 8, 0.4)' }}></span>
-                                    <span>FINANCE & BILLING</span>
-                                </div>
-                                <div className="nav-cards-grid">
-                                    <div className="feature-nav-card card-amber-hover" onClick={() => setCurrentView('BILLING')}>
-                                        <div className="nav-card-icon-badge amber">
-                                            <IconFolder size={26} />
-                                        </div>
-                                        <div className="nav-card-info">
-                                            <h3>Admin Hub (Billing)</h3>
-                                            <span className="nav-card-sub">Manage invoices & payments</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </section>
+
                     </>
                 )}
 
@@ -1824,34 +1879,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                             )}
                         </div>
 
-                        {pendingApptsCount > 0 && (
-                            <div className="glass-form-card" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <span style={{ fontSize: '1.4rem' }}>⏳</span>
-                                        <div>
-                                            <strong style={{ color: '#92400e', fontSize: '0.95rem' }}>
-                                                {pendingApptsCount} Pending Appointment Approval{pendingApptsCount > 1 ? 's' : ''} Awaiting Review
-                                            </strong>
-                                            <p style={{ margin: '2px 0 0', color: '#b45309', fontSize: '0.84rem' }}>
-                                                Pet owners have submitted appointment requests that require administrative verification.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="btn-save"
-                                        onClick={() => {
-                                            setApptStatusFilter('PENDING_APPROVAL');
-                                            setCurrentView('APPOINTMENTS');
-                                        }}
-                                        style={{ padding: '8px 16px', fontSize: '0.84rem' }}
-                                    >
-                                        Review Appointments ({pendingApptsCount}) →
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+
 
                         {loading ? (
                             <div className="glass-loading-card">
@@ -3800,21 +3828,21 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                 {currentView === 'ADMISSION_REQUESTS' && (
                     <AdminAdmissionRequestsPage hideHeader={true} />
                 )}
-                
+
                 {currentView === 'HOSPITALIZED_PETS' && (
                     <AdminHospitalizedPetsPage hideHeader={true} />
                 )}
-                
+
                 {currentView === 'CAGE_OCCUPANCY' && (
                     <AdminCageOccupancyPage hideHeader={true} />
                 )}
-                
+
                 {currentView === 'INVENTORY' && (
                     <AdminInventoryPage hideHeader={true} />
                 )}
 
                 {currentView === 'BILLING' && (
-                    <AdminHub hideHeader={true} />
+                    <AdminHub hideHeader={true} initialView={billingTab} />
                 )}
 
             </main>

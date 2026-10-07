@@ -2680,11 +2680,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     background: #f1f5f9;
     padding: 5px;
     border-radius: 16px;
     border: 1px solid #e2e8f0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
 }
 
 .filter-pill-btn {
@@ -2873,6 +2876,18 @@
     background: #fff7ed;
     color: #f97316;
     border: 1px solid #ffedd5;
+}
+
+.type-bg-reminder {
+    background: #fefce8;
+    color: #ca8a04;
+    border: 1px solid #fef08a;
+}
+
+.type-bg-billing {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
 }
 
 .notif-card-body {

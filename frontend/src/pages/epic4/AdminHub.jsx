@@ -63,7 +63,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
             const d = new Date(parseInt(y), parseInt(m) - 1, 1);
             mName = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
           }
-        } catch (e) {}
+        } catch (e) { }
         monthlyMap[mKey] = {
           monthKey: mKey,
           monthName: mName,
@@ -98,9 +98,9 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
     // 2. Filter invoices based on selectedReportMonth
     const filteredInvoices = (selectedReportMonth && selectedReportMonth !== 'ALL')
       ? invoices.filter((inv) => {
-          const date = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
-          return date && date.startsWith(selectedReportMonth);
-        })
+        const date = inv.issueDate || (inv.createdAt ? inv.createdAt.substring(0, 10) : '');
+        return date && date.startsWith(selectedReportMonth);
+      })
       : invoices;
 
     const totalBilled = filteredInvoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0);
@@ -306,21 +306,21 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   // Live Doctor Schedule & Slot Conflict Inspector
   const getDoctorAvailabilityInfo = (docId, dateStr, slotStr, currentApptId = null) => {
     if (!dateStr) return { isWorking: false, shift: 'Not Scheduled', isAvailable: false, conflictAppt: null, dayAppointments: [], statusReason: 'NO_DATE' };
-    
+
     const dateParts = dateStr.split('-');
     let dayName = 'MONDAY';
     if (dateParts.length === 3) {
       const dateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
       dayName = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][dateObj.getDay()];
     }
-    
+
     // Find active schedules for this doctor on this specific day of week
     const docSchedules = schedules.filter(
       (s) => s.doctorId === docId && s.dayOfWeek?.toUpperCase() === dayName && (s.active ?? s.isActive ?? true)
     );
-    
+
     const isWorking = docSchedules.length > 0;
-    const shift = isWorking 
+    const shift = isWorking
       ? docSchedules.map(s => `${s.shiftStartTime || '11:00'} - ${s.shiftEndTime || '14:00'}`).join(', ')
       : 'Off-Duty (No Shift)';
 
@@ -634,10 +634,10 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
         }
         return appointmentService.saveDoctorSchedule(payload);
       });
-      
+
       const results = await Promise.all(promises);
       const allSuccess = results.every(res => res && res.success);
-      
+
       if (allSuccess) {
         showNotification(`✅ Shifts saved for ${schedDoctorName} on ${schedDays.join(', ')}`, 'success');
         setShowScheduleModal(false);
@@ -796,7 +796,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
           if (localAppt && localAppt.treatmentServices && localAppt.treatmentServices.length > 0) {
             services = localAppt.treatmentServices;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -921,8 +921,8 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
             fb.published = !currentStatus;
             localStorage.setItem('vhms_epic4_feedback', JSON.stringify(list));
           }
-        } catch (e) {}
-        
+        } catch (e) { }
+
         showNotification('Review publish status updated.', 'success');
         loadAllAdminData();
       }
@@ -956,99 +956,124 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
 
       {/* Header */}
       {!hideHeader && (
-      <div className="epic-header">
-        <div className="epic-title-group">
-          <h1>🏥 Hospital Administration</h1>
-          <p>Appointment Scheduling, Billing, Payment Cashier & Financial Reporting</p>
+        <div className="epic-header">
+          <div className="epic-title-group">
+            <h1>🏥 Hospital Administration</h1>
+            <p>Appointment Scheduling, Billing, Payment Cashier & Financial Reporting</p>
+          </div>
+          <div className="epic-actions-bar">
+            <NotificationBell recipientId={adminId} />
+          </div>
         </div>
-        <div className="epic-actions-bar">
-          <NotificationBell recipientId={adminId} />
-        </div>
-      </div>
       )}
 
       {/* KPI Overview (US 4.20 & US 4.25) */}
       {!hideHeader && (
-      <div className="epic-stats-grid">
-        <div className="epic-stat-card">
-          <div className="stat-icon blue">📅</div>
-          <div className="stat-content">
-            <h3>Total Bookings</h3>
-            <div className="stat-value">{appointments.length}</div>
+        <div className="epic-stats-grid">
+          <div className="epic-stat-card">
+            <div className="stat-icon blue">📅</div>
+            <div className="stat-content">
+              <h3>Total Bookings</h3>
+              <div className="stat-value">{appointments.length}</div>
+            </div>
+          </div>
+          <div className="epic-stat-card">
+            <div className="stat-icon amber">⏳</div>
+            <div className="stat-content">
+              <h3>Pending Approval</h3>
+              <div className="stat-value">{appointments.filter((a) => a.status === 'REQUESTED').length}</div>
+            </div>
+          </div>
+          <div className="epic-stat-card">
+            <div className="stat-icon">💵</div>
+            <div className="stat-content">
+              <h3>Total Collected</h3>
+              <div className="stat-value">Rs. {financials?.totalCollectedRevenue?.toLocaleString() || 0}</div>
+            </div>
+          </div>
+          <div className="epic-stat-card">
+            <div className="stat-icon rose">⚠️</div>
+            <div className="stat-content">
+              <h3>Outstanding Bal.</h3>
+              <div className="stat-value">Rs. {financials?.totalOutstandingBalance?.toLocaleString() || 0}</div>
+            </div>
           </div>
         </div>
-        <div className="epic-stat-card">
-          <div className="stat-icon amber">⏳</div>
-          <div className="stat-content">
-            <h3>Pending Approval</h3>
-            <div className="stat-value">{appointments.filter((a) => a.status === 'REQUESTED').length}</div>
-          </div>
-        </div>
-        <div className="epic-stat-card">
-          <div className="stat-icon">💵</div>
-          <div className="stat-content">
-            <h3>Total Collected</h3>
-            <div className="stat-value">Rs. {financials?.totalCollectedRevenue?.toLocaleString() || 0}</div>
-          </div>
-        </div>
-        <div className="epic-stat-card">
-          <div className="stat-icon rose">⚠️</div>
-          <div className="stat-content">
-            <h3>Outstanding Bal.</h3>
-            <div className="stat-value">Rs. {financials?.totalOutstandingBalance?.toLocaleString() || 0}</div>
-          </div>
-        </div>
-      </div>
       )}
 
-      {/* Tabs */}
-      <div className="epic-tabs">
-        <button
-          className={`epic-tab-btn ${activeTab === 'appointments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('appointments')}
-        >
-          📋 Appointment Pipeline ({appointments.length})
-          {appointments.filter(a => a.status === 'REQUESTED').length > 0 && (
-            <span style={{
-              background: '#dc2626', color: '#fff', borderRadius: '999px',
-              padding: '0.1rem 0.45rem', fontSize: '0.72rem', fontWeight: '800',
-              marginLeft: '6px', verticalAlign: 'middle'
-            }}>
-              {appointments.filter(a => a.status === 'REQUESTED').length}
-            </span>
-          )}
-        </button>
-        <button
-          className={`epic-tab-btn ${activeTab === 'invoicing' ? 'active' : ''}`}
-          onClick={() => setActiveTab('invoicing')}
-        >
-          💳 Invoices & Payments ({invoices.length})
-        </button>
-        <button
-          className={`epic-tab-btn ${activeTab === 'schedules' ? 'active' : ''}`}
-          onClick={() => setActiveTab('schedules')}
-        >
-          🕒 Veterinarian Schedules ({schedules.length})
-        </button>
-        <button
-          className={`epic-tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reports')}
-        >
-          📊 Financial Analytics & Reports
-        </button>
-        <button
-          className={`epic-tab-btn ${activeTab === 'feedback' ? 'active' : ''}`}
-          onClick={() => setActiveTab('feedback')}
-        >
-          ⭐ Customer Reviews ({feedbackList.length})
-        </button>
-      </div>
+      {/* Module Navigation — shown only in standalone mode; dashboard provides its own nav cards */}
+      {!hideHeader && (
+        <div className="epic-module-wrapper">
+          <button
+            className={`epic-module-item ${activeTab === 'appointments' ? 'active' : ''}`}
+            onClick={() => setActiveTab('appointments')}
+          >
+            <div className="epic-module-icon-wrap amber">📋</div>
+            <div className="epic-module-info">
+              <span className="epic-module-title">Appointment Pipeline</span>
+              <span className="epic-module-count">{appointments.length} total</span>
+            </div>
+            {appointments.filter(a => a.status === 'REQUESTED').length > 0 && (
+              <span className="epic-module-badge">
+                {appointments.filter(a => a.status === 'REQUESTED').length}
+              </span>
+            )}
+          </button>
+
+          <button
+            className={`epic-module-item ${activeTab === 'invoicing' ? 'active' : ''}`}
+            onClick={() => setActiveTab('invoicing')}
+          >
+            <div className="epic-module-icon-wrap blue">💳</div>
+            <div className="epic-module-info">
+              <span className="epic-module-title">Invoices &amp; Payments</span>
+              <span className="epic-module-count">{invoices.length} records</span>
+            </div>
+          </button>
+
+          <button
+            className={`epic-module-item ${activeTab === 'schedules' ? 'active' : ''}`}
+            onClick={() => setActiveTab('schedules')}
+          >
+            <div className="epic-module-icon-wrap emerald">🕒</div>
+            <div className="epic-module-info">
+              <span className="epic-module-title">Veterinarian Schedules</span>
+              <span className="epic-module-count">{schedules.length} shifts</span>
+            </div>
+          </button>
+
+          <button
+            className={`epic-module-item ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            <div className="epic-module-icon-wrap purple">📊</div>
+            <div className="epic-module-info">
+              <span className="epic-module-title">Financial Analytics</span>
+              <span className="epic-module-count">&amp; Reports</span>
+            </div>
+          </button>
+
+          <button
+            className={`epic-module-item ${activeTab === 'feedback' ? 'active' : ''}`}
+            onClick={() => setActiveTab('feedback')}
+          >
+            <div className="epic-module-icon-wrap star">⭐</div>
+            <div className="epic-module-info">
+              <span className="epic-module-title">Customer Reviews</span>
+              <span className="epic-module-count">{feedbackList.length} reviews</span>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* TAB 1: APPOINTMENTS PIPELINE (US 4.14 - US 4.22) */}
       {activeTab === 'appointments' && (
-        <div className="epic-card">
-          <div className="epic-card-header">
-            <h2>📋 Central Appointment Scheduling Hub</h2>
+        <section className="modern-section" style={{ margin: 0, width: '100%' }}>
+          <div className="section-title-row">
+            <div>
+              <h2 className="section-heading">Central Appointment Scheduling Hub</h2>
+              <p className="section-sub">Manage, approve, and track all incoming pet owner appointment requests.</p>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {appointments.filter(a => a.status === 'REQUESTED').length > 0 && (
                 <button
@@ -1068,7 +1093,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                     background: '#dc2626',
                     color: '#fff',
                     borderRadius: '999px',
-                    padding: '0.25rem 0.75rem',
+                    padding: '0.4rem 1rem',
                     fontSize: '0.8rem',
                     fontWeight: '700',
                     animation: 'pulse 1.5s infinite',
@@ -1080,7 +1105,17 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                 </button>
               )}
               <button
-                className="btn-sm-action btn-approve"
+                style={{
+                  background: '#f0fdf4',
+                  color: '#16a34a',
+                  border: '1px solid #bbf7d0',
+                  padding: '0.4rem 1rem',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
                 onClick={loadAllAdminData}
                 title="Refresh to see latest pet owner requests"
               >
@@ -1134,8 +1169,8 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
             </div>
           )}
 
-          <div className="epic-table-wrapper">
-            <table className="epic-table">
+          <div className="table-glass-wrapper">
+            <table className="modern-table">
               <thead>
                 <tr>
                   <th>Ref #</th>
@@ -1148,7 +1183,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
               </thead>
               <tbody>
                 {appointments.map((a) => (
-                  <tr key={a.id} id={`appt-row-${a.id}`}>
+                  <tr key={a.id} id={`appt-row-${a.id}`} className="table-row-hover">
                     <td><strong>{a.appointmentNumber}</strong></td>
                     <td>
                       <PetCell petName={a.petName} species={a.petSpecies} ownerInfo={`${a.ownerName} • ${a.ownerPhone}`} />
@@ -1164,7 +1199,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                       <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{a.timeSlot}</div>
                     </td>
                     <td>
-                      <span className={`status-pill ${a.status?.toLowerCase()}`}>
+                      <span className={`chip-status ${a.status?.toUpperCase()}`}>
                         {a.status}
                       </span>
                     </td>
@@ -1173,29 +1208,21 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                         {a.status === 'REQUESTED' ? (
                           <>
                             <button
-                              className="btn-sm-action btn-approve"
                               onClick={() => handleApprove(a)}
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               title="Approve and assign veterinarian"
                             >
                               ✓ Approve
                             </button>
                             <button
-                              className="btn-sm-action btn-reject"
                               onClick={() => { setSelectedAppt(a); setRejectReason(''); setShowRejectModal(true); }}
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               title="Decline appointment request"
                             >
                               ✕ Reject
                             </button>
                             <button
-                              className="btn-sm-action"
-                              style={{
-                                background: '#f1f5f9',
-                                color: '#334155',
-                                border: '1px solid #cbd5e1',
-                                fontWeight: '600',
-                                padding: '0.35rem 0.6rem',
-                                borderRadius: '6px'
-                              }}
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => { setSelectedAppt(a); setShowDetailsModal(true); }}
                               title="View full appointment details"
                             >
@@ -1205,17 +1232,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                         ) : ['EXPIRED', 'NO_SHOW'].includes(a.status) ? (
                           <>
                             <button
-                              className="btn-sm-action"
-                              style={{
-                                background: '#0284c7',
-                                color: '#fff',
-                                fontWeight: '600',
-                                padding: '0.4rem 0.85rem',
-                                borderRadius: '6px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.35rem'
-                              }}
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => { setSelectedAppt(a); setShowDetailsModal(true); }}
                               title="View appointment details & clinical notes"
                             >
@@ -1235,18 +1252,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                               );
                               return (
                                 <button
-                                  className="btn-sm-action"
-                                  style={{
-                                    background: isNotified ? '#10b981' : '#f59e0b',
-                                    color: '#fff',
-                                    fontWeight: '600',
-                                    padding: '0.4rem 0.75rem',
-                                    borderRadius: '6px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.3rem',
-                                    cursor: isNotified ? 'default' : 'pointer'
-                                  }}
+                                  style={{ padding: '6px 14px', borderRadius: '10px', background: isNotified ? '#f0fdf4' : '#fff7ed', color: isNotified ? '#16a34a' : '#ea580c', border: `1px solid ${isNotified ? '#bbf7d0' : '#ffedd5'}`, fontWeight: 700, fontSize: '0.8rem', cursor: isNotified ? 'default' : 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                                   onClick={() => !isNotified && handleNotifyRebook(a)}
                                   title={isNotified ? 'Re-booking alert already sent to pet owner' : 'Send re-booking notification to Pet Owner'}
                                 >
@@ -1257,17 +1263,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                           </>
                         ) : ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(a.status) ? (
                           <button
-                            className="btn-sm-action"
-                            style={{
-                              background: '#0284c7',
-                              color: '#fff',
-                              fontWeight: '600',
-                              padding: '0.4rem 0.85rem',
-                              borderRadius: '6px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.35rem'
-                            }}
+                            style={{ padding: '6px 14px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                             onClick={() => { setSelectedAppt(a); setShowDetailsModal(true); }}
                             title="View appointment details & clinical notes"
                           >
@@ -1276,36 +1272,28 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                         ) : (
                           <>
                             <button
-                              className="btn-sm-action"
-                              style={{
-                                background: '#f1f5f9',
-                                color: '#334155',
-                                border: '1px solid #cbd5e1',
-                                fontWeight: '600',
-                                padding: '0.35rem 0.6rem',
-                                borderRadius: '6px'
-                              }}
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => { setSelectedAppt(a); setShowDetailsModal(true); }}
                               title="View full appointment details"
                             >
                               👁️ View
                             </button>
                             <button
-                              className="btn-sm-action btn-reschedule"
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ede9fe', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => handleOpenReschedule(a)}
                               title="Reschedule appointment with real-time doctor availability"
                             >
                               📅 Reschedule
                             </button>
                             <button
-                              className="btn-sm-action btn-secondary-epic"
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#fefce8', color: '#ca8a04', border: '1px solid #fef08a', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => handleSendReminder(a)}
                               title="Send SMS/In-app reminder"
                             >
                               🔔 Remind
                             </button>
                             <button
-                              className="btn-sm-action btn-reject"
+                              style={{ padding: '6px 14px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                               onClick={() => handleCancelAppt(a.id)}
                               title="Cancel confirmed appointment"
                             >
@@ -1320,7 +1308,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
 
       {/* TAB 2: INVOICES & CASHIER (US 4.23, US 4.24, US 4.27) */}
@@ -1342,7 +1330,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
             const pendingBillAppts = appointments.filter((a) => {
               const hasInvoice = invoices.some(
                 (inv) => (inv.appointmentId && inv.appointmentId === a.id) ||
-                         (inv.appointmentNumber && inv.appointmentNumber === a.appointmentNumber)
+                  (inv.appointmentNumber && inv.appointmentNumber === a.appointmentNumber)
               );
               if (hasInvoice || a.isBilled || a.billed || a.invoiceId) return false;
               return (a.treatmentServices && a.treatmentServices.length > 0) || a.status === 'COMPLETED';
@@ -1486,22 +1474,31 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
 
       {/* TAB 3: DOCTOR SHIFTS & SCHEDULES (US 4.13) */}
       {activeTab === 'schedules' && (
-        <div className="epic-card">
-          <div className="epic-card-header">
-            <h2>🕒 Active Veterinarian Working Shifts & Slot Config</h2>
-            <button className="btn-primary-epic" onClick={() => {
-              setSchedDays(['MONDAY']);
-              setSchedStart('11:00');
-              setSchedEnd('14:00');
-              setSchedOriginalDayIds({});
-              setShowScheduleModal(true);
-            }}>
+        <section className="modern-section" style={{ margin: 0, width: '100%' }}>
+          <div className="section-title-row">
+            <div>
+              <h2 className="section-heading">Active Veterinarian Working Shifts & Slot Config</h2>
+              <p className="section-sub">Configure treatment time slots, capacity, and weekly shift schedules.</p>
+            </div>
+            <button
+              className="btn-primary"
+              style={{
+                background: '#059669', color: '#fff', padding: '0.6rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)'
+              }}
+              onClick={() => {
+                setSchedDays(['MONDAY']);
+                setSchedStart('11:00');
+                setSchedEnd('14:00');
+                setSchedOriginalDayIds({});
+                setShowScheduleModal(true);
+              }}
+            >
               + Add / Update Schedule
             </button>
           </div>
 
-          <div className="epic-table-wrapper">
-            <table className="epic-table">
+          <div className="table-glass-wrapper">
+            <table className="modern-table">
               <thead>
                 <tr>
                   <th>Veterinarian</th>
@@ -1529,47 +1526,58 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                   }
                   return acc;
                 }, {})).map((s, idx) => (
-                  <tr key={s.id || idx}>
-                    <td><strong>{s.doctorName}</strong> ({s.doctorId})</td>
+                  <tr key={s.id || idx} className="table-row-hover">
                     <td>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      <div className="table-user-info">
+                        <div>
+                          <strong className="user-name-text">{s.doctorName}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>({s.doctorId})</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {s.days.map(d => (
-                          <span key={d} style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                          <span key={d} style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
                             {d}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td>⏰ {s.shiftStartTime} &mdash; {s.shiftEndTime}</td>
+                    <td><span style={{ color: '#ef4444', fontWeight: 600 }}>⏰</span> {s.shiftStartTime} &mdash; {s.shiftEndTime}</td>
                     <td>{s.slotDurationMinutes} Minutes</td>
                     <td>{s.maxCapacityPerSlot} Patient</td>
                     <td>
                       {s.active ? (
-                        <span className="status-pill confirmed">Active</span>
+                        <span className="chip-status ACTIVE">ACTIVE</span>
                       ) : (
-                        <span className="status-pill" style={{ background: '#fef08a', color: '#854d0e' }}>Inactive</span>
+                        <span className="chip-status PENDING_APPROVAL">INACTIVE</span>
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <button
-                          className="btn-sm-action"
-                          style={{ background: s.active ? '#f59e0b' : '#10b981', color: 'white', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                           onClick={() => handleToggleScheduleStatus(s)}
+                          style={{
+                            padding: '6px 14px', borderRadius: '10px', background: s.active ? '#fff7ed' : '#f0fdf4', color: s.active ? '#ea580c' : '#16a34a', border: `1px solid ${s.active ? '#ffedd5' : '#bbf7d0'}`, fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+                          }}
                           title={s.active ? "Mark as Inactive" : "Mark as Active"}
                         >
-                          {s.active ? '⚪ Deactivate' : '🟢 Activate'}
+                          {s.active ? '⏏ Deactivate' : '▶ Activate'}
                         </button>
                         <button
-                          className="btn-sm-action"
-                          style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                           onClick={() => handleEditScheduleGroup(s)}
+                          style={{
+                            padding: '6px 14px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+                          }}
                         >
-                          ✎ Edit
+                          ✏️ Edit
                         </button>
                         <button
-                          className="btn-sm-action btn-reject"
                           onClick={() => handleDeleteScheduleGroup(s.ids, s.doctorName)}
+                          style={{
+                            padding: '6px 14px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+                          }}
                         >
                           ✕ Delete
                         </button>
@@ -1580,7 +1588,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
 
       {/* TAB 4: FINANCIAL REPORTS (US 4.25) */}
@@ -2215,10 +2223,10 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                       {currentAvail.statusReason === 'OFF_DUTY'
                         ? `${assignDoctorName} is Off-Duty on ${currentAvail.dayName}s`
                         : currentAvail.statusReason === 'OUTSIDE_HOURS'
-                        ? `${selectedAppt.timeSlot} is outside working hours (${currentAvail.shift})`
-                        : currentAvail.statusReason === 'SLOT_CONFLICT'
-                        ? `Schedule Conflict: ${assignDoctorName} already has a booking at ${selectedAppt.timeSlot}`
-                        : `Schedule Verified: ${assignDoctorName} is ON DUTY (${currentAvail.shift}) and available at ${selectedAppt.timeSlot}!`}
+                          ? `${selectedAppt.timeSlot} is outside working hours (${currentAvail.shift})`
+                          : currentAvail.statusReason === 'SLOT_CONFLICT'
+                            ? `Schedule Conflict: ${assignDoctorName} already has a booking at ${selectedAppt.timeSlot}`
+                            : `Schedule Verified: ${assignDoctorName} is ON DUTY (${currentAvail.shift}) and available at ${selectedAppt.timeSlot}!`}
                     </strong>
                   </div>
 
@@ -2285,8 +2293,8 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                     {currentAvail.isAvailable
                       ? `✓ Allocate ${assignDoctorName} & Approve`
                       : currentAvail.statusReason === 'OFF_DUTY'
-                      ? '⚠️ Doctor Off-Duty — Select On-Duty Doctor'
-                      : '⚠️ Slot Busy — Select Another Doctor'}
+                        ? '⚠️ Doctor Off-Duty — Select On-Duty Doctor'
+                        : '⚠️ Slot Busy — Select Another Doctor'}
                   </button>
                 </div>
               </form>
@@ -2460,110 +2468,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
         </div>
       )}
 
-      {/* MODAL 0: ASSIGN DOCTOR & APPROVE APPOINTMENT (US 4.15) */}
-      {showAssignModal && selectedAppt && (() => {
-        const availInfo = getDoctorAvailabilityInfo(assignDoctorId, selectedAppt.appointmentDate, selectedAppt.timeSlot, selectedAppt.id);
-        const hasConflict = !availInfo.isAvailable;
 
-        return (
-          <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '540px' }}>
-              <div className="modal-header">
-                <h2>✓ Approve Appointment #{selectedAppt.appointmentNumber}</h2>
-                <button className="modal-close" onClick={() => setShowAssignModal(false)}>✕</button>
-              </div>
-
-              {/* Booking Context */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem 1rem', marginBottom: '1.25rem', fontSize: '0.88rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span><strong>🐾 Patient:</strong> {selectedAppt.petName} ({normalizeSpecies(selectedAppt.petSpecies)})</span>
-                  <span><strong>👤 Owner:</strong> {selectedAppt.ownerName}</span>
-                </div>
-                <div style={{ color: '#0369a1', fontSize: '0.82rem' }}>
-                  <strong>Requested:</strong> {selectedAppt.appointmentDate} at {selectedAppt.timeSlot}
-                </div>
-              </div>
-
-              <form onSubmit={handleAssignAndApprove}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
-                    👨‍⚕️ Assign Veterinarian <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <select
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                    value={assignDoctorId}
-                    onChange={(e) => {
-                      const doc = doctorsList.find((d) => d.id === e.target.value);
-                      setAssignDoctorId(e.target.value);
-                      if (doc) setAssignDoctorName(doc.name);
-                    }}
-                  >
-                    {doctorsList.map((doc) => (
-                      <option key={doc.id} value={doc.id}>
-                        {doc.name} — {doc.spec}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Conflict / Roster Warning */}
-                {hasConflict ? (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#991b1b' }}>
-                    <strong>⚠️ Slot Conflict / Unavailability Detected:</strong>
-                    <div style={{ marginTop: '0.3rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                      {availInfo.statusReason === 'OFF_DUTY' ? (
-                        <span>{assignDoctorName} is <strong>off-duty</strong> on {availInfo.dayName}. Working days: {availInfo.docWorkingDays.join(', ')}.</span>
-                      ) : availInfo.statusReason === 'SLOT_CONFLICT' ? (
-                        <span>{assignDoctorName} already has an active appointment (<strong>#{availInfo.conflictAppt?.appointmentNumber} - {availInfo.conflictAppt?.petName}</strong>) at {selectedAppt.timeSlot}.</span>
-                      ) : (
-                        <span>Slot {selectedAppt.timeSlot} falls outside {assignDoctorName}'s shift ({availInfo.shift}).</span>
-                      )}
-                    </div>
-                    <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: '#b91c1c' }}>
-                      👉 Please reassign to an available doctor or reschedule this consultation to prevent double-booking.
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.65rem 0.85rem', marginBottom: '1.25rem', fontSize: '0.82rem', color: '#166534' }}>
-                    ✅ <strong>Doctor Available:</strong> {assignDoctorName} is on duty on {availInfo.dayName} ({availInfo.shift}) with no conflicting bookings.
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowAssignModal(false)}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      background: '#f1f5f9',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-primary-epic"
-                    style={{
-                      flex: 2,
-                      justifyContent: 'center',
-                      background: hasConflict ? '#94a3b8' : '#10b981',
-                      cursor: hasConflict ? 'not-allowed' : 'pointer'
-                    }}
-                    disabled={hasConflict}
-                  >
-                    {hasConflict ? '❌ Slot Conflict - Cannot Approve' : '✓ Approve & Allocate Doctor'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* MODAL 1: REASSIGN DOCTOR (US 4.17) */}
       {showReassignModal && selectedAppt && (
@@ -2798,7 +2703,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
               <h2>✕ Decline Appointment ({selectedAppt.appointmentNumber})</h2>
               <button className="modal-close" onClick={() => setShowRejectModal(false)}>✕</button>
             </div>
-            
+
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.8rem 1rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#991b1b' }}>
               <strong>ℹ️ Pet Owner Resolution Workflow:</strong>
               <div style={{ marginTop: '0.35rem', color: '#7f1d1d', lineHeight: '1.4' }}>

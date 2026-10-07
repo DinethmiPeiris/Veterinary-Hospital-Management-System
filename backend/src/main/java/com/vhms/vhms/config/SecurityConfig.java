@@ -23,32 +23,38 @@ public class SecurityConfig {
     }
 
     @Bean
-    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService(PasswordEncoder encoder) {
-        org.springframework.security.core.userdetails.UserDetails admin = org.springframework.security.core.userdetails.User.builder()
-            .username("admin")
-            .password(encoder.encode("admin"))
-            .roles("ADMIN")
-            .build();
-            
+    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService(
+            PasswordEncoder encoder) {
+        org.springframework.security.core.userdetails.UserDetails admin = org.springframework.security.core.userdetails.User
+                .builder()
+                .username("admin")
+                .password(encoder.encode("admin"))
+                .roles("ADMIN")
+                .build();
+
         return new org.springframework.security.provisioning.InMemoryUserDetailsManager(admin);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for frontend development
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                // US-E2-24: Service catalog writes are admin-only; reads are public
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/services/**").hasRole("ADMIN")
-                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/services/**").hasRole("ADMIN")
-                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/services/**").hasRole("ADMIN")
-                .requestMatchers("/**").permitAll() // Allow access to other endpoints for now
-            )
-            .httpBasic(org.springframework.security.config.Customizer.withDefaults()) // Enable basic auth for admin endpoints
-            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
-            
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for frontend development
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/admin/**").permitAll()
+                        // US-E2-24: Service catalog writes are admin-only; reads are public
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/services/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/services/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/services/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/**").permitAll() // Allow access to other endpoints for now
+                )
+                .httpBasic(org.springframework.security.config.Customizer.withDefaults()) // Enable basic auth for admin
+                                                                                          // endpoints
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
         return http.build();
     }
 

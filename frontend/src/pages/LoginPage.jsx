@@ -106,10 +106,11 @@ export default function LoginPage() {
         setTimeout(() => navigate('/doctor/portal'), 1200)
         return true
       } catch (error) {
-        // Fallback for mocked doctors if backend is unlinked
-        const isDoctorMock = expectedRole === 'DOCTOR' || ['channa', 'nimal', 'kasun', 'amila', 'saman', 'ruwan', 'perera', 'bandara', 'rathnayake', 'doctor', 'dr', 'doc', 'vet'].some(kw => cleanId.includes(kw));
-
-        if (isDoctorMock) {
+        // Mock fallback ONLY when doctor login tab was explicitly selected.
+        // NEVER use keyword matching during 'ANY' (unified) login — pet owners
+        // with common names like 'perera' or 'kasun' would be misrouted to the
+        // doctor portal.
+        if (expectedRole === 'DOCTOR') {
           let mockName = 'Dr. Veterinarian';
           if (cleanId.includes('channa')) mockName = 'Dr. Sirimath Channa Molligoda';
           else if (cleanId.includes('nimal')) mockName = 'Dr. Nimal Weeraratne';
@@ -139,6 +140,7 @@ export default function LoginPage() {
           showToast(error.message || '❌ Invalid credentials for Doctor.', 'error')
           return false
         }
+        // For 'ANY' login: doctor login failed, fall through to pet owner check below
       }
     }
 
@@ -187,36 +189,34 @@ export default function LoginPage() {
           return true
         }
         localStorage.setItem('vhms_user', JSON.stringify(response))
+        if (!response.role || response.role === 'null' || response.role.trim() === '') {
+          localStorage.removeItem('vhms_user')
+          showToast(`❌ Authorization Error: Your account role is missing or invalid. Please contact the administrator.`, 'error')
+          return false
+        }
+
         if (response.role === 'ADMIN') {
           showToast(`🔐 Welcome, Admin ${response.name}! Redirecting to Admin Dashboard...`, 'info')
           setTimeout(() => navigate('/admin/portal'), 300)
-        } else if (response.role === 'DOCTOR') {
+        } else if (response.role === 'DOCTOR' || response.role === 'VETERINARIAN') {
           localStorage.setItem('vhms_doctor_view', 'OVERVIEW')
           showToast(`🏥 Welcome, ${response.name}! Redirecting to Doctor Portal...`, 'info')
           setTimeout(() => navigate('/doctor/portal'), 400)
-        } else {
+        } else if (response.role === 'PET_OWNER' || response.role === 'OWNER') {
           localStorage.setItem('vhms_pet_view', 'OVERVIEW')
           showToast(`🐾 Welcome back, ${response.name || 'Pet Owner'}! Redirecting to Pet Owner Dashboard...`, 'success')
           setTimeout(() => navigate('/pet-owner/portal'), 300)
+        } else {
+          // Role is missing or invalid! Clear session and return out.
+          localStorage.removeItem('vhms_user')
+          showToast(`❌ Authorization Error: Invalid or missing role mapping for your account.`, 'error')
+          return false
         }
         return true
       }
     } catch (err) { }
 
-    if (expectedRole === 'PET_OWNER' || expectedRole === 'ANY') {
-      const ownerName = loginId.includes('@') ? loginId.split('@')[0].replace(/[^a-zA-Z]/g, ' ') : loginId
-      const formattedName = ownerName ? ownerName.charAt(0).toUpperCase() + ownerName.slice(1) : 'Pet Owner'
-      // Stable ID per email so pets registered under this login are still found next time (was time-based => changed every login)
-      const stableKey = (loginId.includes('@') ? loginId : `${loginId}@gmail.com`).trim().toLowerCase()
-      let stableHash = 0
-      for (let i = 0; i < stableKey.length; i++) stableHash = (stableHash * 31 + stableKey.charCodeAt(i)) % 10000
-      const ownerSession = { success: true, id: `PO-${String(stableHash).padStart(4, '0')}`, name: formattedName, email: loginId.includes('@') ? loginId : `${loginId}@gmail.com`, phone: '0771234567', role: 'PET_OWNER', status: 'ACTIVE' }
-      localStorage.setItem('vhms_user', JSON.stringify(ownerSession))
-      localStorage.setItem('vhms_pet_view', 'OVERVIEW')
-      showToast(`🐾 Welcome back, ${formattedName}! Redirecting to Pet Owner Dashboard...`, 'success')
-      setTimeout(() => navigate('/pets'), 300)
-      return true
-    }
+
 
     return false
   }

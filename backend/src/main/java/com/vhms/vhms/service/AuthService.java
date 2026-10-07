@@ -246,6 +246,21 @@ public class AuthService {
             return new AuthResponse(false, "Your account is currently inactive.");
         }
 
+        // Fix for inconsistent roles: check if they exist in doctor collection
+        if (!"DOCTOR".equalsIgnoreCase(user.getRole())) {
+            if (user.getEmail() != null && doctorRepository.existsByEmailIgnoreCase(user.getEmail())) {
+                user.setRole("DOCTOR");
+                userRepository.save(user); // auto-repair
+                System.out.println("✅ Repaired underlying authentication inconsistency: Set role to DOCTOR for "
+                        + user.getEmail());
+            } else if (user.getId() != null && doctorRepository.existsByStaffIdIgnoreCase(user.getId())) {
+                user.setRole("DOCTOR");
+                userRepository.save(user); // auto-repair
+                System.out.println(
+                        "✅ Repaired underlying authentication inconsistency: Set role to DOCTOR for " + user.getId());
+            }
+        }
+
         return new AuthResponse(
                 true,
                 "Authentication successful!",

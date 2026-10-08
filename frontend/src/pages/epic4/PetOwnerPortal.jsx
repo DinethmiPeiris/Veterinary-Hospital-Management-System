@@ -5,9 +5,10 @@ import { paymentService } from '../../services/paymentService';
 import { feedbackService } from '../../services/feedbackService';
 import { PetAvatar, SpeciesPill, PetCell } from '../../utils/petBadgeHelper';
 import NotificationBell from './NotificationBell';
+import PetOwnerMedicalHistory from '../petowner/PetOwnerMedicalHistory';
 import './Epic4.css';
 
-export default function PetOwnerPortal({ initialView = null, hideHeader = false }) {
+export default function PetOwnerPortal({ initialView = null, hideHeader = false, ownerPets: ownerPetsProp = null }) {
   let userObj = null;
   try {
     userObj = JSON.parse(localStorage.getItem('vhms_user'));
@@ -663,9 +664,109 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
     }
   };
 
+  const handleDownloadReport = (appt) => {
+    let consultation = { ...appt };
+    try {
+      const drafts = JSON.parse(localStorage.getItem('vhms_consultation_drafts') || '{}');
+      if (drafts[appt.id]) {
+        consultation = { ...consultation, ...drafts[appt.id] };
+      }
+    } catch (e) {}
+
+    const printWindow = window.open('', '_blank');
+    const html = `
+        <html>
+        <head>
+            <title>Medical Report - ${consultation.petName || 'Pet'}</title>
+            <style>
+                body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+                .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+                .header h1 { color: #0f172a; margin: 0 0 10px 0; }
+                .header p { color: #64748b; margin: 0; }
+                .section { margin-bottom: 30px; }
+                .section h2 { color: #38bdf8; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+                .row { margin-bottom: 10px; }
+                .label { font-weight: bold; color: #475569; display: inline-block; width: 120px; }
+                ul { list-style-type: none; padding: 0; }
+                li { padding: 8px 0; border-bottom: 1px dashed #e2e8f0; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🐾 Sri Jayawardanapura Animal Hospital</h1>
+                <p>Official Medical Consultation Report</p>
+            </div>
+            
+            <div class="section">
+                <h2>Consultation Details</h2>
+                <div class="row"><span class="label">Date:</span> ${consultation.appointmentDate}</div>
+                <div class="row"><span class="label">Time:</span> ${consultation.timeSlot}</div>
+                <div class="row"><span class="label">Doctor:</span> Dr. ${consultation.doctorName}</div>
+                <div class="row"><span class="label">Patient:</span> ${consultation.petName} (${consultation.petSpecies || 'Unknown'})</div>
+            </div>
+
+            <div class="section">
+                <h2>Diagnosis</h2>
+                <p>${consultation.diagnosis || 'None recorded'}</p>
+            </div>
+
+            <div class="section">
+                <h2>Clinical Observations</h2>
+                <p>${consultation.clinicalObservations || consultation.observations || 'None recorded'}</p>
+            </div>
+
+            <div class="section">
+                <h2>Treatment Plan</h2>
+                <p>${consultation.treatmentPlan || 'None recorded'}</p>
+            </div>
+
+            <div class="section">
+                <h2>Prescriptions</h2>
+                <ul>
+                    ${consultation.prescriptions && consultation.prescriptions.length > 0 ? consultation.prescriptions.map(rx => `
+                        <li><strong>${rx.medicationName}</strong>: ${rx.dosage} for ${rx.duration} - ${rx.frequency}. <em>${rx.instructions || ''}</em></li>
+                    `).join('') : '<li>No prescriptions</li>'}
+                </ul>
+            </div>
+            
+            <div style="margin-top: 50px; text-align: center; color: #94a3b8; font-size: 0.9em; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                <p>This is a computer-generated document. No signature is required.</p>
+                <p>Generated on ${new Date().toLocaleString()}</p>
+            </div>
+            <script>
+                window.onload = () => {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+
   const rejectedAppts = appointments.filter((a) => a.status === 'REJECTED');
   const upcomingAppts = appointments.filter((a) => a.status === 'REQUESTED' || a.status === 'CONFIRMED' || a.status === 'RESCHEDULED');
   const pastAppts = appointments.filter((a) => a.status === 'COMPLETED' || a.status === 'CANCELLED' || a.status === 'EXPIRED' || a.status === 'NO_SHOW');
+
+  const uniquePetsMap = new Map();
+  appointments.forEach(a => {
+    if (a.petName && !uniquePetsMap.has(a.petName)) {
+      uniquePetsMap.set(a.petName, { id: a.petId || a.petName, name: a.petName, species: a.petSpecies });
+    }
+  });
+  
+  let ownerPets = ownerPetsProp;
+  if (!ownerPets || ownerPets.length === 0) {
+      ownerPets = Array.from(uniquePetsMap.values());
+  }
+  if (!ownerPets || ownerPets.length === 0) {
+      try {
+          const allPets = JSON.parse(localStorage.getItem('vhms_pets') || '[]');
+          ownerPets = allPets.filter(p => p.ownerId === ownerId);
+      } catch (e) {}
+  }
 
   return (
     <div className="epic-container" style={hideHeader ? { padding: 0, minHeight: 'auto', background: 'transparent' } : {}}>
@@ -708,8 +809,18 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
 
       {/* Tabs */}
       <div className="epic-tabs">
-
         <button
+          className={`epic-tab-btn ${activeTab === 'appointments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('appointments')}
+        >
+          📅 Appointments
+        </button>
+        <button
+          className={`epic-tab-btn ${activeTab === 'records' ? 'active' : ''}`}
+          onClick={() => setActiveTab('records')}
+        >
+          📖 Medical History
+        </button>        <button
           className={`epic-tab-btn ${activeTab === 'invoices' ? 'active' : ''}`}
           onClick={() => setActiveTab('invoices')}
         >
@@ -1258,6 +1369,65 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 4: MEDICAL HISTORY & RECORDS */}
+      {activeTab === 'records' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="epic-card">
+            <div className="epic-card-header">
+              <h2>🩺 Medical Reports & Consultations</h2>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                Download official PDF reports for your past consultations.
+              </p>
+            </div>
+            <div className="epic-table-wrapper">
+               <table className="epic-table">
+                 <thead>
+                   <tr>
+                     <th>Ref #</th>
+                     <th>Pet</th>
+                     <th>Date & Slot</th>
+                     <th>Doctor</th>
+                     <th>Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                    {pastAppts.filter(a => a.status === 'COMPLETED').map(appt => (
+                       <tr key={appt.id}>
+                          <td>{appt.appointmentNumber || appt.id}</td>
+                          <td>
+                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{appt.petName}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{appt.petSpecies}</div>
+                          </td>
+                          <td>
+                            {appt.appointmentDate}
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{appt.timeSlot}</div>
+                          </td>
+                          <td>Dr. {appt.doctorName}</td>
+                          <td>
+                             <button className="btn-sm-action btn-approve" onClick={() => handleDownloadReport(appt)}>
+                               📥 Download PDF
+                             </button>
+                          </td>
+                       </tr>
+                    ))}
+                    {pastAppts.filter(a => a.status === 'COMPLETED').length === 0 && (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                          No completed consultations available.
+                        </td>
+                      </tr>
+                    )}
+                 </tbody>
+               </table>
+            </div>
+          </div>
+          
+          <div className="epic-card" style={{ padding: '0', overflow: 'hidden' }}>
+            <PetOwnerMedicalHistory ownerPets={ownerPets} />
+          </div>
         </div>
       )}
 

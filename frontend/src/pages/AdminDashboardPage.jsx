@@ -5,6 +5,7 @@ import AdminAdmissionRequestsPage from './AdminAdmissionRequestsPage';
 import AdminHospitalizedPetsPage from './AdminHospitalizedPetsPage';
 import AdminCageOccupancyPage from './AdminCageOccupancyPage';
 import AdminInventoryPage from './AdminInventoryPage';
+import AdminMedicineRequestsPage from './AdminMedicineRequestsPage';
 import AdminHub from './epic4/AdminHub';
 import './AdminDashboardPage.css';
 
@@ -396,7 +397,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
 
     // View state — persisted across refreshes
     const ADMIN_VIEW_KEY = 'vhms_admin_view';
-    const safeAdminViews = ['OVERVIEW', 'PENDING', 'DIRECTORY', 'DOCTOR_DIRECTORY', 'CREATE_DOCTOR', 'TIMESLOTS', 'SCHEDULE', 'APPOINTMENTS'];
+    const safeAdminViews = ['OVERVIEW', 'PENDING', 'DIRECTORY', 'DOCTOR_DIRECTORY', 'CREATE_DOCTOR', 'TIMESLOTS', 'SCHEDULE', 'APPOINTMENTS', 'ADMISSION_REQUESTS', 'HOSPITALIZED_PETS', 'CAGE_OCCUPANCY', 'INVENTORY', 'MEDICINE_REQUESTS'];
     const initAdminView = (() => {
         if (initialView) return initialView;
         try { const v = localStorage.getItem(ADMIN_VIEW_KEY); return safeAdminViews.includes(v) ? v : 'OVERVIEW'; } catch { return 'OVERVIEW'; }
@@ -1862,6 +1863,16 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                         <div className="nav-card-info">
                                             <h3>Pharmacy & Stock</h3>
                                             <span className="nav-card-sub">Manage medical inventory</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="feature-nav-card card-rose-hover" onClick={() => setCurrentView('MEDICINE_REQUESTS')}>
+                                        <div className="nav-card-icon-badge rose" style={{ background: '#ffe4e6', color: '#e11d48' }}>
+                                            <IconStethoscope size={26} />
+                                        </div>
+                                        <div className="nav-card-info">
+                                            <h3>Medicine Requests</h3>
+                                            <span className="nav-card-sub">Doctor pharmacy requests</span>
                                         </div>
                                     </div>
                                 </div>
@@ -3845,6 +3856,10 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
 
                 {currentView === 'INVENTORY' && (
                     <AdminInventoryPage hideHeader={true} />
+                )}
+
+                {currentView === 'MEDICINE_REQUESTS' && (
+                    <AdminMedicineRequestsPage hideHeader={true} />
                 )}
 
                 {currentView === 'BILLING' && (

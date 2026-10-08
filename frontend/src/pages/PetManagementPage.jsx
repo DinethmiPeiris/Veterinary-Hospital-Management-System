@@ -1062,8 +1062,8 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     );
                 } else if (curr === 'COMPLETED') {
                     addNotification(
-                        '✔️ Visit Completed',
-                        `The hospital visit (${appt.id}) for ${appt.petName} with ${appt.doctorName} on ${appt.date} has been marked as completed. Your invoice will be generated shortly.`,
+                        '✔️ Consultation Complete',
+                        `The consultation (${appt.id}) for ${appt.petName} with ${appt.doctorName} on ${appt.date} has been marked as completed. Your consultation records are now available in your pet's medical history.`,
                         'APPOINTMENT',
                         appt.id
                     );
@@ -1815,6 +1815,23 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         </p>
                                         <div className="portal-card-footer">
                                             <span className="link-text">View Invoices →</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 7: MEDICAL HISTORY (E-Passbook) */}
+                                    <div className="portal-card medical-history-portal-card" id="medical-history-portal-card" onClick={() => setCurrentView('MEDICAL_HISTORY')}>
+                                        <div className="portal-card-top">
+                                            <div className="portal-icon-box icon-purple-box" style={{ background: '#f3e8ff', color: '#9333ea' }}>
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                                            </div>
+                                            <span className="portal-badge badge-info">E-Passbook</span>
+                                        </div>
+                                        <h3 className="portal-card-title">Medical History</h3>
+                                        <p className="portal-card-desc">
+                                            View consultation records, download official PDF reports, and check pet health metrics.
+                                        </p>
+                                        <div className="portal-card-footer">
+                                            <span className="link-text">View Medical History →</span>
                                         </div>
                                     </div>
 
@@ -3709,9 +3726,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     )}
 
                     {currentView === 'MEDICAL_HISTORY' && (
-                        <section style={{ padding: '0' }}>
-                            <PetOwnerMedicalHistory />
-                        </section>
+                        <PetOwnerPortal initialView="records" hideHeader={true} ownerPets={pets} />
                     )}
                 </main>
             </div>

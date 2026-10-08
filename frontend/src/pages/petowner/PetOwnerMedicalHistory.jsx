@@ -2,13 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 import './PetOwnerMedicalHistory.css';
 
-const PetOwnerMedicalHistory = () => {
+const PetOwnerMedicalHistory = ({ ownerPets }) => {
     const [record, setRecord] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedPet, setSelectedPet] = useState('PET-101'); // Mock logged-in pet owner's pet
+    const [selectedPet, setSelectedPet] = useState('');
 
     useEffect(() => {
+        if (ownerPets && ownerPets.length > 0 && !selectedPet) {
+            setSelectedPet(ownerPets[0].id);
+        } else if (!ownerPets || ownerPets.length === 0) {
+            setLoading(false);
+        }
+    }, [ownerPets, selectedPet]);
+
+    useEffect(() => {
+        if (!selectedPet) return;
         const fetchMedicalRecord = async () => {
             try {
                 setLoading(true);
@@ -53,8 +62,15 @@ const PetOwnerMedicalHistory = () => {
                 <div className="pet-selector">
                     <label>Select Pet: </label>
                     <select value={selectedPet} onChange={(e) => setSelectedPet(e.target.value)}>
-                        <option value="PET-101">Buddy (Dog)</option>
-                        <option value="PET-102">Luna (Cat)</option>
+                        {ownerPets && ownerPets.length > 0 ? (
+                            ownerPets.map(pet => (
+                                <option key={pet.id} value={pet.id}>
+                                    {pet.name} ({pet.species})
+                                </option>
+                            ))
+                        ) : (
+                            <option value="">No pets available</option>
+                        )}
                     </select>
                 </div>
             </header>

@@ -58,10 +58,14 @@ const getLocalAppointments = () => {
             'APPROVED': 'CONFIRMED',
             'PENDING_APPROVAL': 'REQUESTED'
         };
+        let normDate = a.appointmentDate || a.date;
+        if (normDate && String(normDate).length > 20) {
+            try { normDate = new Date(normDate).toISOString().split('T')[0]; } catch(e) {}
+        }
         map.set(id, {
             ...a,
             appointmentNumber: a.appointmentNumber || id,
-            appointmentDate: a.appointmentDate || a.date,
+            appointmentDate: normDate,
             status: statusMap[a.status] || a.status
         });
     });
@@ -201,25 +205,72 @@ export const appointmentService = {
     return { success: true, data: list };
   },
 
-  // Get appointments by Doctor (Doctor)
   async getAppointmentsByDoctor(doctorId) {
+    let allAppts = [];
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/doctor/${doctorId}`);
-      if (res.ok) return await res.json();
+      const res = await fetchWithTimeout(`${API_BASE_URL}/appointments`);
+      if (res.ok) {
+        const json = await res.json();
+        allAppts = json.data && Array.isArray(json.data) ? json.data : [];
+      }
     } catch (e) {}
-    const list = getLocalAppointments().filter((a) => a.doctorId === doctorId && a.status !== 'REQUESTED');
-    return { success: true, data: list };
+    
+    // Merge with local appointments
+    const local = getLocalAppointments();
+    const map = new Map();
+    allAppts.forEach(a => map.set(a.id || a.appointmentNumber, a));
+    local.forEach(a => map.set(a.id || a.appointmentNumber, a));
+    const mergedList = Array.from(map.values());
+
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+    
+    const filteredList = mergedList.filter((a) => {
+        let match = (String(a.doctorId) === String(doctorId));
+        if (!match && user) {
+            if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
+            if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
+            if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
+        }
+        return match && a.status !== 'REQUESTED' && !String(a.doctorName || '').includes('Dr. Smith');
+    });
+    
+    return { success: true, data: filteredList };
   },
 
   // Get Doctor daily agenda
   async getDoctorDailyAgenda(doctorId, date = '') {
     const queryDate = date || new Date().toISOString().split('T')[0];
+    let allAppts = [];
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/doctor/${doctorId}/daily?date=${queryDate}`);
-      if (res.ok) return await res.json();
+      const res = await fetchWithTimeout(`${API_BASE_URL}/appointments`);
+      if (res.ok) {
+        const json = await res.json();
+        allAppts = json.data && Array.isArray(json.data) ? json.data : [];
+      }
     } catch (e) {}
-    const list = getLocalAppointments().filter((a) => a.doctorId === doctorId && a.appointmentDate === queryDate && a.status !== 'REQUESTED' && a.status !== 'CANCELLED' && a.status !== 'REJECTED');
-    return { success: true, data: list };
+    
+    // Merge with local appointments
+    const local = getLocalAppointments();
+    const map = new Map();
+    allAppts.forEach(a => map.set(a.id || a.appointmentNumber, a));
+    local.forEach(a => map.set(a.id || a.appointmentNumber, a));
+    const mergedList = Array.from(map.values());
+
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+    
+    const filteredList = mergedList.filter((a) => {
+        let match = (String(a.doctorId) === String(doctorId));
+        if (!match && user) {
+            if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
+            if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
+            if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
+        }
+        return match && a.appointmentDate === queryDate && a.status !== 'REQUESTED' && a.status !== 'CANCELLED' && a.status !== 'REJECTED' && !String(a.doctorName || '').includes('Dr. Smith');
+    });
+    
+    return { success: true, data: filteredList };
   },
 
   // Approve appointment (Admin)

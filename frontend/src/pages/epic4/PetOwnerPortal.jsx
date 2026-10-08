@@ -8,10 +8,15 @@ import NotificationBell from './NotificationBell';
 import './Epic4.css';
 
 export default function PetOwnerPortal({ initialView = null, hideHeader = false }) {
-  const ownerId = 'USR-5001';
-  const ownerName = 'Hansani Malshi';
-  const ownerEmail = 'john.doe@example.com';
-  const ownerPhone = '+94 77 123 4567';
+  let userObj = null;
+  try {
+    userObj = JSON.parse(localStorage.getItem('vhms_user'));
+  } catch(e) {}
+  
+  const ownerId = userObj?.id || 'USR-5001';
+  const ownerName = userObj?.name || userObj?.fullName || '';
+  const ownerEmail = userObj?.email || 'john.doe@example.com';
+  const ownerPhone = userObj?.phone || '+94 77 123 4567';
 
   // Normalize raw species values: "Feline" → "Cat", "Canine" → "Dog"
   const normalizeSpecies = (species) => {
@@ -1630,7 +1635,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
                       OWNER DETAILS
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.25rem' }}>
-                      Owner: <strong style={{ color: '#0f172a' }}>{selectedReceipt.ownerName || ownerName || 'Hansani Malshi'}</strong>
+                      Owner: <strong style={{ color: '#0f172a' }}>{selectedReceipt.ownerName || ownerName || 'Unknown Owner'}</strong>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569' }}>
                       Contact: <strong style={{ color: '#0f172a' }}>{ownerPhone || '+94 77 123 4567'}</strong>
@@ -1948,7 +1953,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false 
                       OWNER DETAILS
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.25rem' }}>
-                      Owner: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerName || 'Hansani Malshi'}</strong>
+                      Owner: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerName || 'Unknown Owner'}</strong>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569' }}>
                       Contact: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerPhone || '+94 77 123 4567'}</strong>

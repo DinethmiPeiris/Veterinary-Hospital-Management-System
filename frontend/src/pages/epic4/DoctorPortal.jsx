@@ -224,14 +224,6 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
   };
 
   const openCompleteModal = (appt) => {
-    if (isFutureDate(appt.appointmentDate)) {
-      showNotification(`🔒 Cannot complete consultation before appointment date (${appt.appointmentDate}). Visit is scheduled for the future.`, 'error');
-      return;
-    }
-    if (isPastDate(appt.appointmentDate)) {
-      showNotification(`⚠️ Appointment date (${appt.appointmentDate}) has passed. Please mark as Expired (No-Show).`, 'error');
-      return;
-    }
     setSelectedAppt(appt);
     setDoctorNotes(appt.doctorNotes || '');
     setShowCompleteModal(true);
@@ -256,14 +248,6 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
 
   // US 4.33: Add Treatment Services (Doctor enters service names & quantities without price -> sends to Admin)
   const openChargesModal = (appt) => {
-    if (appt.status !== 'COMPLETED' && isFutureDate(appt.appointmentDate)) {
-      showNotification(`🔒 Cannot record treatment services before appointment date (${appt.appointmentDate}). Patient has not arrived yet.`, 'error');
-      return;
-    }
-    if (appt.status !== 'COMPLETED' && isPastDate(appt.appointmentDate)) {
-      showNotification(`⚠️ Appointment date (${appt.appointmentDate}) has passed. Please mark as Expired (No-Show).`, 'error');
-      return;
-    }
 
     // Retrieve saved services from appointment, local storage or invoice
     let savedServices = appt.treatmentServices;
@@ -487,8 +471,8 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
           onClick={() => setActiveTab('new')}
           style={{ position: 'relative' }}
         >
-          🔔 New / Upcoming Appointments ({allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING').length})
-          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING').length > 0 && (
+          🔔 New / Upcoming Appointments ({allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'PENDING' || a.status === 'IN_PROGRESS').length})
+          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'PENDING' || a.status === 'IN_PROGRESS').length > 0 && (
             <span style={{
               marginLeft: '0.45rem',
               background: '#2563eb',
@@ -533,11 +517,11 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
               </p>
             </div>
             <span style={{ fontSize: '0.85rem', background: '#eff6ff', color: '#1d4ed8', padding: '0.35rem 0.75rem', borderRadius: '8px', fontWeight: '600' }}>
-              {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'REQUESTED' || a.status === 'IN_PROGRESS').length} Active Appointments
+              {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'REQUESTED' || a.status === 'PENDING' || a.status === 'IN_PROGRESS').length} Active Appointments
             </span>
           </div>
 
-          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'REQUESTED' || a.status === 'IN_PROGRESS').length === 0 ? (
+          {allAssigned.filter((a) => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'REQUESTED' || a.status === 'PENDING' || a.status === 'IN_PROGRESS').length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✨</div>
               <p style={{ margin: 0, fontWeight: '600', fontSize: '1rem', color: '#475569' }}>No pending or newly assigned appointments.</p>
@@ -559,7 +543,7 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
                 </thead>
                 <tbody>
                   {allAssigned
-                    .filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING')
+                    .filter((a) => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'PENDING' || a.status === 'IN_PROGRESS' || a.status === 'REQUESTED')
                     .sort((a, b) => (a.appointmentDate || '').localeCompare(b.appointmentDate || ''))
                     .map((a) => (
                       <tr key={a.id} style={{ background: a.appointmentDate === todayStr ? '#f0fdf4' : 'inherit' }}>
@@ -623,68 +607,30 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
                               ⌛ Expired (No-Show)
                             </span>
                           ) : a.status !== 'COMPLETED' ? (
-                            isFutureDate(a.appointmentDate) ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                <button
-                                  type="button"
-                                  disabled
-                                  className="btn-sm-action"
-                                  style={{
-                                    background: '#f1f5f9',
-                                    color: '#64748b',
-                                    border: '1px solid #cbd5e1',
-                                    cursor: 'not-allowed',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem',
-                                    fontWeight: '600',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                  title={`Treatments open on ${a.appointmentDate}`}
-                                >
-                                  🔒 Scheduled ({a.appointmentDate})
-                                </button>
-                                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                                  Treatments open on visit day
-                                </span>
-                              </div>
-                            ) : isPastDate(a.appointmentDate) ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexDirection: 'column' }}>
+                              <button
+                                className="btn-sm-action btn-approve"
+                                onClick={() => {
+                                    if (onStartConsultation) {
+                                        onStartConsultation(a.id || a.appointmentId || a.appointmentNumber);
+                                    } else {
+                                        openCompleteModal(a);
+                                    }
+                                }}
+                              >
+                                {a.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation'}
+                              </button>
+                              {isPastDate(a.appointmentDate) && (
                                 <button
                                   className="btn-sm-action"
                                   style={{ background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', fontSize: '0.78rem', fontWeight: '700' }}
                                   onClick={() => handleMarkExpired(a)}
                                   title="Mark appointment as expired because the scheduled date has passed"
                                 >
-                                  ⌛ Mark Expired
+                                  ⌛ Mark Expired (No-Show)
                                 </button>
-                                <span style={{ fontSize: '0.7rem', color: '#e11d48', fontStyle: 'italic' }}>
-                                  ⚠️ Visit date has passed
-                                </span>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', gap: '0.4rem', flexDirection: 'column' }}>
-                                <button
-                                  className="btn-sm-action btn-reassign"
-                                  style={{ background: '#0284c7', color: '#fff' }}
-                                  onClick={() => openChargesModal(a)}
-                                >
-                                  🩺 + Treatment Services
-                                </button>
-                                <button
-                                  className="btn-sm-action btn-approve"
-                                  onClick={() => {
-                                      if (onStartConsultation) {
-                                          onStartConsultation(a.id || a.appointmentId || a.appointmentNumber);
-                                      } else {
-                                          openCompleteModal(a);
-                                      }
-                                  }}
-                                >
-                                  {a.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation'}
-                                </button>
-                              </div>
-                            )
+                              )}
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', gap: '0.4rem', flexDirection: 'column' }}>
                               <span style={{
@@ -1061,18 +1007,17 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
                         ) : (
                           <div style={{ display: 'flex', gap: '0.4rem', flexDirection: 'column' }}>
                             <button
-                              className="btn-sm-action btn-reassign"
-                              style={{ background: '#0284c7', color: '#fff', fontSize: '0.8rem' }}
-                              onClick={() => openChargesModal(a)}
-                            >
-                              🩺 Add Treatment
-                            </button>
-                            <button
                               className="btn-sm-action btn-approve"
                               style={{ fontSize: '0.8rem' }}
-                              onClick={() => openCompleteModal(a)}
+                              onClick={() => {
+                                  if (onStartConsultation) {
+                                      onStartConsultation(a.id || a.appointmentId || a.appointmentNumber);
+                                  } else {
+                                      openCompleteModal(a);
+                                  }
+                              }}
                             >
-                              ✓ Mark Complete
+                              {a.status === 'IN_PROGRESS' ? '▶ Resume Consultation' : '▶ Start Consultation'}
                             </button>
                           </div>
                         )
@@ -1096,9 +1041,15 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
                           <button
                             className="btn-sm-action btn-reassign"
                             style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
-                            onClick={() => openChargesModal(a)}
+                            onClick={() => {
+                                if (onStartConsultation) {
+                                    onStartConsultation(a.id || a.appointmentId || a.appointmentNumber);
+                                } else {
+                                    openChargesModal(a);
+                                }
+                            }}
                           >
-                            👁️ View Services
+                            👁️ View Consultation
                           </button>
                         </div>
                       )}
@@ -1115,7 +1066,7 @@ export default function DoctorPortal({ initialView = null, hideHeader = false, o
       {activeTab === 'workload' && (() => {
         const total = allAssigned.length;
         const completed = allAssigned.filter(a => a.status === 'COMPLETED').length;
-        const confirmed = allAssigned.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING').length;
+        const confirmed = allAssigned.filter(a => a.status === 'CONFIRMED' || a.status === 'APPROVED' || a.status === 'PENDING').length;
         const cancelled = allAssigned.filter(a => a.status === 'CANCELLED' || a.status === 'REJECTED').length;
         const expired = allAssigned.filter(a => a.status === 'EXPIRED' || a.status === 'NO_SHOW').length;
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;

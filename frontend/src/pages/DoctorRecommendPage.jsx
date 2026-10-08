@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { epic3Service } from '../services/epic3Service'
 import { getEpic3Session } from '../services/demoConfig'
 import { API_BASE_URL } from '../config/api'
+import { api } from '../services/api'
 import './ModuleStyles.css'
 
 export default function DoctorRecommendPage() {
@@ -24,9 +25,8 @@ export default function DoctorRecommendPage() {
   useEffect(() => {
     loadRecommendations()
 
-    // Fetch all pets from the correct endpoint
-    fetch(`${API_BASE_URL}/api/v1/pets`)
-      .then((res) => (res.ok ? res.json() : []))
+    // Fetch all pets from the robust api layer to include legacy ID mappings
+    api.getPets()
       .then((data) => setPets(Array.isArray(data) ? data : []))
       .catch(() => setPets([]))
 
@@ -90,11 +90,15 @@ export default function DoctorRecommendPage() {
     const pet = pets.find((p) => p.id === petId) || null
     setSelectedPet(pet)
     if (pet) {
+      const resolvedOwnerName = (pet.ownerEmail && ownerMap[pet.ownerEmail]) 
+        || ownerMap[pet.ownerId] 
+        || pet.ownerId;
+        
       setForm((f) => ({
         ...f,
         petName: pet.name || f.petName,
         petSpecies: [pet.species, pet.breed].filter(Boolean).join(' / ') || f.petSpecies,
-        ownerName: ownerMap[pet.ownerId] || pet.ownerId || f.ownerName
+        ownerName: resolvedOwnerName || f.ownerName
       }))
     }
   }

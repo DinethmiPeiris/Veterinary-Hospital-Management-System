@@ -13,6 +13,14 @@ import {
 } from '../../../utils/appointmentStore'
 import { epic3Service } from '../../../services/epic3Service'
 
+const SERVICES_MAP = {
+  CONSULTATION: ['General Consultation', 'Specialist Consultation', 'Follow-up Checkup'],
+  PROCEDURE: ['Wound Cleaning', 'Nail Trimming', 'Dental Cleaning', 'Ear Cleaning', 'Dressing / Bandaging'],
+  MEDICATION: ['Antibiotics', 'Painkiller', 'Deworming Tablet', 'Flea/Tick Treatment', 'Vitamins / Supplements'],
+  SURGERY: ['Spaying', 'Neutering', 'Tumor Removal', 'Orthopedic Surgery'],
+  VACCINATION: ['Rabies Vaccine', 'DHLPP Vaccine', 'FVRCP Vaccine', 'Bordetella Vaccine']
+};
+
 const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
   const params = useParams()
   const appointmentId = params.appointmentId || appointmentIdProp
@@ -23,6 +31,8 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
   const [loadError, setLoadError] = useState('')
   const [appointment, setAppointment] = useState(null)
   const [medicalRecord, setMedicalRecord] = useState(null)
+
+  const [chargeItems, setChargeItems] = useState([])
 
   const [formData, setFormData] = useState({
     symptoms: '',
@@ -75,6 +85,39 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
         if (cancelled) return
 
         setAppointment(appt)
+
+        let savedServices = appt.treatmentServices;
+        if (!savedServices || savedServices.length === 0) {
+          try {
+            const localList = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
+            const localMatch = localList.find((l) => l.id === appt.id || l.appointmentNumber === appt.appointmentNumber);
+            if (localMatch && localMatch.treatmentServices && localMatch.treatmentServices.length > 0) {
+              savedServices = localMatch.treatmentServices;
+            }
+          } catch (e) {}
+        }
+        if (!savedServices || savedServices.length === 0) {
+          try {
+            const localInvoices = JSON.parse(localStorage.getItem('vhms_epic4_invoices') || '[]');
+            const invMatch = localInvoices.find((i) => i.appointmentId === appt.id || i.appointmentNumber === appt.appointmentNumber);
+            if (invMatch && invMatch.items && invMatch.items.length > 0) {
+              savedServices = invMatch.items.map((it) => ({
+                description: it.description,
+                itemType: it.itemType || 'PROCEDURE',
+                quantity: it.quantity || 1
+              }));
+            }
+          } catch (e) {}
+        }
+
+        setChargeItems(
+          savedServices && savedServices.length > 0
+            ? savedServices
+            : [
+                { description: SERVICES_MAP['CONSULTATION'][0], itemType: 'CONSULTATION', quantity: 1 },
+              ]
+        );
+
         setFormData({
           symptoms: form.symptoms || '',
           clinicalObservations: form.clinicalObservations || '',
@@ -134,6 +177,23 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
       prescriptions: prev.prescriptions.filter((_, i) => i !== index)
     }))
   }
+
+  const addChargeRow = () => {
+    setChargeItems([...chargeItems, { description: SERVICES_MAP['PROCEDURE'][0], itemType: 'PROCEDURE', quantity: 1 }]);
+  };
+
+  const removeChargeRow = (index) => {
+    setChargeItems(chargeItems.filter((_, i) => i !== index));
+  };
+
+  const updateChargeItem = (index, field, value) => {
+    const updated = [...chargeItems];
+    updated[index][field] = value;
+    if (field === 'itemType') {
+      updated[index]['description'] = SERVICES_MAP[value][0];
+    }
+    setChargeItems(updated);
+  };
 
   const handleAddVaccination = async (e) => {
     e.preventDefault()
@@ -250,7 +310,35 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
     try {
       await completeConsultation(appointmentId, formData)
       setIsCompleted(true)
-      alert('Consultation Completed Successfully!')
+
+      // Save treatment services on the appointment in local storage & update status
+      try {
+        const list = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
+        let appt = list.find((a) => a.id === appointment.id || a.appointmentNumber === appointment.appointmentNumber);
+        if (appt) {
+          appt.treatmentServices = chargeItems;
+          appt.servicesSubmittedAt = new Date().toISOString();
+          appt.hasPendingInvoice = true;
+          localStorage.setItem('vhms_epic4_appointments', JSON.stringify(list));
+        }
+
+        // Add notification for Admin to price and generate invoice
+        const notifs = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
+        notifs.unshift({
+          id: 'notif-adm-' + Date.now(),
+          recipientId: 'ADMIN-001',
+          title: '📋 Treatment Services Submitted for Pricing & Invoicing',
+          message: `${appointment.doctorName || 'Doctor'} recorded ${chargeItems.length} service(s) for ${appointment.petName} (${appointment.appointmentNumber || appointmentId}). Please price and issue the official invoice.`,
+          read: false,
+          sentAt: new Date().toISOString(),
+        });
+        localStorage.setItem('vhms_epic4_notifications', JSON.stringify(notifs));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {
+        console.error('Failed to update local storage for invoicing', e)
+      }
+
+      alert('Consultation Completed Successfully & Invoicing requested!')
       handleExit()
     } catch (error) {
       console.error('Failed to complete consultation:', error)
@@ -449,6 +537,69 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+        {/* Treatment Services - for Invoicing */}
+        <div className="clinical-notes-section" style={{ marginTop: '20px' }}>
+          <h2>📋 Treatment Services (for Invoicing)</h2>
+          <div className="card-body">
+            <p className="subtitle" style={{marginBottom: '1rem'}}>
+              Enter the medical services, medications, or procedures performed. Upon completion, these will be sent to the Admin for pricing and invoicing.
+            </p>
+            <div className="services-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 80px 40px', gap: '10px', fontWeight: '600', fontSize: '0.85rem', color: '#475569' }}>
+                <span>Category</span>
+                <span>Service / Medication Name</span>
+                <span>Qty</span>
+                <span></span>
+              </div>
+              {chargeItems.map((item, index) => (
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 80px 40px', gap: '10px', alignItems: 'center' }}>
+                  <select
+                    className="form-input"
+                    value={item.itemType}
+                    onChange={(e) => updateChargeItem(index, 'itemType', e.target.value)}
+                    disabled={isCompleted}
+                    style={{ padding: '0.4rem', fontSize: '0.9rem' }}
+                  >
+                    {Object.keys(SERVICES_MAP).map(type => (
+                      <option key={type} value={type}>{type.charAt(0) + type.slice(1).toLowerCase().replace('_', ' ')}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-input"
+                    value={item.description}
+                    onChange={(e) => updateChargeItem(index, 'description', e.target.value)}
+                    disabled={isCompleted}
+                    style={{ padding: '0.4rem', fontSize: '0.9rem' }}
+                  >
+                    {SERVICES_MAP[item.itemType] && SERVICES_MAP[item.itemType].map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                    {item.description && (!SERVICES_MAP[item.itemType] || !SERVICES_MAP[item.itemType].includes(item.description)) && (
+                      <option value={item.description}>{item.description}</option>
+                    )}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={item.quantity}
+                    onChange={(e) => updateChargeItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                    disabled={isCompleted}
+                    style={{ padding: '0.4rem', fontSize: '0.9rem' }}
+                  />
+                  {!isCompleted && chargeItems.length > 1 && (
+                    <button type="button" className="btn-sm-action" style={{ background: '#fee2e2', color: '#ef4444', padding: '0.4rem', width: '100%' }} onClick={() => removeChargeRow(index)}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {!isCompleted && (
+              <button type="button" className="btn btn-secondary mt-3" onClick={addChargeRow} style={{ width: '100%', padding: '0.6rem', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                + Add Another Service / Item
+              </button>
             )}
           </div>
         </div>

@@ -2,7 +2,19 @@ import API_BASE_URL from './apiConfig';
 
 const getLocalPayments = () => {
   try {
-    return JSON.parse(localStorage.getItem('vhms_epic4_payments') || '[]');
+    const parsed = JSON.parse(localStorage.getItem('vhms_epic4_payments') || '[]');
+    let needsUpdate = false;
+    const sanitized = parsed.map(pay => {
+      if (pay.ownerName === 'Hansani Malshi') {
+        needsUpdate = true;
+        return { ...pay, ownerName: 'Unknown Owner' };
+      }
+      return pay;
+    });
+    if (needsUpdate) {
+      localStorage.setItem('vhms_epic4_payments', JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch (e) {
     return [];
   }
@@ -75,7 +87,7 @@ export const paymentService = {
       ...paymentData,
       paymentStatus: 'SUCCESS',
       paymentDate: new Date().toISOString(),
-      ownerName: paymentData.ownerName || 'Hansani Malshi',
+      ownerName: paymentData.ownerName || 'Unknown Owner',
       invoiceNumber: paymentData.invoiceNumber || 'INV-0001',
     });
     list.unshift(newPayment);

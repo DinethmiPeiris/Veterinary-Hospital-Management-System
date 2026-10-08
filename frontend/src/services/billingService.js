@@ -25,7 +25,7 @@ const INITIAL_INVOICES = [
     petName: 'Daisy',
     petSpecies: 'Cat',
     ownerId: 'USR-5001',
-    ownerName: 'Hansani Malshi',
+    ownerName: 'Unknown Owner',
     ownerPhone: '+94 77 123 4567',
     doctorId: 'DOC-2003',
     doctorName: 'Dr. Sanduni Perera',
@@ -52,7 +52,7 @@ const INITIAL_INVOICES = [
     petName: 'Ameena',
     petSpecies: 'Cat',
     ownerId: 'USR-5001',
-    ownerName: 'Hansani Malshi',
+    ownerName: 'Unknown Owner',
     ownerPhone: '+94 77 123 4567',
     doctorId: 'DOC-2001',
     doctorName: 'Dr. Natasha Silva',
@@ -84,7 +84,20 @@ const getLocalInvoices = () => {
       localStorage.setItem('vhms_epic4_invoices', JSON.stringify(INITIAL_INVOICES));
       return [...INITIAL_INVOICES];
     }
-    return parsed;
+    
+    let needsUpdate = false;
+    const sanitized = parsed.map(inv => {
+      if (inv.ownerName === 'Hansani Malshi') {
+        needsUpdate = true;
+        return { ...inv, ownerName: 'Unknown Owner' };
+      }
+      return inv;
+    });
+    
+    if (needsUpdate) {
+      localStorage.setItem('vhms_epic4_invoices', JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch (e) {
     return [...INITIAL_INVOICES];
   }
@@ -263,7 +276,18 @@ export const billingService = {
 
   async getInvoicesByOwner(ownerId) {
     const res = await this.getAllInvoices();
-    const list = (res.data || []).filter(i => !ownerId || i.ownerId === ownerId || i.ownerId === 'USR-5001');
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+    
+    const list = (res.data || []).filter(i => {
+       if (!ownerId) return true;
+       if (i.ownerId === ownerId || i.ownerId === 'USR-5001') return true;
+       if (user) {
+           if (i.petOwnerEmail && i.petOwnerEmail.toLowerCase() === user.email?.toLowerCase()) return true;
+           if (i.ownerName && user.name && i.ownerName.toLowerCase() === user.name.toLowerCase()) return true;
+       }
+       return false;
+    });
     return { success: true, data: list };
   },
 

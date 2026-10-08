@@ -4,6 +4,7 @@ import { billingService } from '../../services/billingService';
 import { paymentService } from '../../services/paymentService';
 import { feedbackService } from '../../services/feedbackService';
 import { notificationService } from '../../services/notificationService';
+import { api } from '../../services/api';
 import { PetAvatar, SpeciesPill, PetCell } from '../../utils/petBadgeHelper';
 import NotificationBell from './NotificationBell';
 import './Epic4.css';
@@ -210,11 +211,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   const [cashierRef, setCashierRef] = useState('');
   const [rebookedNotified, setRebookedNotified] = useState({});
 
-  const doctorsList = [
-    { id: 'DOC-2001', name: 'Dr. Natasha Silva', spec: 'Small Animal Specialist' },
-    { id: 'DOC-2002', name: 'Dr. Rohan Fernando', spec: 'Veterinary Surgeon' },
-    { id: 'DOC-2003', name: 'Dr. Sanduni Perera', spec: 'Feline & Canine Medicine' },
-  ];
+  const [doctorsList, setDoctorsList] = useState([]);
 
   // Auto-refresh admin data every 10 seconds and on storage change
   useEffect(() => {
@@ -276,9 +273,23 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
         paymentService.getAllPayments(),
         feedbackService.getAllFeedback(),
         billingService.getFinancialSummary(selectedReportMonth),
+        api.getAllUsers(),
       ]);
 
-      const [apptRes, schedRes, invRes, payRes, fbRes, finRes] = results.map(r => r.status === 'fulfilled' ? r.value : { success: false });
+      const [apptRes, schedRes, invRes, payRes, fbRes, finRes, usersRes] = results.map(r => r.status === 'fulfilled' ? r.value : { success: false });
+      
+      if (usersRes) {
+        // api.getAllUsers returns the array directly, not wrapped in {success: true, data: []}
+        const usersArray = Array.isArray(usersRes) ? usersRes : [];
+        const activeDocs = usersArray
+          .filter(u => u.role === 'DOCTOR' && u.status === 'ACTIVE')
+          .map(d => ({
+            id: d.id,
+            name: d.name,
+            spec: d.specialization || d.address || 'Veterinary Surgeon'
+          }));
+        setDoctorsList(activeDocs);
+      }
 
       if (apptRes && apptRes.success) {
         setAppointments((apptRes.data || []).map(a => {
@@ -319,15 +330,17 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
       (s) => s.doctorId === docId && s.dayOfWeek?.toUpperCase() === dayName && (s.active ?? s.isActive ?? true)
     );
 
-    const isWorking = docSchedules.length > 0;
-    const shift = isWorking
-      ? docSchedules.map(s => `${s.shiftStartTime || '11:00'} - ${s.shiftEndTime || '14:00'}`).join(', ')
-      : 'Off-Duty (No Shift)';
-
     // Find all active working days for this doctor to show helpful guidance
     const docWorkingDays = Array.from(new Set(schedules
       .filter((s) => s.doctorId === docId && (s.active ?? s.isActive ?? true))
       .map((s) => s.dayOfWeek?.toUpperCase())));
+      
+    const hasAnySchedule = docWorkingDays.length > 0;
+
+    const isWorking = docSchedules.length > 0;
+    const shift = isWorking
+      ? docSchedules.map(s => `${s.shiftStartTime || '11:00'} - ${s.shiftEndTime || '14:00'}`).join(', ')
+      : hasAnySchedule ? 'Off-Duty (No Shift)' : 'Flexible / On-Call';
 
     // Check if slot falls within any shift hours
     let isWithinShift = false;
@@ -351,10 +364,12 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
       (a) => a.timeSlot === slotStr && a.id !== currentApptId && (a.status === 'CONFIRMED' || a.status === 'RESCHEDULED' || a.status === 'IN_PROGRESS' || (a.status === 'REQUESTED' && a.id !== currentApptId))
     );
 
-    const isAvailable = isWorking && isWithinShift && !conflictAppt;
+    const isAvailable = (!hasAnySchedule || (isWorking && isWithinShift)) && !conflictAppt;
 
     let statusReason = 'AVAILABLE';
-    if (!isWorking) {
+    if (!hasAnySchedule) {
+      statusReason = 'AVAILABLE';
+    } else if (!isWorking) {
       statusReason = 'OFF_DUTY';
     } else if (!isWithinShift) {
       statusReason = 'OUTSIDE_HOURS';
@@ -378,10 +393,15 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   // US 4.15: Admin opens Assign Doctor modal before approving
   const handleApprove = (appt) => {
     setSelectedAppt(appt);
-    const preferredId = appt.doctorId || 'DOC-2001';
-    const preferredDoc = doctorsList.find(d => d.id === preferredId) || doctorsList[0];
-    setAssignDoctorId(preferredDoc.id);
-    setAssignDoctorName(preferredDoc.name);
+    const preferredId = appt.doctorId;
+    let preferredDoc = null;
+    if (preferredId) {
+      preferredDoc = doctorsList.find(d => d.id === preferredId);
+    }
+    const defaultDoc = preferredDoc || doctorsList[0] || { id: '', name: '' };
+    
+    setAssignDoctorId(defaultDoc.id);
+    setAssignDoctorName(defaultDoc.name);
     setShowAssignModal(true);
   };
 
@@ -895,6 +915,17 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
             )
           );
         }
+
+        // Notify the Pet Owner about the new invoice
+        await notificationService.sendNotification({
+          recipientId: newInvoice.ownerId,
+          recipientRole: 'PET_OWNER',
+          title: 'New Medical Bill',
+          message: `A new invoice (${res.data.invoiceNumber}) has been generated for ${newInvoice.petName}.`,
+          type: 'PAYMENT_REMINDER',
+          referenceType: 'INVOICE',
+          referenceId: res.data.invoiceNumber,
+        });
 
         showNotification(`🎉 Invoice #${res.data.invoiceNumber} created & sent to ${newInvoice.ownerName}!`, 'success');
         setShowCreateInvoiceModal(false);
@@ -3093,7 +3124,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                       OWNER DETAILS
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.25rem' }}>
-                      Owner: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerName || 'Hansani Malshi'}</strong>
+                      Owner: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerName || 'Unknown Owner'}</strong>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#475569' }}>
                       Contact: <strong style={{ color: '#0f172a' }}>{selectedInvoice.ownerPhone || '+94 77 123 4567'}</strong>

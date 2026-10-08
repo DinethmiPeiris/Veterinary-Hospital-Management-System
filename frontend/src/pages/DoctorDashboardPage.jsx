@@ -702,7 +702,7 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
 
     // Filter appointments for this doctor
     const myAppointments = appointments.filter(a => {
-        if (!a.doctorName && !a.doctorId) return true;
+        if (!a.doctorName && !a.doctorId) return false;
         const docNameLower = (name || '').toLowerCase();
         const docEmailLower = (email || '').toLowerCase();
         const docIdLower = (currentUser?.id || '').toLowerCase();
@@ -837,7 +837,7 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
                                 <div className="bento-card">
                                     <div className="bento-head">
-                                        <span className="bento-label">Today's Assigned Consultations</span>
+                                        <span className="bento-label">Total Assigned Consultations</span>
                                         <span className="bento-icon-wrap emerald"><IconCalendar size={22} /></span>
                                     </div>
                                     <div className="bento-number">{myAppointments.length}</div>
@@ -884,11 +884,11 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
 
                                 <div className="bento-card" style={{ cursor: 'pointer', borderTop: '4px solid #f59e0b' }} onClick={() => setCurrentView('BILLING')}>
                                     <div className="bento-head">
-                                        <span className="bento-label" style={{ fontWeight: 800 }}>Billing & Appointments</span>
+                                        <span className="bento-label" style={{ fontWeight: 800 }}>Consultation Hub</span>
                                         <span className="bento-icon-wrap" style={{ background: '#fef3c7', color: '#d97706' }}><IconCheckCircle size={22} /></span>
                                     </div>
-                                    <div className="bento-number" style={{ fontSize: '1.5rem' }}>Requests</div>
-                                    <div className="bento-footer text-muted">Issue Treatment Invoices</div>
+                                    <div className="bento-number" style={{ fontSize: '1.5rem' }}>Appointments</div>
+                                    <div className="bento-footer text-muted">Manage Clinical Consultations</div>
                                 </div>
                             </section>
 
@@ -1116,7 +1116,6 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                                     {['APPROVED', 'CONFIRMED', 'IN_PROGRESS'].includes(appt.status) ? (
                                                         <button
                                                             type="button"
-                                                            disabled={appt.date > new Date().toISOString().split('T')[0]}
                                                             onClick={() => {
                                                                 setSelectedConsultationId(appt.id || appt.appointmentId || appt.appointmentNumber);
                                                                 setCurrentView('CONSULTATION');
@@ -1126,12 +1125,12 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                                                 padding: '10px 16px',
                                                                 borderRadius: '100px',
                                                                 border: 'none',
-                                                                background: appt.date > new Date().toISOString().split('T')[0] ? '#f1f5f9' : '#0f172a',
-                                                                color: appt.date > new Date().toISOString().split('T')[0] ? '#94a3b8' : '#ffffff',
+                                                                background: '#0f172a',
+                                                                color: '#ffffff',
                                                                 fontWeight: 700,
                                                                 fontSize: '0.86rem',
-                                                                cursor: appt.date > new Date().toISOString().split('T')[0] ? 'not-allowed' : 'pointer',
-                                                                boxShadow: appt.date > new Date().toISOString().split('T')[0] ? 'none' : '0 4px 12px rgba(15, 23, 42, 0.2)',
+                                                                cursor: 'pointer',
+                                                                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)',
                                                                 textAlign: 'center',
                                                                 transition: 'transform 0.2s',
                                                                 display: 'flex',
@@ -1139,12 +1138,10 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                                                 justifyContent: 'center',
                                                                 gap: '6px'
                                                             }}
-                                                            onMouseOver={(e) => { if (appt.date <= new Date().toISOString().split('T')[0]) e.target.style.transform = 'translateY(-2px)' }}
+                                                            onMouseOver={(e) => { e.target.style.transform = 'translateY(-2px)' }}
                                                             onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                                                         >
-                                                            {appt.date > new Date().toISOString().split('T')[0]
-                                                                ? `Wait until ${appt.date}`
-                                                                : (appt.status === 'IN_PROGRESS' ? 'Resume Consult' : 'Start Consult')}
+                                                            {appt.status === 'IN_PROGRESS' ? 'Resume Consult' : 'Start Consult'}
                                                         </button>
                                                     ) : appt.status === 'COMPLETED' ? (
                                                         <span style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', borderRadius: '100px', background: '#f8fafc', color: '#94a3b8', fontWeight: 700, fontSize: '0.86rem', border: '0' }}>

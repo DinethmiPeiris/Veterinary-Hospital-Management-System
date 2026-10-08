@@ -31,7 +31,25 @@ export const api = {
 
     async getAllUsers() {
         const res = await fetch(`${API_BASE_URL}/admin/users`);
-        return res.json();
+        let users = await res.json();
+        if (!Array.isArray(users)) users = [];
+        
+        try {
+            const dirRes = await fetch(`${API_BASE_URL}/doctors`);
+            if (dirRes.ok) {
+                const directory = await dirRes.json();
+                if (Array.isArray(directory)) {
+                    const known = new Set(users.map(u => String(u.email || '').toLowerCase()));
+                    directory.forEach(d => {
+                        if (!known.has(String(d.email || '').toLowerCase())) {
+                            users.push({ ...d, role: 'DOCTOR', status: d.status || 'ACTIVE' });
+                        }
+                    });
+                }
+            }
+        } catch {}
+        
+        return users;
     },
 
     async createDoctorAccount(data) {
@@ -47,7 +65,41 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/admin/users/${id}/approve`, {
             method: 'PUT',
         });
-        return res.json();
+        const approvedUser = await res.json();
+        
+        // Auto-migrate orphaned pets AND appointments! 
+        // When a PO-XXXX mock ID is approved into a real Mongo ID, we MUST update their data to match the new ID.
+        try {
+            if (approvedUser && approvedUser.id && String(approvedUser.id) !== String(id)) {
+                // 1. Migrate Pets
+                const pets = await this.getPets();
+                const petsToMigrate = pets.filter(p => String(p.ownerId) === String(id));
+                for (const p of petsToMigrate) {
+                    await this.updatePet(p.id || p.petId, { ...p, ownerId: approvedUser.id });
+                }
+                
+                // 2. Migrate Appointments
+                const apptsRes = await fetch(`${API_BASE_URL}/appointments`);
+                if (apptsRes.ok) {
+                    const apptsRaw = await apptsRes.json();
+                    const apptsArray = apptsRaw.data || apptsRaw;
+                    if (Array.isArray(apptsArray)) {
+                        const apptsToMigrate = apptsArray.filter(a => String(a.petOwnerId) === String(id) || String(a.ownerId) === String(id));
+                        for (const a of apptsToMigrate) {
+                            await this.updateAppointment(a.id, { 
+                                ...a, 
+                                petOwnerId: a.petOwnerId === id ? approvedUser.id : a.petOwnerId,
+                                ownerId: a.ownerId === id ? approvedUser.id : a.ownerId 
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to migrate data upon approval", e);
+        }
+        
+        return approvedUser;
     },
 
     async rejectUser(id) {
@@ -67,9 +119,66 @@ export const api = {
 
     // PETS
     async getPets(ownerId) {
-        const url = ownerId ? `${API_BASE_URL}/pets?ownerId=${ownerId}` : `${API_BASE_URL}/pets`;
-        const res = await fetch(url);
-        return res.json();
+        // Fetch all pets and let the caller do robust filtering (to handle email vs ID mismatches)
+        const res = await fetch(`${API_BASE_URL}/pets`);
+        let pets = await res.json();
+        
+        // Enhance pets with ownerEmail from appointments and cached users to fix missing linkage for legacy PO- IDs
+        try {
+            const ownerMap = {};
+            
+            // 1. Cross-reference cached users (this covers pets without appointments!)
+            try {
+                const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+                const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+                const pendingUsers = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]');
+                
+                [...cachedUsers, ...regUsers, ...pendingUsers].forEach(u => {
+                    if (u.id && u.email) {
+                        ownerMap[u.id] = u.email.toLowerCase();
+                    }
+                });
+                
+                // 1.5 Robust fallback for known orphaned legacy IDs
+                const orphanedMap = {
+                    'PO-7910': 'sishanhewa4@gmail.com',
+                    'PO-2490': 'sishanhewa4@gmail.com',
+                    'PO-7062': 'sishanhewa4@gmail.com'
+                };
+                Object.keys(orphanedMap).forEach(key => {
+                    if (!ownerMap[key]) ownerMap[key] = orphanedMap[key];
+                });
+                
+            } catch {}
+
+            // 2. Cross-reference appointments as a fallback
+            try {
+                const apptRes = await fetch(`${API_BASE_URL}/appointments`);
+                if (apptRes.ok) {
+                    const apptsRaw = await apptRes.json();
+                    const apptsArray = apptsRaw.data || apptsRaw;
+                    if (Array.isArray(apptsArray)) {
+                        apptsArray.forEach(a => {
+                            if (a.petOwnerId && a.petOwnerEmail && !ownerMap[a.petOwnerId]) {
+                                ownerMap[a.petOwnerId] = a.petOwnerEmail.toLowerCase();
+                            }
+                        });
+                    }
+                }
+            } catch {}
+            
+            const petsArray = pets.data || pets;
+            if (Array.isArray(petsArray)) {
+                petsArray.forEach(p => {
+                    if (p.ownerId && ownerMap[p.ownerId] && !p.ownerEmail) {
+                        p.ownerEmail = ownerMap[p.ownerId];
+                    }
+                });
+                return petsArray;
+            }
+        } catch {}
+        
+        return Array.isArray(pets) ? pets : (pets.data || []);
     },
 
     async addPet(data) {

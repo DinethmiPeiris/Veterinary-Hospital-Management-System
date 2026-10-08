@@ -63,4 +63,13 @@ public class UserAdminController {
         }
         return ResponseEntity.status(404).body(response);
     }
+
+    @PutMapping("/users/{id}/toggle-status")
+    public ResponseEntity<AuthResponse> toggleUserStatus(@PathVariable String id) {
+        AuthResponse response = authService.toggleUserStatus(id);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(404).body(response);
+    }
 }

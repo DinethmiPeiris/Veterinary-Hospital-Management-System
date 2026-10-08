@@ -316,4 +316,36 @@ public class AuthService {
 
         return new AuthResponse(true, "User " + user.getName() + " has been permanently deleted!");
     }
+
+    public AuthResponse toggleUserStatus(String id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return new AuthResponse(false, "User not found!");
+        }
+
+        User user = userOpt.get();
+        if ("ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            user.setStatus("INACTIVE");
+        } else {
+            user.setStatus("ACTIVE");
+        }
+        userRepository.save(user);
+
+        if ("DOCTOR".equalsIgnoreCase(user.getRole()) || "ON_DUTY".equalsIgnoreCase(user.getStatus())) {
+            if (user.getEmail() != null) {
+                doctorRepository.findFirstByEmailIgnoreCase(user.getEmail()).ifPresent(doc -> {
+                    doc.setActive("ACTIVE".equalsIgnoreCase(user.getStatus()));
+                    doctorRepository.save(doc);
+                });
+            }
+            if (user.getId() != null) {
+                doctorRepository.findFirstByStaffIdIgnoreCase(user.getId()).ifPresent(doc -> {
+                    doc.setActive("ACTIVE".equalsIgnoreCase(user.getStatus()));
+                    doctorRepository.save(doc);
+                });
+            }
+        }
+
+        return new AuthResponse(true, "User status updated to " + user.getStatus());
+    }
 }

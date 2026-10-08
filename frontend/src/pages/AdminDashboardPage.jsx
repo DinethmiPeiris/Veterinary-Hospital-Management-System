@@ -1410,7 +1410,13 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
         setCurrentView('VIEW_DOCTOR');
     };
 
-    const handleToggleDoctorStatus = (docId) => {
+    const handleToggleDoctorStatus = async (docId) => {
+        try {
+            await api.toggleUserStatus(docId);
+        } catch (e) {
+            console.error("Failed to toggle user status on backend", e);
+        }
+
         const updateDoc = (doc) => {
             if (doc.id !== docId) return doc;
             const newStatus = (doc.status === 'INACTIVE' || doc.status === 'DEACTIVATED') ? 'ON_DUTY' : 'INACTIVE';

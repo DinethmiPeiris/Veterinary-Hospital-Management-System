@@ -102,6 +102,13 @@ export const api = {
         return approvedUser;
     },
 
+    async toggleUserStatus(id) {
+        const res = await fetch(`${API_BASE_URL}/admin/users/${id}/toggle-status`, {
+            method: 'PUT',
+        });
+        return res.json();
+    },
+
     async rejectUser(id) {
         const res = await fetch(`${API_BASE_URL}/admin/users/${id}/reject`, {
             method: 'PUT',

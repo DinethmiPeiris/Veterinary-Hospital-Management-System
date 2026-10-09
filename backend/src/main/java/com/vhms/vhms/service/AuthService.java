@@ -58,7 +58,11 @@ public class AuthService {
                 int count = 1;
                 for (User u : doctorUsers) {
                     if (u.getEmail() != null && !doctorRepository.existsByEmail(u.getEmail())) {
-                        String staffId = "SJAH-DOC-" + String.format("%03d", count++);
+                        String staffId;
+                        do {
+                            staffId = "SJAH-DOC-" + String.format("%03d", count++);
+                        } while (doctorRepository.existsByStaffIdIgnoreCase(staffId));
+                        
                         Doctor doc = new Doctor(
                                 staffId,
                                 u.getName(),

@@ -12,7 +12,11 @@ public interface NotificationLogRepository extends MongoRepository<NotificationL
 
     List<NotificationLog> findByRecipientIdOrderBySentAtDesc(String recipientId);
 
+    List<NotificationLog> findByRecipientIdOrRecipientEmailOrderBySentAtDesc(String recipientId, String recipientEmail);
+
     List<NotificationLog> findByRecipientIdAndIsReadFalseOrderBySentAtDesc(String recipientId);
+
+    List<NotificationLog> findByRecipientIdOrRecipientEmailAndIsReadFalseOrderBySentAtDesc(String recipientId, String recipientEmail);
 
     long countByRecipientIdAndIsReadFalse(String recipientId);
 }

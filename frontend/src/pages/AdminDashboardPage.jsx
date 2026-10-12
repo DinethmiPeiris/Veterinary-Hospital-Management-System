@@ -1170,7 +1170,22 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
 
     const handleApprove = async (id, name) => {
         try {
-            await api.approveUser(id).catch(() => { });
+            const pendingUser = pendingUsers.find(
+                (u) => u.id === id || String(u.id) === String(id) || u.name === name
+            );
+            // Prefer Mongo id; fall back to email so stale PO-* local ids still update MongoDB
+            const approveKey = (id && !String(id).startsWith('PO-'))
+                ? id
+                : (pendingUser?.email || id);
+
+            const result = await api.approveUser(approveKey);
+            if (!result || result.success === false) {
+                showToast(`❌ ${result?.message || 'Could not approve account in MongoDB.'}`, 'error');
+                return;
+            }
+
+            const mongoId = result.id || id;
+            const email = (result.email || pendingUser?.email || '').toLowerCase();
 
             let localPending = [];
             let localReg = [];
@@ -1179,28 +1194,78 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                 localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
             } catch { }
 
-            const approvedObj = localPending.find(u => u.id === id || String(u.id) === String(id) || u.name === name);
-
-            localPending = localPending.filter(u => u.id !== id && String(u.id) !== String(id) && u.name !== name);
-            localReg = localReg.map(u => (u.id === id || String(u.id) === String(id) || u.name === name || (approvedObj && u.email === approvedObj.email)) ? { ...u, status: 'ACTIVE' } : u);
+            localPending = localPending.filter(
+                (u) =>
+                    u.id !== id &&
+                    String(u.id) !== String(id) &&
+                    u.id !== mongoId &&
+                    String(u.email || '').toLowerCase() !== email &&
+                    u.name !== name
+            );
+            localReg = localReg.map((u) => {
+                const match =
+                    u.id === id ||
+                    String(u.id) === String(id) ||
+                    u.id === mongoId ||
+                    String(u.email || '').toLowerCase() === email ||
+                    u.name === name;
+                return match
+                    ? { ...u, id: mongoId, email: result.email || u.email, status: 'ACTIVE' }
+                    : u;
+            });
 
             localStorage.setItem('vhms_pending_users', JSON.stringify(localPending));
             localStorage.setItem('vhms_registered_users', JSON.stringify(localReg));
 
-            setPendingUsers(prev => prev.filter(u => u.id !== id && String(u.id) !== String(id) && u.name !== name));
-            setAllUsers(prev => prev.map(u => (u.id === id || String(u.id) === String(id) || u.name === name) ? { ...u, status: 'ACTIVE' } : u));
+            setPendingUsers((prev) =>
+                prev.filter(
+                    (u) =>
+                        u.id !== id &&
+                        String(u.id) !== String(id) &&
+                        u.id !== mongoId &&
+                        String(u.email || '').toLowerCase() !== email &&
+                        u.name !== name
+                )
+            );
+            setAllUsers((prev) =>
+                prev.map((u) => {
+                    const match =
+                        u.id === id ||
+                        String(u.id) === String(id) ||
+                        u.id === mongoId ||
+                        String(u.email || '').toLowerCase() === email ||
+                        u.name === name;
+                    return match
+                        ? { ...u, id: mongoId, email: result.email || u.email, status: 'ACTIVE' }
+                        : u;
+                })
+            );
 
-            showToast(`✅ ${name}'s account was approved successfully!`, 'success');
+            showToast(`✅ ${name}'s account was approved and saved to MongoDB!`, 'success');
             loadData();
         } catch (err) {
             console.error(err);
-            showToast('Error approving account.', 'error');
+            showToast('Error approving account in MongoDB.', 'error');
         }
     };
 
     const handleReject = async (id, name) => {
         try {
-            await api.rejectUser(id).catch(() => { });
+            const pendingUser = pendingUsers.find(
+                (u) => u.id === id || String(u.id) === String(id) || u.name === name
+            );
+            const rejectKey = (id && !String(id).startsWith('PO-'))
+                ? id
+                : (pendingUser?.email || id);
+
+            const result = await api.rejectUser(rejectKey);
+            if (!result || result.success === false) {
+                showToast(`❌ ${result?.message || 'Could not reject account in MongoDB.'}`, 'error');
+                return;
+            }
+
+            const mongoId = result.id || id;
+            const email = (result.email || pendingUser?.email || '').toLowerCase();
 
             let localPending = [];
             let localReg = [];
@@ -1209,22 +1274,58 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                 localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
             } catch { }
 
-            const rejectedObj = localPending.find(u => u.id === id || String(u.id) === String(id) || u.name === name);
-
-            localPending = localPending.filter(u => u.id !== id && String(u.id) !== String(id) && u.name !== name);
-            localReg = localReg.map(u => (u.id === id || String(u.id) === String(id) || u.name === name || (rejectedObj && u.email === rejectedObj.email)) ? { ...u, status: 'REJECTED' } : u);
+            localPending = localPending.filter(
+                (u) =>
+                    u.id !== id &&
+                    String(u.id) !== String(id) &&
+                    u.id !== mongoId &&
+                    String(u.email || '').toLowerCase() !== email &&
+                    u.name !== name
+            );
+            localReg = localReg.map((u) => {
+                const match =
+                    u.id === id ||
+                    String(u.id) === String(id) ||
+                    u.id === mongoId ||
+                    String(u.email || '').toLowerCase() === email ||
+                    u.name === name;
+                return match
+                    ? { ...u, id: mongoId, email: result.email || u.email, status: 'REJECTED' }
+                    : u;
+            });
 
             localStorage.setItem('vhms_pending_users', JSON.stringify(localPending));
             localStorage.setItem('vhms_registered_users', JSON.stringify(localReg));
 
-            setPendingUsers(prev => prev.filter(u => u.id !== id && String(u.id) !== String(id) && u.name !== name));
-            setAllUsers(prev => prev.map(u => (u.id === id || String(u.id) === String(id) || u.name === name) ? { ...u, status: 'REJECTED' } : u));
+            setPendingUsers((prev) =>
+                prev.filter(
+                    (u) =>
+                        u.id !== id &&
+                        String(u.id) !== String(id) &&
+                        u.id !== mongoId &&
+                        String(u.email || '').toLowerCase() !== email &&
+                        u.name !== name
+                )
+            );
+            setAllUsers((prev) =>
+                prev.map((u) => {
+                    const match =
+                        u.id === id ||
+                        String(u.id) === String(id) ||
+                        u.id === mongoId ||
+                        String(u.email || '').toLowerCase() === email ||
+                        u.name === name;
+                    return match
+                        ? { ...u, id: mongoId, email: result.email || u.email, status: 'REJECTED' }
+                        : u;
+                })
+            );
 
-            showToast(`❌ ${name}'s request was rejected.`, 'info');
+            showToast(`❌ ${name}'s request was rejected in MongoDB.`, 'info');
             loadData();
         } catch (err) {
             console.error(err);
-            showToast('Error rejecting account.', 'error');
+            showToast('Error rejecting account in MongoDB.', 'error');
         }
     };
 
@@ -1236,6 +1337,11 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
         e.preventDefault();
         if (!docName || !docEmail) {
             showToast('Please fill in Doctor Name and Email.', 'error');
+            return;
+        }
+
+        if (docPhone && !/^\d{10}$/.test(docPhone)) {
+            showToast('Phone number must be exactly 10 digits.', 'error');
             return;
         }
 
@@ -3255,7 +3361,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                             </div>
 
                             <div className="glass-form-card">
-                                <form onSubmit={handleCreateDoctor} className="admin-doctor-form">
+                                <form onSubmit={handleCreateDoctor} className="admin-doctor-form" autoComplete="off">
                                     <div className="form-grid-2">
                                         <div className="form-group">
                                             <label>Doctor Full Name *</label>
@@ -3264,6 +3370,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                                 placeholder="e.g. Dr. Alexander Wright"
                                                 value={docName}
                                                 onChange={(e) => setDocName(e.target.value)}
+                                                autoComplete="off"
                                                 required
                                             />
                                         </div>
@@ -3274,6 +3381,7 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                                 placeholder="e.g. alexander.wright@vhms.com"
                                                 value={docEmail}
                                                 onChange={(e) => setDocEmail(e.target.value)}
+                                                autoComplete="off"
                                                 required
                                             />
                                         </div>
@@ -3286,7 +3394,13 @@ export default function AdminDashboardPage({ initialView = null, hideHeader = fa
                                                 type="tel"
                                                 placeholder="e.g. 0771234567"
                                                 value={docPhone}
-                                                onChange={(e) => setDocPhone(e.target.value)}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                    setDocPhone(val);
+                                                }}
+                                                maxLength="10"
+                                                pattern="\d{10}"
+                                                autoComplete="off"
                                                 required
                                             />
                                         </div>

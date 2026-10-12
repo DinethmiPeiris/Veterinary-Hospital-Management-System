@@ -37,7 +37,7 @@ public class UserAdminController {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @PutMapping("/users/{id}/approve")
+    @PutMapping("/users/{id:.+}/approve")
     public ResponseEntity<AuthResponse> approveUser(@PathVariable String id) {
         AuthResponse response = authService.approveUser(id);
         if (response.isSuccess()) {
@@ -46,9 +46,27 @@ public class UserAdminController {
         return ResponseEntity.status(404).body(response);
     }
 
-    @PutMapping("/users/{id}/reject")
+    @PutMapping("/users/approve")
+    public ResponseEntity<AuthResponse> approveUserByEmail(@RequestParam String email) {
+        AuthResponse response = authService.approveUser(email);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(404).body(response);
+    }
+
+    @PutMapping("/users/{id:.+}/reject")
     public ResponseEntity<AuthResponse> rejectUser(@PathVariable String id) {
         AuthResponse response = authService.rejectUser(id);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(404).body(response);
+    }
+
+    @PutMapping("/users/reject")
+    public ResponseEntity<AuthResponse> rejectUserByEmail(@RequestParam String email) {
+        AuthResponse response = authService.rejectUser(email);
         if (response.isSuccess()) {
             return ResponseEntity.ok(response);
         }

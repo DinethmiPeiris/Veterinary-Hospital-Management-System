@@ -64,11 +64,17 @@ public class NotificationService {
     }
 
     public List<NotificationLog> getNotificationsByRecipient(String recipientId) {
-        return notificationLogRepository.findByRecipientIdOrderBySentAtDesc(recipientId);
+        if (recipientId == null || recipientId.isBlank()) {
+            return List.of();
+        }
+        return notificationLogRepository.findByRecipientIdOrRecipientEmailOrderBySentAtDesc(recipientId, recipientId);
     }
 
     public List<NotificationLog> getUnreadNotifications(String recipientId) {
-        return notificationLogRepository.findByRecipientIdAndIsReadFalseOrderBySentAtDesc(recipientId);
+        if (recipientId == null || recipientId.isBlank()) {
+            return List.of();
+        }
+        return notificationLogRepository.findByRecipientIdOrRecipientEmailAndIsReadFalseOrderBySentAtDesc(recipientId, recipientId);
     }
 
     public void markAsRead(String notificationId) {

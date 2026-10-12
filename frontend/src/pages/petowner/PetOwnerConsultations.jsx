@@ -2,14 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 import './PetOwnerConsultations.css';
 
-const PetOwnerConsultations = () => {
+const PetOwnerConsultations = ({ ownerPets = [] }) => {
+    const defaultPetId = ownerPets && ownerPets.length > 0 ? ownerPets[0].id : 'PET-101';
     const [consultations, setConsultations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedPet, setSelectedPet] = useState('PET-101'); // Mock logged-in pet owner's pet
+    const [selectedPet, setSelectedPet] = useState(defaultPetId);
+
+    useEffect(() => {
+        if (ownerPets && ownerPets.length > 0 && !ownerPets.some(p => p.id === selectedPet)) {
+            setSelectedPet(ownerPets[0].id);
+        }
+    }, [ownerPets, selectedPet]);
 
     useEffect(() => {
         const fetchConsultations = async () => {
+            if (!selectedPet) {
+                setConsultations([]);
+                setLoading(false);
+                return;
+            }
             try {
                 setLoading(true);
                 const response = await fetch(apiUrl(`/api/v1/consultations/pet/${selectedPet}`));
@@ -123,8 +135,16 @@ const PetOwnerConsultations = () => {
                 <div className="pet-selector">
                     <label>Select Pet: </label>
                     <select value={selectedPet} onChange={(e) => setSelectedPet(e.target.value)}>
-                        <option value="PET-101">Buddy (Dog)</option>
-                        <option value="PET-102">Luna (Cat)</option>
+                        {ownerPets && ownerPets.length > 0 ? (
+                            ownerPets.map(pet => (
+                                <option key={pet.id} value={pet.id}>{pet.name} ({pet.species})</option>
+                            ))
+                        ) : (
+                            <>
+                                <option value="PET-101">Buddy (Dog)</option>
+                                <option value="PET-102">Luna (Cat)</option>
+                            </>
+                        )}
                     </select>
                 </div>
             </header>

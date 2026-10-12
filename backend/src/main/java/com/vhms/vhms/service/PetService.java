@@ -84,7 +84,7 @@ public class PetService {
             pet.setSpecies(request.getSpecies());
         if (request.getBreed() != null)
             pet.setBreed(request.getBreed());
-        if (request.getAge() > 0)
+        if (request.getAge() >= 0)
             pet.setAge(request.getAge());
         if (request.getWeight() > 0)
             pet.setWeight(request.getWeight());

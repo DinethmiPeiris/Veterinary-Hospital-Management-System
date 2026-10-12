@@ -145,6 +145,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
 
   // Modals
   const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);   // NEW: Admin assigns doctor when approving
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -177,6 +178,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   const [rescheduleReason, setRescheduleReason] = useState('');
 
   const [rejectReason, setRejectReason] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
 
   // Doctor Schedule Form State (US 4.13)
   const [schedDoctorId, setSchedDoctorId] = useState('DOC-2001');
@@ -294,7 +296,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
       if (apptRes && apptRes.success) {
         setAppointments((apptRes.data || []).map(a => {
           let s = a.status ? a.status.toUpperCase() : 'REQUESTED';
-          if (['PENDING', 'WAITING'].includes(s)) s = 'REQUESTED';
+          if (['PENDING', 'WAITING', 'PENDING_APPROVAL'].includes(s)) s = 'REQUESTED';
           if (['APPROVED', 'ACCEPTED', 'SCHEDULED'].includes(s)) s = 'CONFIRMED';
           if (['DONE'].includes(s)) s = 'COMPLETED';
           return { ...a, status: s };
@@ -576,14 +578,27 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
     }
   };
 
-  // US 4.19: Cancel
-  const handleCancelAppt = async (id) => {
-    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+  // US 4.19: Cancel (Modal Flow)
+  const openCancelModal = (appt) => {
+    setSelectedAppt(appt);
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
+
+  const handleCancelSubmit = async (e) => {
+    e.preventDefault();
+    if (!cancelReason.trim()) {
+      showNotification('Cancellation reason is required.', 'error');
+      return;
+    }
     try {
-      const res = await appointmentService.cancelAppointment(id, 'Admin cancellation', 'ADMIN');
+      const res = await appointmentService.cancelAppointment(selectedAppt.id, cancelReason, 'ADMIN');
       if (res && res.success) {
         showNotification('Appointment cancelled.', 'success');
+        setShowCancelModal(false);
         loadAllAdminData();
+      } else {
+        showNotification(res?.message || 'Error cancelling.', 'error');
       }
     } catch (err) {
       showNotification('Error cancelling.', 'error');
@@ -593,10 +608,12 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   // US 4.21: Send Reminder
   const handleSendReminder = async (appt) => {
     try {
-      const apptId = typeof appt === 'object' ? appt.id : appt;
+      const apptId = typeof appt === 'object' ? appt.id || appt.appointmentNumber : appt;
       const res = await appointmentService.sendReminder(apptId, typeof appt === 'object' ? appt : null);
       if (res && res.success) {
         showNotification('Reminder notification dispatched to Pet Owner!', 'success');
+      } else {
+        showNotification(res?.message || 'Could not send reminder.', 'error');
       }
     } catch (err) {
       showNotification('Reminder error.', 'error');
@@ -606,17 +623,55 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   // Online Payment Reminder
   const handleSendPaymentReminder = async (inv) => {
     try {
-      const recipientId = inv.ownerId || 'USR-5001';
+      let recipientId = inv.ownerId || inv.petOwnerId || inv.ownerEmail || inv.petOwnerEmail || '';
+      let recipientEmail = inv.ownerEmail || inv.petOwnerEmail || '';
+      let ownerName = inv.ownerName || '';
+
+      const allAppts = appointments || [];
+      const appt = allAppts.find(a => 
+        (inv.appointmentNumber && (a.appointmentNumber === inv.appointmentNumber || a.id === inv.appointmentNumber)) ||
+        (inv.appointmentId && (a.id === inv.appointmentId || a.appointmentNumber === inv.appointmentId)) ||
+        (inv.invoiceNumber && a.invoiceNumber === inv.invoiceNumber) ||
+        (inv.petName && a.petName && a.petName.toLowerCase() === inv.petName.toLowerCase())
+      );
+      if (appt) {
+        if (!recipientId || recipientId === 'USR-5001') recipientId = appt.ownerId || appt.petOwnerId || recipientId;
+        if (!recipientEmail || recipientEmail === 'owner@example.com') recipientEmail = appt.ownerEmail || appt.petOwnerEmail || recipientEmail;
+        if (!ownerName || ownerName === 'Unknown Owner') ownerName = appt.ownerName || appt.petOwnerName || ownerName;
+      }
+
+      try {
+        const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+        const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+        const allUsers = [...regUsers, ...cachedUsers];
+        const petOwnerUser = allUsers.find(u => 
+          (recipientEmail && u.email && u.email.toLowerCase() === recipientEmail.toLowerCase()) ||
+          (recipientId && (u.id === recipientId || u._id === recipientId)) ||
+          (u.role === 'PET_OWNER' || u.role === 'OWNER')
+        );
+        if (petOwnerUser) {
+          if (!recipientId || recipientId === 'USR-5001') recipientId = petOwnerUser.id || petOwnerUser._id || recipientId;
+          if (!recipientEmail || recipientEmail === 'owner@example.com') recipientEmail = petOwnerUser.email || recipientEmail;
+          if (!ownerName || ownerName === 'Unknown Owner') ownerName = petOwnerUser.name || petOwnerUser.fullName || ownerName;
+        }
+      } catch (e) {}
+
+      if (!recipientId) recipientId = 'USR-5001';
+      if (!recipientEmail) recipientEmail = 'owner@example.com';
+      if (!ownerName) ownerName = 'Pet Owner';
+
       await notificationService.sendNotification({
         recipientId,
+        recipientEmail,
         recipientRole: 'PET_OWNER',
         title: '💳 Online Payment Due: Invoice #' + inv.invoiceNumber,
-        message: `Dear ${inv.ownerName || 'Pet Owner'}, your invoice #${inv.invoiceNumber} for ${inv.petName} has an outstanding balance of Rs. ${inv.balanceAmount?.toFixed(2)}. Please log into your Pet Owner Portal to pay online.`,
+        message: `Dear ${ownerName}, your invoice #${inv.invoiceNumber} for ${inv.petName || 'your pet'} has an outstanding balance of Rs. ${Number(inv.balanceAmount || inv.totalAmount || 0).toFixed(2)}. Please log into your Pet Owner Portal to pay online.`,
         type: 'PAYMENT_REMINDER',
+        notificationType: 'PAYMENT_REMINDER',
         referenceType: 'INVOICE',
         referenceId: inv.id || inv.invoiceNumber,
       });
-      showNotification(`📲 Online Payment reminder sent to ${inv.ownerName || 'Pet Owner'}!`, 'success');
+      showNotification(`📲 Online Payment reminder sent to ${ownerName}!`, 'success');
     } catch (e) {
       showNotification('Payment reminder error.', 'error');
     }
@@ -759,6 +814,24 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
       const res = await paymentService.processPayment(payload);
       if (res && res.success) {
         showNotification('Payment processed! Receipt #' + res.data.receiptNumber, 'success');
+        
+        // Notify pet owner
+        try {
+          if (selectedInvoice.ownerId) {
+            await notificationService.sendNotification({
+              recipientId: selectedInvoice.ownerId,
+              recipientRole: 'PET_OWNER',
+              title: '💳 Payment Received',
+              message: `Your payment of Rs. ${Number(cashierAmount).toFixed(2)} for Invoice #${selectedInvoice.invoiceNumber} has been received. Receipt: ${res.data.receiptNumber}`,
+              type: 'PAYMENT_SUCCESS',
+              referenceType: 'PAYMENT',
+              referenceId: res.data.receiptNumber,
+            });
+          }
+        } catch (e) {
+          console.error("Failed to notify pet owner of payment", e);
+        }
+
         setShowPaymentModal(false);
         loadAllAdminData();
       } else {
@@ -875,16 +948,43 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
   const handleGenerateInvoiceSubmit = async (e) => {
     e.preventDefault();
     try {
+      let resolvedOwnerId = selectedAppt ? (selectedAppt.ownerId || selectedAppt.petOwnerId || '') : '';
+      let resolvedOwnerEmail = newInvOwnerEmail || (selectedAppt ? (selectedAppt.ownerEmail || selectedAppt.petOwnerEmail || '') : '') || '';
+      let resolvedOwnerName = newInvOwnerName || (selectedAppt ? (selectedAppt.ownerName || selectedAppt.petOwnerName) : '') || '';
+
+      if (!resolvedOwnerId || resolvedOwnerId === 'USR-5001') {
+        try {
+          const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+          const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+          const allUsers = [...regUsers, ...cachedUsers];
+          const foundOwner = allUsers.find(u => 
+            (resolvedOwnerEmail && u.email && u.email.toLowerCase() === resolvedOwnerEmail.toLowerCase()) ||
+            (u.role === 'PET_OWNER' || u.role === 'OWNER')
+          );
+          if (foundOwner) {
+            resolvedOwnerId = foundOwner.id || foundOwner._id || resolvedOwnerId || 'USR-5001';
+            if (!resolvedOwnerEmail) resolvedOwnerEmail = foundOwner.email || '';
+            if (!resolvedOwnerName) resolvedOwnerName = foundOwner.name || foundOwner.fullName || '';
+          }
+        } catch (err) {}
+      }
+
+      if (!resolvedOwnerId) resolvedOwnerId = 'USR-5001';
+      if (!resolvedOwnerEmail) resolvedOwnerEmail = 'owner@example.com';
+      if (!resolvedOwnerName) resolvedOwnerName = 'Pet Owner';
+
       const newInvoice = {
         appointmentId: selectedAppt ? selectedAppt.id : '',
         appointmentNumber: selectedAppt ? selectedAppt.appointmentNumber : '',
         petId: selectedAppt ? selectedAppt.petId : 'PET-1001',
         petName: newInvPetName || (selectedAppt ? selectedAppt.petName : 'Patient'),
         petSpecies: selectedAppt ? selectedAppt.petSpecies : 'Canine',
-        ownerId: selectedAppt ? selectedAppt.ownerId : 'USR-5001',
-        ownerName: newInvOwnerName || (selectedAppt ? selectedAppt.ownerName : 'Pet Owner'),
-        ownerEmail: newInvOwnerEmail || 'owner@example.com',
-        ownerPhone: selectedAppt ? selectedAppt.ownerPhone : '+94 77 123 4567',
+        ownerId: resolvedOwnerId,
+        petOwnerId: resolvedOwnerId,
+        ownerName: resolvedOwnerName,
+        ownerEmail: resolvedOwnerEmail,
+        petOwnerEmail: resolvedOwnerEmail,
+        ownerPhone: selectedAppt ? (selectedAppt.ownerPhone || selectedAppt.petOwnerPhone || '') : '+94 77 123 4567',
         doctorId: selectedAppt ? selectedAppt.doctorId : 'DOC-2001',
         doctorName: selectedAppt ? selectedAppt.doctorName : 'Dr. Natasha Silva',
         items: newInvItems,
@@ -917,15 +1017,21 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
         }
 
         // Notify the Pet Owner about the new invoice
-        await notificationService.sendNotification({
-          recipientId: newInvoice.ownerId,
-          recipientRole: 'PET_OWNER',
-          title: 'New Medical Bill',
-          message: `A new invoice (${res.data.invoiceNumber}) has been generated for ${newInvoice.petName}.`,
-          type: 'PAYMENT_REMINDER',
-          referenceType: 'INVOICE',
-          referenceId: res.data.invoiceNumber,
-        });
+        const invRecipientId = resolvedOwnerId;
+        const invRecipientEmail = resolvedOwnerEmail;
+        if (invRecipientId) {
+          await notificationService.sendNotification({
+            recipientId: invRecipientId,
+            recipientEmail: invRecipientEmail,
+            recipientRole: 'PET_OWNER',
+            title: '🧾 New Medical Bill',
+            message: `A new invoice (${res.data.invoiceNumber}) has been generated for ${newInvoice.petName}. Total: Rs. ${(res.data.totalAmount || 0).toFixed(2)}.`,
+            type: 'INVOICE_GENERATED',
+            notificationType: 'INVOICE_GENERATED',
+            referenceType: 'INVOICE',
+            referenceId: res.data.invoiceNumber,
+          });
+        }
 
         showNotification(`🎉 Invoice #${res.data.invoiceNumber} created & sent to ${newInvoice.ownerName}!`, 'success');
         setShowCreateInvoiceModal(false);
@@ -1325,7 +1431,7 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
                             </button>
                             <button
                               style={{ padding: '6px 14px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
-                              onClick={() => handleCancelAppt(a.id)}
+                              onClick={() => openCancelModal(a)}
                               title="Cancel confirmed appointment"
                             >
                               🚫 Cancel
@@ -2546,6 +2652,43 @@ export default function AdminHub({ initialView = null, hideHeader = false }) {
               <button type="submit" className="btn-primary-epic" style={{ width: '100%', justifyContent: 'center' }}>
                 Confirm Reassignment & Notify Owner
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CANCEL APPOINTMENT MODAL */}
+      {showCancelModal && selectedAppt && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3>Cancel Appointment</h3>
+              <button className="modal-close" onClick={() => setShowCancelModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCancelSubmit} className="modal-body">
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>
+                  Cancelling appointment for <strong>{selectedAppt.petName}</strong>. 
+                  Please provide a reason to notify the pet owner.
+                </p>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Cancellation Reason</label>
+                <textarea
+                  required
+                  rows={4}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }}
+                  placeholder="e.g. Doctor is unavailable, emergency schedule conflict..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={() => setShowCancelModal(false)}>
+                  Close
+                </button>
+                <button type="submit" className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>
+                  Confirm Cancellation
+                </button>
+              </div>
             </form>
           </div>
         </div>

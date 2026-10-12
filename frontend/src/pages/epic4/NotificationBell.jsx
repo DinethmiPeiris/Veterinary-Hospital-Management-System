@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { notificationService, parseNotificationTime } from '../../services/notificationService';
+import { epic3Service } from '../../services/epic3Service';
 
 const formatSentDate = (dateVal) => {
   if (!dateVal) return '';
@@ -11,7 +12,7 @@ const formatSentDate = (dateVal) => {
   return isNaN(d.getTime()) ? String(dateVal) : d.toLocaleString();
 };
 
-export default function NotificationBell({ recipientId = 'USR-5001' }) {
+export default function NotificationBell({ recipientId = '' }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -19,6 +20,11 @@ export default function NotificationBell({ recipientId = 'USR-5001' }) {
   const bellContainerRef = useRef(null);
 
   useEffect(() => {
+    if (!recipientId) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return undefined;
+    }
     loadNotifications();
     const interval = setInterval(loadNotifications, 2000);
     const handleUpdate = () => loadNotifications();
@@ -233,6 +239,55 @@ export default function NotificationBell({ recipientId = 'USR-5001' }) {
             <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
               Received: {formatSentDate(selectedNotification.sentAt || selectedNotification.createdAt)}
             </div>
+
+            {selectedNotification.title?.includes('Hospitalization Recommended') && selectedNotification.relatedEntityId && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await epic3Service.requestAdmission(selectedNotification.relatedEntityId);
+                      alert('Hospitalization Approved! Request sent to admin.');
+                      setSelectedNotification(null);
+                      // Force a global UI update so Admissions tab will see the change
+                      window.dispatchEvent(new Event('vhms_notifications_changed'));
+                    } catch (err) {
+                      alert(err.message || 'Failed to approve hospitalization. It might already be processed.');
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '0.75rem', background: '#059669', color: 'white',
+                    border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.background = '#047857'}
+                  onMouseOut={(e) => e.target.style.background = '#059669'}
+                >
+                  ✓ Approve
+                </button>
+                <button 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await epic3Service.rejectAdmission(selectedNotification.relatedEntityId, 'Rejected by owner');
+                      alert('Hospitalization Rejected.');
+                      setSelectedNotification(null);
+                      window.dispatchEvent(new Event('vhms_notifications_changed'));
+                    } catch (err) {
+                      alert(err.message || 'Failed to reject hospitalization.');
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '0.75rem', background: '#dc2626', color: 'white',
+                    border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.background = '#b91c1c'}
+                  onMouseOut={(e) => e.target.style.background = '#dc2626'}
+                >
+                  ✕ Reject
+                </button>
+              </div>
+            )}
+
             <button 
               onClick={() => setSelectedNotification(null)}
               style={{

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { epic3Service } from '../services/epic3Service'
 import { getEpic3Session } from '../services/demoConfig'
+import { notificationService } from '../services/notificationService'
 import './ModuleStyles.css'
 
 export default function DoctorHospitalizedPetsPage({ hideHeader = false }) {
@@ -243,6 +244,64 @@ export default function DoctorHospitalizedPetsPage({ hideHeader = false }) {
         doctorName: getEpic3Session().doctorName
       })
       setSelectedPet(updated)
+
+      // Notify Pet Owner that discharge has been recommended
+      try {
+        let recId = selectedPet.petOwnerId || selectedPet.ownerId || '';
+        let recEmail = selectedPet.petOwnerEmail || selectedPet.ownerEmail || '';
+        const targetOwnerName = (selectedPet.ownerName || '').trim().toLowerCase();
+
+        try {
+          const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+          const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+          const curUser = JSON.parse(localStorage.getItem('vhms_user') || 'null');
+          const allUsers = [...regUsers, ...cachedUsers, ...(curUser ? [curUser] : [])];
+
+          let matchedOwner = null;
+          if (targetOwnerName) {
+            matchedOwner = allUsers.find(u => {
+              const uName = (u.name || u.fullName || u.username || '').toLowerCase();
+              return uName && (uName.includes(targetOwnerName) || targetOwnerName.includes(uName));
+            });
+          }
+          if (!matchedOwner && recId) {
+            matchedOwner = allUsers.find(u =>
+              String(u.id) === String(recId) ||
+              String(u._id) === String(recId) ||
+              (u.email && u.email.toLowerCase() === String(recId).toLowerCase())
+            );
+          }
+          if (!matchedOwner) {
+            matchedOwner = allUsers.find(u => u.role === 'PET_OWNER' || u.role === 'OWNER');
+          }
+
+          if (matchedOwner) {
+            if (!recId || recId === 'USR-5001') recId = matchedOwner.id || matchedOwner._id || recId || 'USR-5001';
+            if (!recEmail) recEmail = matchedOwner.email || '';
+          }
+        } catch (e) {}
+
+        if (!recId) recId = 'USR-5001';
+        if (!recEmail) recEmail = 'owner@example.com';
+
+        const doctorName = getEpic3Session().doctorName || selectedPet.doctorName || 'The doctor';
+        const reason = dischargeForm.recommendationReason.trim();
+
+        await notificationService.sendNotification({
+          recipientId: recId,
+          recipientEmail: recEmail,
+          recipientRole: 'PET_OWNER',
+          title: '🏥 Discharge Recommended',
+          message: `${doctorName} has recommended discharge for ${selectedPet.petName || 'your pet'}. Final hospital discharge confirmation is pending. ${reason ? 'Reason: ' + reason : ''}`.trim(),
+          type: 'HOSPITALIZATION',
+          notificationType: 'HOSPITALIZATION_RECOMMENDED',
+          referenceType: 'HOSPITALIZATION',
+          referenceId: selectedPet.id || '',
+        });
+      } catch (e) {
+        console.error("Failed to notify pet owner of discharge recommendation", e);
+      }
+
       setToast({ message: 'Discharge recommendation submitted! Admin has been notified for discharge processing.', type: 'success' })
       loadHospitalizations()
     } catch (err) {

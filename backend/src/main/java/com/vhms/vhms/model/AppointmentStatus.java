@@ -12,6 +12,7 @@ public enum AppointmentStatus {
     EXPIRED,
     SCHEDULED,
     PENDING,
+    PENDING_APPROVAL,
     WAITING,
     APPROVED,
     ACCEPTED,

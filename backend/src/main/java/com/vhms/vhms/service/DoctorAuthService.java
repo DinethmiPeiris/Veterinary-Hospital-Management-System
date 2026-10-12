@@ -5,17 +5,19 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.vhms.vhms.dto.DoctorAuthResponse;
 import com.vhms.vhms.dto.DoctorLoginRequest;
 import com.vhms.vhms.dto.DoctorRegisterRequest;
 import com.vhms.vhms.dto.ForgotPasswordRequest;
+import com.vhms.vhms.dto.ChangePasswordRequest;
 import com.vhms.vhms.dto.ResetPasswordRequest;
 import com.vhms.vhms.exception.ResourceNotFoundException;
 import com.vhms.vhms.model.Doctor;
+import com.vhms.vhms.model.User;
 import com.vhms.vhms.repository.DoctorRepository;
+import com.vhms.vhms.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class DoctorAuthService {
 
     private final DoctorRepository doctorRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
     private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -45,7 +47,7 @@ public class DoctorAuthService {
         doctor.setEmail(email);
         doctor.setPhone(request.getPhone());
         doctor.setSpecialization(request.getSpecialization().trim());
-        doctor.setPassword(passwordEncoder.encode(request.getPassword()));
+        doctor.setPassword(request.getPassword());
         doctor.setActive(true);
         doctor.setRole("DOCTOR");
         doctor.setCreatedAt(LocalDateTime.now());
@@ -113,7 +115,7 @@ public class DoctorAuthService {
             throw new IllegalArgumentException("Invalid reset code.");
         }
 
-        doctor.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        doctor.setPassword(request.getNewPassword());
         doctor.setResetToken(null);
         doctor.setResetTokenExpiry(null);
         doctorRepository.save(doctor);
@@ -123,6 +125,47 @@ public class DoctorAuthService {
                 .staffId(doctor.getStaffId())
                 .fullName(doctor.getFullName())
                 .message("Password updated successfully. You can now sign in.")
+                .build();
+    }
+
+    public DoctorAuthResponse changePassword(ChangePasswordRequest request) {
+        String email = request.getEmail().trim();
+        Optional<Doctor> doctorOpt = doctorRepository.findFirstByEmailIgnoreCase(email);
+        Optional<User> userOpt = userRepository.findByEmail(email.toLowerCase());
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email);
+        }
+
+        if (doctorOpt.isEmpty() && userOpt.isEmpty()) {
+            throw new ResourceNotFoundException("No doctor account found for that email.");
+        }
+
+        Doctor doctor = doctorOpt.orElse(null);
+        User user = userOpt.orElse(null);
+
+        // If old password is provided, verify it
+        if (request.getOldPassword() != null && !request.getOldPassword().isBlank()) {
+            String currentPassword = doctor != null ? doctor.getPassword() : user.getPassword();
+            if (!passwordMatches(request.getOldPassword(), currentPassword)) {
+                throw new IllegalArgumentException("Incorrect old password. Please try again.");
+            }
+        }
+
+        if (doctor != null) {
+            doctor.setPassword(request.getNewPassword());
+            doctorRepository.save(doctor);
+        }
+
+        if (user != null) {
+            user.setPassword(request.getNewPassword());
+            userRepository.save(user);
+        }
+
+        return DoctorAuthResponse.builder()
+                .email(email)
+                .staffId(doctor != null ? doctor.getStaffId() : (user != null ? user.getId() : null))
+                .fullName(doctor != null ? doctor.getFullName() : (user != null ? user.getName() : null))
+                .message("Password changed successfully.")
                 .build();
     }
 
@@ -174,11 +217,14 @@ public class DoctorAuthService {
         if (storedPassword == null || storedPassword.isBlank()) {
             return false;
         }
-        // Support existing bcrypt hashes and any legacy plaintext seed rows
-        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
-            return passwordEncoder.matches(rawPassword, storedPassword);
+        if (storedPassword.equals(rawPassword)) {
+            return true;
         }
-        return storedPassword.equals(rawPassword);
+        if (storedPassword.startsWith("$2a$")) {
+            org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+            return encoder.matches(rawPassword, storedPassword);
+        }
+        return false;
     }
 
     private String generateStaffId() {

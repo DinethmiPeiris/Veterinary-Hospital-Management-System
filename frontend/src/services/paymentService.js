@@ -156,7 +156,17 @@ export const paymentService = {
 
   async getPaymentsByOwner(ownerId) {
     const all = await this.getAllPayments();
-    const filtered = (all.data || []).filter(p => !ownerId || p.ownerId === ownerId || p.ownerId === 'USR-5001');
+    if (!ownerId) return { success: true, data: [] };
+
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+
+    const filtered = (all.data || []).filter((p) => {
+      if (String(p.ownerId || '') === String(ownerId)) return true;
+      if (String(p.petOwnerId || '') === String(ownerId)) return true;
+      if (user?.email && p.petOwnerEmail && p.petOwnerEmail.toLowerCase() === user.email.toLowerCase()) return true;
+      return false;
+    });
     return { success: true, data: filtered };
   },
 

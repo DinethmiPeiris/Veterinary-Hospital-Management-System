@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.vhms.vhms.dto.ApiResponse;
@@ -47,6 +49,18 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String id) {
         notificationService.markAsRead(id);
         return ResponseEntity.ok(ApiResponse.ok("Notification marked as read.", null));
+    }
+
+    @PutMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String userEmail
+    ) {
+        String target = (userId != null && !userId.isBlank()) ? userId : userEmail;
+        if (target != null && !target.isBlank()) {
+            notificationService.getUnreadNotifications(target).forEach(n -> notificationService.markAsRead(n.getId()));
+        }
+        return ResponseEntity.ok(ApiResponse.ok("All notifications marked as read.", null));
     }
 
     @PostMapping("/send")

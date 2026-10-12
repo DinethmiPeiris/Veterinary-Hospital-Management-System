@@ -16,10 +16,89 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 2000) => {
   }
 };
 
+export const mapNotificationType = (type, title = '', message = '') => {
+  const t = String(type || '').toUpperCase();
+  const text = `${t} ${title} ${message}`.toUpperCase();
+
+  if (t === 'INVOICE_GENERATED' || text.includes('INVOICE GENERATED') || text.includes('NEW MEDICAL BILL') || text.includes('NEW INVOICE')) {
+    return 'INVOICE_GENERATED';
+  }
+  if (t === 'PAYMENT_REMINDER' || text.includes('PAYMENT REMINDER') || text.includes('ONLINE PAYMENT DUE') || text.includes('REMIND ONLINE PAY') || text.includes('PAY ONLINE')) {
+    return 'PAYMENT_REMINDER';
+  }
+  if (t === 'PAYMENT_RECEIVED' || t === 'PAYMENT_SUCCESS' || text.includes('PAYMENT RECEIVED')) {
+    return 'PAYMENT_RECEIVED';
+  }
+  if (t === 'PAYMENT_FAILED' || text.includes('PAYMENT FAILED')) {
+    return 'PAYMENT_FAILED';
+  }
+  if (text.includes('HOSPITALIZATION RECOMMENDED') || text.includes('DISCHARGE RECOMMENDED') || text.includes('DISCHARGE REQUEST') || text.includes('REQUESTING DISCHARGE')) {
+    return 'HOSPITALIZATION_RECOMMENDED';
+  }
+  if (text.includes('HOSPITALIZATION APPROVED') || text.includes('ADMISSION APPROVED') || text.includes('PET DISCHARGED') || text.includes('DISCHARGE CONFIRMED') || text.includes('DISCHARGE') || text.includes('DISCHARGED')) {
+    return 'HOSPITALIZATION_APPROVED';
+  }
+  if (text.includes('HOSPITALIZATION REJECTED') || text.includes('ADMISSION REJECTED')) {
+    return 'HOSPITALIZATION_REJECTED';
+  }
+  if (t === 'APPOINTMENT_CONFIRMED' || text.includes('APPOINTMENT CONFIRMED')) {
+    return 'APPOINTMENT_CONFIRMED';
+  }
+  if (t === 'APPOINTMENT_CANCELLED' || text.includes('APPOINTMENT CANCELLED')) {
+    return 'APPOINTMENT_CANCELLED';
+  }
+  if (t === 'APPOINTMENT_REJECTED' || text.includes('APPOINTMENT DECLINED') || text.includes('REJECTED')) {
+    return 'APPOINTMENT_REJECTED';
+  }
+  if (t === 'APPOINTMENT_RESCHEDULED' || text.includes('RESCHEDULED')) {
+    return 'APPOINTMENT_RESCHEDULED';
+  }
+  if (t === 'APPOINTMENT_ASSIGNED' || text.includes('ASSIGNED')) {
+    return 'APPOINTMENT_ASSIGNED';
+  }
+  if (t === 'APPOINTMENT_REQUESTED' || text.includes('REQUESTED')) {
+    return 'APPOINTMENT_REQUESTED';
+  }
+  if (text.includes('INVOICE') || text.includes('BILL')) {
+    return 'INVOICE_GENERATED';
+  }
+  if (text.includes('PAYMENT') || text.includes('REMIND')) {
+    return 'PAYMENT_REMINDER';
+  }
+  return 'APPOINTMENT_REMINDER';
+};
+
 const getLocalNotifications = (recipientId) => {
   try {
+    let curUser = null;
+    try { curUser = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+
+    const curAliases = new Set([
+      recipientId && String(recipientId).toLowerCase(),
+      curUser?.id && String(curUser.id).toLowerCase(),
+      curUser?._id && String(curUser._id).toLowerCase(),
+      curUser?.userId && String(curUser.userId).toLowerCase(),
+      curUser?.email && String(curUser.email).toLowerCase(),
+    ].filter(Boolean));
+
+    const isPetOwner = curUser?.role === 'PET_OWNER' || curUser?.role === 'OWNER' || String(recipientId).toLowerCase() === 'usr-5001' || String(recipientId).toLowerCase() === 'owner@example.com';
+    if (isPetOwner) {
+      curAliases.add('usr-5001');
+      curAliases.add('owner@example.com');
+    }
+
     const list = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
-    return list.filter((n) => !recipientId || n.recipientId === recipientId || n.recipientId === 'ALL');
+    return list.filter((n) => {
+      if (!n) return false;
+      const rec = String(n.recipientId || '').toLowerCase();
+      const recEmail = String(n.recipientEmail || n.userEmail || '').toLowerCase();
+      if (rec === 'all') return true;
+      if (curAliases.has(rec) || (recEmail && curAliases.has(recEmail))) return true;
+      if (isPetOwner && (n.recipientRole === 'PET_OWNER' || n.referenceType === 'INVOICE' || String(n.type || n.notificationType || '').includes('INVOICE') || String(n.type || n.notificationType || '').includes('PAYMENT'))) {
+        return true;
+      }
+      return false;
+    });
   } catch (e) {
     return [];
   }
@@ -155,23 +234,47 @@ export const notificationService = {
   async getNotifications(recipientId) {
     let remoteList = [];
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/notifications/recipient/${recipientId}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) remoteList = json.data;
+      const targets = new Set();
+      if (recipientId) targets.add(String(recipientId));
+      let curUser = null;
+      try { curUser = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
+      if (curUser) {
+        if (curUser.id) targets.add(String(curUser.id));
+        if (curUser._id) targets.add(String(curUser._id));
+        if (curUser.userId) targets.add(String(curUser.userId));
+        if (curUser.email) targets.add(String(curUser.email));
       }
+      if (curUser?.role === 'PET_OWNER' || curUser?.role === 'OWNER' || String(recipientId).toLowerCase() === 'usr-5001') {
+        targets.add('USR-5001');
+      }
+
+      const results = await Promise.all(
+        Array.from(targets).map((target) =>
+          fetchWithTimeout(`${API_BASE_URL}/notifications/recipient/${encodeURIComponent(target)}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((json) => (json && json.success && Array.isArray(json.data) ? json.data : []))
+            .catch(() => [])
+        )
+      );
+      remoteList = results.flat();
     } catch (e) {}
 
     const localList = getLocalNotifications(recipientId);
 
-    // Get set of explicitly read IDs (cleanse any corrupted wildcard keys)
+    // Get set of explicitly read and unread IDs
     let readIds = new Set();
+    let unreadIds = new Set();
     try {
       const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
       const cleanStored = Array.isArray(storedRead) ? storedRead.filter((id) => id && !String(id).startsWith('ref_') && !String(id).startsWith('sig_')) : [];
-      readIds = new Set(cleanStored);
+      readIds = new Set(cleanStored.map(String));
       if (cleanStored.length !== storedRead.length) {
         localStorage.setItem('vhms_read_notification_ids', JSON.stringify(cleanStored));
+      }
+
+      const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+      if (Array.isArray(storedUnread)) {
+        unreadIds = new Set(storedUnread.map(String));
       }
     } catch (e) {}
 
@@ -182,8 +285,9 @@ export const notificationService = {
     allNotifications.forEach((item) => {
       if (!item) return;
 
-      const isExplicitlyRead = Boolean(item.id && readIds.has(item.id));
-      const itemIsRead = isExplicitlyRead || Boolean(item.read === true || item.isRead === true);
+      const isExplicitlyUnread = Boolean(item.id && unreadIds.has(String(item.id)));
+      const isExplicitlyRead = Boolean(item.id && readIds.has(String(item.id)));
+      const itemIsRead = isExplicitlyUnread ? false : (isExplicitlyRead || Boolean(item.read === true || item.isRead === true));
 
       const existingIdx = deduplicated.findIndex((existing) => isNotificationDuplicate(existing, item));
 
@@ -195,13 +299,19 @@ export const notificationService = {
         });
       } else {
         const existing = deduplicated[existingIdx];
-        const existingIsExplicitlyRead = Boolean(existing.id && readIds.has(existing.id));
-        const existingIsRead = existingIsExplicitlyRead || Boolean(existing.read === true || existing.isRead === true);
+        const existingIsExplicitlyUnread = Boolean(existing.id && unreadIds.has(String(existing.id)));
+        const existingIsExplicitlyRead = Boolean(existing.id && readIds.has(String(existing.id)));
+        const existingIsRead = existingIsExplicitlyUnread ? false : (existingIsExplicitlyRead || Boolean(existing.read === true || existing.isRead === true));
 
-        // Keep unread if either is a fresh unread notification and neither was explicitly marked read in readIds
-        const finalRead = (existingIsExplicitlyRead || isExplicitlyRead)
-          ? true
-          : (existingIsRead && itemIsRead);
+        let finalRead = false;
+        if (existingIsExplicitlyUnread || isExplicitlyUnread) {
+          finalRead = false;
+        } else if (existingIsExplicitlyRead || isExplicitlyRead) {
+          finalRead = true;
+        } else {
+          // If either local or remote marks it as read, preserve it as read (do not revert to unread)
+          finalRead = Boolean(existingIsRead || itemIsRead);
+        }
 
         const isExistingDbId = existing.id && !existing.id.startsWith('note-') && !existing.id.startsWith('NOTIF-') && !existing.id.startsWith('notif-');
         const isItemDbId = item.id && !item.id.startsWith('note-') && !item.id.startsWith('NOTIF-') && !item.id.startsWith('notif-');
@@ -255,16 +365,27 @@ export const notificationService = {
   },
 
   async sendNotification(notificationData) {
+    if (!notificationData?.recipientId) {
+      return { success: false, message: 'recipientId is required' };
+    }
+
+    const validType = mapNotificationType(
+      notificationData.notificationType || notificationData.type,
+      notificationData.title,
+      notificationData.message
+    );
+
     const list = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
     const localId = 'NOTIF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
     const newNotif = {
       id: localId,
-      recipientId: notificationData.recipientId || 'USR-5001',
+      recipientId: notificationData.recipientId,
+      recipientEmail: notificationData.recipientEmail || '',
       recipientRole: notificationData.recipientRole || 'PET_OWNER',
       title: notificationData.title,
       message: notificationData.message,
-      type: notificationData.type || 'PAYMENT_REMINDER',
-      notificationType: notificationData.notificationType || notificationData.type || 'PAYMENT_REMINDER',
+      type: validType,
+      notificationType: validType,
       referenceType: notificationData.referenceType || 'INVOICE',
       referenceId: notificationData.referenceId || '',
       isRead: false,
@@ -274,15 +395,86 @@ export const notificationService = {
     };
     list.unshift(newNotif);
     localStorage.setItem('vhms_epic4_notifications', JSON.stringify(list));
+    
+    // Save to recipientId's specific bucket and alias buckets
+    const targetKeys = new Set([`vhms_notifications_${notificationData.recipientId}`]);
+    if (notificationData.recipientEmail) {
+      targetKeys.add(`vhms_notifications_${notificationData.recipientEmail}`);
+    }
+
+    const isPetOwnerNotif = notificationData.recipientRole === 'PET_OWNER' ||
+      String(notificationData.recipientId).startsWith('USR-') ||
+      validType.includes('INVOICE') ||
+      validType.includes('PAYMENT') ||
+      validType.includes('HOSPITALIZ') ||
+      validType.includes('DISCHARGE') ||
+      notificationData.referenceType === 'HOSPITALIZATION' ||
+      notificationData.referenceType === 'ADMISSION';
+
+    if (isPetOwnerNotif) {
+      targetKeys.add('vhms_notifications_USR-5001');
+      targetKeys.add('vhms_notifications_usr-5001');
+      targetKeys.add('vhms_notifications_owner@example.com');
+    }
+
+    let extraRegisteredOwner = null;
+    try {
+      const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+      const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+      const curUser = JSON.parse(localStorage.getItem('vhms_user') || 'null');
+      const allUsers = [...regUsers, ...cachedUsers, ...(curUser ? [curUser] : [])];
+      
+      allUsers.forEach(u => {
+        if (!u) return;
+        const matchesUser = 
+          (u.id && String(u.id) === String(notificationData.recipientId)) ||
+          (u._id && String(u._id) === String(notificationData.recipientId)) ||
+          (u.email && String(u.email).toLowerCase() === String(notificationData.recipientId).toLowerCase()) ||
+          (notificationData.recipientEmail && u.email && String(u.email).toLowerCase() === String(notificationData.recipientEmail).toLowerCase()) ||
+          (isPetOwnerNotif && (u.role === 'PET_OWNER' || u.role === 'OWNER'));
+
+        if (matchesUser) {
+          if (u.id) targetKeys.add(`vhms_notifications_${u.id}`);
+          if (u._id) targetKeys.add(`vhms_notifications_${u._id}`);
+          if (u.email) targetKeys.add(`vhms_notifications_${u.email}`);
+          if (isPetOwnerNotif && !extraRegisteredOwner && (u.id || u._id)) {
+            extraRegisteredOwner = u;
+          }
+        }
+      });
+    } catch (e) {}
+
+    targetKeys.forEach(userKey => {
+      try {
+        const userList = JSON.parse(localStorage.getItem(userKey) || '[]');
+        userList.unshift(newNotif);
+        localStorage.setItem(userKey, JSON.stringify(userList));
+      } catch (e) {}
+    });
+
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
+    window.dispatchEvent(new CustomEvent('vhms_invoices_changed'));
 
-    // Also attempt to post to backend
+    // Post to backend with clean payload (omit sentAt so Jackson does not throw DateTimeParseException)
     try {
+      const backendPayload = {
+        recipientId: String(newNotif.recipientId),
+        recipientRole: newNotif.recipientRole || 'PET_OWNER',
+        recipientEmail: newNotif.recipientEmail || '',
+        recipientPhone: newNotif.recipientPhone || '',
+        notificationType: validType,
+        title: newNotif.title,
+        message: newNotif.message,
+        referenceType: newNotif.referenceType || 'INVOICE',
+        referenceId: newNotif.referenceId || '',
+        isRead: false,
+      };
+
       const res = await fetchWithTimeout(`${API_BASE_URL}/notifications/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newNotif),
+        body: JSON.stringify(backendPayload),
       });
       if (res.ok) {
         const json = await res.json();
@@ -295,6 +487,20 @@ export const notificationService = {
           }
         }
       }
+
+      // If sent to generic USR-5001 and we found a real registered pet owner, also post to their ID on backend
+      if (extraRegisteredOwner && String(newNotif.recipientId) === 'USR-5001' && (extraRegisteredOwner.id || extraRegisteredOwner._id)) {
+        const realId = String(extraRegisteredOwner.id || extraRegisteredOwner._id);
+        fetchWithTimeout(`${API_BASE_URL}/notifications/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...backendPayload,
+            recipientId: realId,
+            recipientEmail: extraRegisteredOwner.email || backendPayload.recipientEmail,
+          }),
+        }).catch(() => {});
+      }
     } catch (e) {}
 
     return { success: true, data: newNotif };
@@ -303,31 +509,54 @@ export const notificationService = {
   async markAsRead(notificationId, optionalNotification = null) {
     try {
       const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
-      const set = new Set(storedRead.filter((id) => id && !String(id).startsWith('ref_') && !String(id).startsWith('sig_')));
-      if (notificationId) set.add(notificationId);
+      const set = new Set(storedRead.map(String).filter((id) => id && !id.startsWith('ref_') && !id.startsWith('sig_')));
+      if (notificationId) set.add(String(notificationId));
       if (optionalNotification && optionalNotification.id) {
-        set.add(optionalNotification.id);
+        set.add(String(optionalNotification.id));
       }
       localStorage.setItem('vhms_read_notification_ids', JSON.stringify(Array.from(set)));
 
-      const list = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
-      let updated = false;
-      list.forEach((n) => {
-        if (
-          (notificationId && n.id === notificationId) ||
-          (optionalNotification && (
-            (optionalNotification.id && n.id === optionalNotification.id) ||
-            (n.title === optionalNotification.title && n.message === optionalNotification.message)
-          ))
-        ) {
-          n.read = true;
-          n.isRead = true;
-          updated = true;
-        }
-      });
-      if (updated) {
-        localStorage.setItem('vhms_epic4_notifications', JSON.stringify(list));
+      // Remove from unreadIds
+      const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+      const unreadFiltered = storedUnread.filter(id => id !== String(notificationId) && (!optionalNotification?.id || id !== String(optionalNotification.id)));
+      localStorage.setItem('vhms_unread_notification_ids', JSON.stringify(unreadFiltered));
+
+      const updateList = (list) => {
+        let changed = false;
+        list.forEach((n) => {
+          if (!n) return;
+          const match =
+            (notificationId && String(n.id) === String(notificationId)) ||
+            (optionalNotification && (
+              (optionalNotification.id && String(n.id) === String(optionalNotification.id)) ||
+              (n.title === optionalNotification.title && n.message === optionalNotification.message)
+            ));
+          if (match) {
+            n.read = true;
+            n.isRead = true;
+            changed = true;
+          }
+        });
+        return changed;
+      };
+
+      const epicList = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
+      if (updateList(epicList)) {
+        localStorage.setItem('vhms_epic4_notifications', JSON.stringify(epicList));
       }
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('vhms_notifications_')) {
+          try {
+            const bucket = JSON.parse(localStorage.getItem(k) || '[]');
+            if (Array.isArray(bucket) && updateList(bucket)) {
+              localStorage.setItem(k, JSON.stringify(bucket));
+            }
+          } catch (e) {}
+        }
+      }
+
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
     } catch (e) {}
@@ -345,6 +574,65 @@ export const notificationService = {
     return { success: true };
   },
 
+  async markAsUnread(notificationId, optionalNotification = null) {
+    try {
+      // Add to unreadIds
+      const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+      const unreadSet = new Set(storedUnread.map(String));
+      if (notificationId) unreadSet.add(String(notificationId));
+      if (optionalNotification && optionalNotification.id) {
+        unreadSet.add(String(optionalNotification.id));
+      }
+      localStorage.setItem('vhms_unread_notification_ids', JSON.stringify(Array.from(unreadSet)));
+
+      // Remove from readIds
+      const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+      const readFiltered = storedRead.filter(id => id !== String(notificationId) && (!optionalNotification?.id || id !== String(optionalNotification.id)));
+      localStorage.setItem('vhms_read_notification_ids', JSON.stringify(readFiltered));
+
+      const updateList = (list) => {
+        let changed = false;
+        list.forEach((n) => {
+          if (!n) return;
+          const match =
+            (notificationId && String(n.id) === String(notificationId)) ||
+            (optionalNotification && (
+              (optionalNotification.id && String(n.id) === String(optionalNotification.id)) ||
+              (n.title === optionalNotification.title && n.message === optionalNotification.message)
+            ));
+          if (match) {
+            n.read = false;
+            n.isRead = false;
+            changed = true;
+          }
+        });
+        return changed;
+      };
+
+      const epicList = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
+      if (updateList(epicList)) {
+        localStorage.setItem('vhms_epic4_notifications', JSON.stringify(epicList));
+      }
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('vhms_notifications_')) {
+          try {
+            const bucket = JSON.parse(localStorage.getItem(k) || '[]');
+            if (Array.isArray(bucket) && updateList(bucket)) {
+              localStorage.setItem(k, JSON.stringify(bucket));
+            }
+          } catch (e) {}
+        }
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
+    } catch (e) {}
+
+    return { success: true };
+  },
+
   async markAllAsRead(recipientId) {
     try {
       const all = await this.getNotifications(recipientId);
@@ -357,7 +645,7 @@ export const notificationService = {
 
       const list = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
       list.forEach((n) => {
-        if (!recipientId || n.recipientId === recipientId || n.recipientId === 'ALL') {
+        if (recipientId && String(n.recipientId || '') === String(recipientId)) {
           n.read = true;
           n.isRead = true;
         }
@@ -380,6 +668,17 @@ export const notificationService = {
       }
     } catch (e) {}
 
+    return { success: true };
+  },
+
+  async deleteNotification(notificationId) {
+    try {
+      const list = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
+      const filtered = list.filter((n) => n.id !== notificationId);
+      localStorage.setItem('vhms_epic4_notifications', JSON.stringify(filtered));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
+    } catch (e) {}
     return { success: true };
   },
 };

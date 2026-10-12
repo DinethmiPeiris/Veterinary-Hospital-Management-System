@@ -49,32 +49,32 @@ const getLocalAppointments = () => {
   try {
     const epic4 = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
     const legacy = JSON.parse(localStorage.getItem('vhms_user_appointments') || '[]');
-    
+
     const map = new Map();
     // Normalize legacy appointments so they match Epic 4 structure
     legacy.forEach(a => {
-        const id = a.id || a.appointmentNumber;
-        const statusMap = {
-            'APPROVED': 'CONFIRMED',
-            'PENDING_APPROVAL': 'REQUESTED'
-        };
-        let normDate = a.appointmentDate || a.date;
-        if (normDate && String(normDate).length > 20) {
-            try { normDate = new Date(normDate).toISOString().split('T')[0]; } catch(e) {}
-        }
-        map.set(id, {
-            ...a,
-            appointmentNumber: a.appointmentNumber || id,
-            appointmentDate: normDate,
-            status: statusMap[a.status] || a.status
-        });
+      const id = a.id || a.appointmentNumber;
+      const statusMap = {
+        'APPROVED': 'CONFIRMED',
+        'PENDING_APPROVAL': 'REQUESTED'
+      };
+      let normDate = a.appointmentDate || a.date;
+      if (normDate && String(normDate).length > 20) {
+        try { normDate = new Date(normDate).toISOString().split('T')[0]; } catch (e) { }
+      }
+      map.set(id, {
+        ...a,
+        appointmentNumber: a.appointmentNumber || id,
+        appointmentDate: normDate,
+        status: statusMap[a.status] || a.status
+      });
     });
-    
+
     epic4.forEach(a => {
-        const id = a.id || a.appointmentNumber;
-        map.set(id, a);
+      const id = a.id || a.appointmentNumber;
+      map.set(id, a);
     });
-    
+
     return Array.from(map.values());
   } catch (e) {
     return [];
@@ -87,22 +87,45 @@ const saveLocalAppointments = (list) => {
 
 const addLocalNotification = (recipientId, title, message, extra = {}) => {
   try {
+    if (!recipientId) return;
     const notes = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
-    notes.unshift({
+    const newNote = {
       id: 'note-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      recipientId: recipientId || 'USR-5001',
+      recipientId,
       recipientRole: 'PET_OWNER',
       title,
       message,
       read: false,
       isRead: false,
       sentAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       ...extra,
-    });
+    };
+    notes.unshift(newNote);
     localStorage.setItem('vhms_epic4_notifications', JSON.stringify(notes));
+
+    // Sync to legacy Epic 2 local storage so legacy dashboards (PetManagementPage) see it
+    try {
+      if (recipientId === 'ALL') {
+         for (let i = 0; i < localStorage.length; i++) {
+           const k = localStorage.key(i);
+           if (k && k.startsWith('vhms_notifications_')) {
+             const oldNotes = JSON.parse(localStorage.getItem(k) || '[]');
+             oldNotes.unshift({ ...newNote, timestamp: 'Just now', type: extra.type || 'APPOINTMENT' });
+             localStorage.setItem(k, JSON.stringify(oldNotes));
+           }
+         }
+      } else {
+         const k = `vhms_notifications_${recipientId}`;
+         const oldNotes = JSON.parse(localStorage.getItem(k) || '[]');
+         oldNotes.unshift({ ...newNote, timestamp: 'Just now', type: extra.type || 'APPOINTMENT' });
+         localStorage.setItem(k, JSON.stringify(oldNotes));
+      }
+    } catch(err) {}
+
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
-  } catch (e) {}
+  } catch (e) { }
 };
 
 export const appointmentService = {
@@ -156,9 +179,9 @@ export const appointmentService = {
     list.unshift(newAppt);
     saveLocalAppointments(list);
 
-    // Add local notification
+    // Add local notification only for the real owner id
     addLocalNotification(
-      data.ownerId || 'USR-5001',
+      data.ownerId,
       'Appointment Request Submitted',
       `Your request for ${data.petName} on ${data.appointmentDate} (${data.timeSlot}) is pending Admin approval.`
     );
@@ -190,19 +213,41 @@ export const appointmentService = {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/${id}`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const appt = getLocalAppointments().find((a) => a.id === id);
     return { success: !!appt, data: appt };
   },
 
-  // Get appointments by Owner (Pet Owner)
   async getAppointmentsByOwner(ownerId) {
+    let allAppts = [];
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/owner/${ownerId}`);
-      if (res.ok) return await res.json();
-    } catch (e) {}
-    const list = getLocalAppointments().filter((a) => a.ownerId === ownerId);
-    return { success: true, data: list };
+      if (res.ok) {
+        const json = await res.json();
+        allAppts = json.data && Array.isArray(json.data) ? json.data : [];
+      }
+    } catch (e) { }
+
+    // Merge with local appointments
+    const local = getLocalAppointments().filter((a) => a.ownerId === ownerId || a.ownerId === undefined); // fallback in case ownerId is missing but we know it's theirs... actually better to just filter after merge or filter local only
+    const map = new Map();
+    allAppts.forEach(a => map.set(a.id || a.appointmentNumber, a));
+
+    // Some local appointments might not have ownerId correctly set if they were mocked, let's filter those that match ownerId if it exists.
+    const localFiltered = getLocalAppointments().filter(a => String(a.ownerId) === String(ownerId) || !a.ownerId);
+    // Actually, local appts might just be for this owner in demo. Let's merge by ID.
+    getLocalAppointments().forEach(a => {
+      const isOwner = String(a.ownerId) === String(ownerId) || String(a.petOwnerId) === String(ownerId);
+      if (map.has(a.id || a.appointmentNumber) || isOwner) {
+        map.set(a.id || a.appointmentNumber, { ...(map.get(a.id || a.appointmentNumber) || {}), ...a });
+      }
+    });
+
+    const mergedList = Array.from(map.values()).filter(a => {
+      const isOwner = String(a.ownerId) === String(ownerId) || String(a.petOwnerId) === String(ownerId);
+      return isOwner || allAppts.some(apiA => apiA.id === a.id);
+    });
+    return { success: true, data: mergedList };
   },
 
   async getAppointmentsByDoctor(doctorId) {
@@ -213,8 +258,8 @@ export const appointmentService = {
         const json = await res.json();
         allAppts = json.data && Array.isArray(json.data) ? json.data : [];
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // Merge with local appointments
     const local = getLocalAppointments();
     const map = new Map();
@@ -223,18 +268,18 @@ export const appointmentService = {
     const mergedList = Array.from(map.values());
 
     let user = null;
-    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
-    
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) { }
+
     const filteredList = mergedList.filter((a) => {
-        let match = (String(a.doctorId) === String(doctorId));
-        if (!match && user) {
-            if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
-            if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
-            if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
-        }
-        return match && a.status !== 'REQUESTED' && !String(a.doctorName || '').includes('Dr. Smith');
+      let match = (String(a.doctorId) === String(doctorId));
+      if (!match && user) {
+        if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
+        if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
+        if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
+      }
+      return match && a.status !== 'REQUESTED' && !String(a.doctorName || '').includes('Dr. Smith');
     });
-    
+
     return { success: true, data: filteredList };
   },
 
@@ -248,8 +293,8 @@ export const appointmentService = {
         const json = await res.json();
         allAppts = json.data && Array.isArray(json.data) ? json.data : [];
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // Merge with local appointments
     const local = getLocalAppointments();
     const map = new Map();
@@ -258,18 +303,18 @@ export const appointmentService = {
     const mergedList = Array.from(map.values());
 
     let user = null;
-    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
-    
+    try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) { }
+
     const filteredList = mergedList.filter((a) => {
-        let match = (String(a.doctorId) === String(doctorId));
-        if (!match && user) {
-            if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
-            if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
-            if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
-        }
-        return match && a.appointmentDate === queryDate && a.status !== 'REQUESTED' && a.status !== 'CANCELLED' && a.status !== 'REJECTED' && !String(a.doctorName || '').includes('Dr. Smith');
+      let match = (String(a.doctorId) === String(doctorId));
+      if (!match && user) {
+        if (String(a.doctorId) === String(user.id) || String(a.doctorId) === String(user.staffId)) match = true;
+        if (a.doctorName && user.name && a.doctorName.toLowerCase().includes(user.name.toLowerCase())) match = true;
+        if (a.doctorName && user.fullName && a.doctorName.toLowerCase().includes(user.fullName.toLowerCase())) match = true;
+      }
+      return match && a.appointmentDate === queryDate && a.status !== 'REQUESTED' && a.status !== 'CANCELLED' && a.status !== 'REJECTED' && !String(a.doctorName || '').includes('Dr. Smith');
     });
-    
+
     return { success: true, data: filteredList };
   },
 
@@ -278,13 +323,13 @@ export const appointmentService = {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/${id}/approve`, { method: 'PATCH' });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id);
     if (appt) {
       appt.status = 'CONFIRMED';
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, 'Appointment Confirmed! ✅', `Your appointment for ${appt.petName} on ${appt.appointmentDate} (${appt.timeSlot}) has been approved.`);
+      addLocalNotification((appt.ownerId || appt.petOwnerId), 'Appointment Confirmed! ✅', `Your appointment for ${appt.petName} on ${appt.appointmentDate} (${appt.timeSlot}) has been approved.`);
       if (appt.doctorId) {
         addLocalNotification(appt.doctorId, 'New Confirmed Appointment Assigned', `An appointment for ${appt.petName} on ${appt.appointmentDate} (${appt.timeSlot}) has been confirmed and assigned to your schedule.`);
       }
@@ -302,14 +347,14 @@ export const appointmentService = {
         body: JSON.stringify({ reason }),
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id);
     if (appt) {
       appt.status = 'REJECTED';
       appt.rejectionReason = reason;
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, 'Appointment Cancelled/Rejected', `Appointment request #${appt.appointmentNumber} could not be confirmed: ${reason}`);
+      addLocalNotification((appt.ownerId || appt.petOwnerId), 'Appointment Cancelled/Rejected', `Appointment request #${appt.appointmentNumber} could not be confirmed: ${reason}`);
       return { success: true, data: appt };
     }
     return { success: false, message: 'Appointment not found' };
@@ -324,7 +369,7 @@ export const appointmentService = {
         body: JSON.stringify(data),
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id);
     if (appt) {
@@ -333,7 +378,7 @@ export const appointmentService = {
       appt.doctorName = data.newDoctorName;
       appt.status = 'CONFIRMED';
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, 'Doctor Assigned/Updated', `Your appointment #${appt.appointmentNumber} is assigned to ${data.newDoctorName}.`);
+      addLocalNotification((appt.ownerId || appt.petOwnerId), 'Doctor Assigned/Updated', `Your appointment #${appt.appointmentNumber} is assigned to ${data.newDoctorName}.`);
       return { success: true, data: appt };
     }
     return { success: false, message: 'Appointment not found' };
@@ -348,7 +393,7 @@ export const appointmentService = {
         body: JSON.stringify(data),
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id);
     if (appt) {
@@ -369,7 +414,7 @@ export const appointmentService = {
         appt.adminNotes = (wasRejected ? 'Re-selected: ' : 'Rescheduled: ') + data.rescheduleReason;
       }
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, wasRejected ? 'Appointment Resubmitted' : 'Appointment Rescheduled', `Your appointment #${appt.appointmentNumber} is now scheduled for ${data.newAppointmentDate} at ${data.newTimeSlot} with ${appt.doctorName}.`);
+      addLocalNotification((appt.ownerId || appt.petOwnerId), wasRejected ? 'Appointment Resubmitted' : 'Appointment Rescheduled', `Your appointment #${appt.appointmentNumber} is now scheduled for ${data.newAppointmentDate} at ${data.newTimeSlot} with ${appt.doctorName}.`);
       if (appt.doctorId) {
         addLocalNotification(appt.doctorId, `Appointment #${appt.appointmentNumber} Rescheduled`, `Patient ${appt.petName} (${appt.ownerName}) is now rescheduled to ${data.newAppointmentDate} at ${data.newTimeSlot}.`);
       }
@@ -380,22 +425,45 @@ export const appointmentService = {
 
   // Cancel appointment
   async cancelAppointment(id, reason, cancelledBy = 'ADMIN') {
+    const list = getLocalAppointments();
+    let appt = list.find((a) => a.id === id || a.appointmentNumber === id);
+    let ownerId = appt?.ownerId || appt?.petOwnerId;
+    let apptNum = appt?.appointmentNumber || id;
+
+    // Always dispatch local notification
+    if (ownerId) {
+      addLocalNotification(
+        ownerId,
+        'Appointment Cancelled',
+        `Your appointment #${apptNum} has been cancelled by ${cancelledBy}. Reason: ${reason || 'Not specified'}.`,
+        { referenceType: 'APPOINTMENT', referenceId: id, type: 'APPOINTMENT_CANCELLED' }
+      );
+    }
+
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/${id}/cancel`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason, cancelledBy }),
       });
-      if (res.ok) return await res.json();
-    } catch (e) {}
-    const list = getLocalAppointments();
-    const appt = list.find((a) => a.id === id);
+      if (res.ok) {
+        // Backend success - we can still update local state for UI reactivity
+        if (appt) {
+          appt.status = 'CANCELLED';
+          appt.cancellationReason = reason;
+          appt.cancelledBy = cancelledBy;
+          saveLocalAppointments(list);
+        }
+        return await res.json();
+      }
+    } catch (e) { }
+
+    // Fallback if backend fails
     if (appt) {
       appt.status = 'CANCELLED';
       appt.cancellationReason = reason;
       appt.cancelledBy = cancelledBy;
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, 'Appointment Cancelled', `Your appointment #${appt.appointmentNumber} has been cancelled.`);
       return { success: true, data: appt };
     }
     return { success: false, message: 'Appointment not found' };
@@ -410,14 +478,14 @@ export const appointmentService = {
         body: JSON.stringify({ doctorNotes }),
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id);
     if (appt) {
       appt.status = 'COMPLETED';
       appt.doctorNotes = doctorNotes;
       saveLocalAppointments(list);
-      addLocalNotification(appt.ownerId, 'Consultation Completed! 🩺', `Doctor consultation for ${appt.petName} is completed.`);
+      addLocalNotification((appt.ownerId || appt.petOwnerId), 'Consultation Completed! 🩺', `Doctor consultation for ${appt.petName} is completed.`);
       return { success: true, data: appt };
     }
     return { success: false, message: 'Appointment not found' };
@@ -435,7 +503,7 @@ export const appointmentService = {
       if (res.ok) {
         return await res.json();
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const list = getLocalAppointments();
     const appt = list.find((a) => a.id === id || a.appointmentNumber === id);
@@ -468,19 +536,19 @@ export const appointmentService = {
       if (apptData?.appointmentNumber) allowed[apptData.appointmentNumber] = true;
       localStorage.setItem('vhms_epic4_rebook_allowed', JSON.stringify(allowed));
       window.dispatchEvent(new Event('storage'));
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/${id}/notify-rebook`, { method: 'POST' });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
 
     // Local fallback notification
     const list = getLocalAppointments();
     const appt = apptData || list.find((a) => a.id === id || a.appointmentNumber === id);
     if (appt) {
       addLocalNotification(
-        appt.ownerId || 'USR-5001',
+        (appt.ownerId || appt.petOwnerId),
         'Appointment Expired - Re-booking Available ⌛',
         `Your scheduled appointment #${appt.appointmentNumber} for ${appt.petName} on ${appt.appointmentDate} was marked as expired. Hospital Admin has opened the re-booking option for you. Please visit your Pet Owner Portal to book a new slot if care is needed.`
       );
@@ -501,7 +569,10 @@ export const appointmentService = {
     const date = appt?.appointmentDate || 'scheduled date';
     const time = appt?.timeSlot || 'scheduled time';
     const doc = appt?.doctorName || 'Assigned Veterinarian';
-    const ownerId = appt?.ownerId || 'USR-5001';
+    const ownerId = appt?.ownerId || appt?.petOwnerId;
+    if (!ownerId) {
+      return { success: false, message: 'Appointment owner is missing' };
+    }
 
     // Dispatch local notification for immediate UI bell update
     addLocalNotification(
@@ -514,7 +585,7 @@ export const appointmentService = {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/appointments/${id}/remind`, { method: 'POST' });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
 
     return { success: true, message: 'Reminder sent' };
   },
@@ -533,7 +604,7 @@ export const appointmentService = {
         body: JSON.stringify(scheduleData),
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true, data: scheduleData };
   },
 
@@ -543,7 +614,7 @@ export const appointmentService = {
         method: 'DELETE',
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true };
   },
 
@@ -551,7 +622,7 @@ export const appointmentService = {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/doctor-schedules/doctor/${doctorId}`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true, data: [] };
   },
 

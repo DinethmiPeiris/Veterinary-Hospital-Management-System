@@ -14,10 +14,10 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
     userObj = JSON.parse(localStorage.getItem('vhms_user'));
   } catch(e) {}
   
-  const ownerId = userObj?.id || 'USR-5001';
+  const ownerId = userObj?.id || userObj?._id || userObj?.userId || userObj?.email || '';
   const ownerName = userObj?.name || userObj?.fullName || '';
-  const ownerEmail = userObj?.email || 'john.doe@example.com';
-  const ownerPhone = userObj?.phone || '+94 77 123 4567';
+  const ownerEmail = userObj?.email || '';
+  const ownerPhone = userObj?.phone || '';
 
   // Normalize raw species values: "Feline" → "Cat", "Canine" → "Dog"
   const normalizeSpecies = (species) => {
@@ -122,7 +122,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
       try {
         const notifs = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
         const latest = notifs[0];
-        if (latest && !latest.read && (latest.recipientId === ownerId || latest.recipientId === 'ALL')) {
+        if (latest && !latest.read && ownerId && latest.recipientId === ownerId) {
           showNotification(`🔔 ${latest.title} — ${latest.message}`, 'info');
         }
       } catch (err) { }
@@ -488,6 +488,38 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
       const res = await paymentService.processPayment(payload);
       if (res && res.success) {
         showNotification('Payment Success! Receipt #' + res.data.receiptNumber, 'success');
+        
+        // Notify pet owner
+        try {
+          if (ownerId) {
+            const notifMsg = {
+              id: 'NOTIF-' + Date.now(),
+              recipientId: ownerId,
+              recipientRole: 'PET_OWNER',
+              title: '💳 Payment Received',
+              message: `Your online payment of Rs. ${Number(payAmount).toFixed(2)} for Invoice #${selectedInvoice.invoiceNumber} has been received successfully. Receipt: ${res.data.receiptNumber}`,
+              type: 'PAYMENT_SUCCESS',
+              referenceType: 'PAYMENT',
+              referenceId: res.data.receiptNumber,
+              read: false,
+              sentAt: new Date().toISOString()
+            };
+            const userKey = `vhms_notifications_${ownerId}`;
+            const userList = JSON.parse(localStorage.getItem(userKey) || '[]');
+            userList.unshift(notifMsg);
+            localStorage.setItem(userKey, JSON.stringify(userList));
+            
+            const epic4List = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
+            epic4List.unshift(notifMsg);
+            localStorage.setItem('vhms_epic4_notifications', JSON.stringify(epic4List));
+            
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new CustomEvent('vhms_notifications_changed'));
+          }
+        } catch (e) {
+          console.error("Failed to notify pet owner of payment", e);
+        }
+
         setShowPaymentModal(false);
         setSelectedReceipt(res.data);
         setShowReceiptModal(true);
@@ -667,9 +699,13 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
   const handleDownloadReport = (appt) => {
     let consultation = { ...appt };
     try {
-      const drafts = JSON.parse(localStorage.getItem('vhms_consultation_drafts') || '{}');
-      if (drafts[appt.id]) {
-        consultation = { ...consultation, ...drafts[appt.id] };
+      const allConsultations = JSON.parse(localStorage.getItem('vhms_consultations_store') || '{}');
+      if (allConsultations[appt.id]) {
+        consultation = { ...consultation, ...allConsultations[appt.id] };
+      } else {
+        const draftKey = `vhms_consultation_draft_${appt.id}`;
+        const draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        consultation = { ...consultation, ...draft };
       }
     } catch (e) {}
 
@@ -813,7 +849,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
           className={`epic-tab-btn ${activeTab === 'appointments' ? 'active' : ''}`}
           onClick={() => setActiveTab('appointments')}
         >
-          📅 Appointments
+          🗓️ Appointments
         </button>
         <button
           className={`epic-tab-btn ${activeTab === 'records' ? 'active' : ''}`}
@@ -830,7 +866,7 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
           className={`epic-tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
           onClick={() => setActiveTab('payments')}
         >
-          🧾 Payment History & Receipts ({payments.length})
+          🧾 Payment History & Receipts
         </button>
       </div>
 
@@ -1428,6 +1464,137 @@ export default function PetOwnerPortal({ initialView = null, hideHeader = false,
           <div className="epic-card" style={{ padding: '0', overflow: 'hidden' }}>
             <PetOwnerMedicalHistory ownerPets={ownerPets} />
           </div>
+        </div>
+      )}
+
+      {/* TAB 5: MY REVIEWS (US 4.12) */}
+      {activeTab === 'myreviews' && (
+        <div className="epic-card">
+          <div className="epic-card-header">
+            <h2>⭐ My Submitted Reviews</h2>
+            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              {submittedFeedback.length} Review{submittedFeedback.length !== 1 ? 's' : ''} Submitted
+            </span>
+          </div>
+
+          {submittedFeedback.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⭐</div>
+              <p style={{ fontWeight: '600', fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                No reviews submitted yet.
+              </p>
+              <p style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                After a completed appointment, you can leave a review from the{' '}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('appointments')}
+                  style={{ color: '#7c3aed', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.875rem' }}
+                >
+                  Appointments tab
+                </button>
+                .
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {submittedFeedback.map((fb, idx) => (
+                <div
+                  key={fb.id || idx}
+                  style={{
+                    background: '#fafafa',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.65rem',
+                  }}
+                >
+                  {/* Header Row: Appointment # + Pet + Doctor */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>
+                          {fb.appointmentNumber || ('Appointment #' + (idx + 1))}
+                        </strong>
+                        {fb.petName && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>• 🐾 {fb.petName}</span>
+                        )}
+                        {fb.doctorName && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>• 👨‍⚕️ {fb.doctorName}</span>
+                        )}
+                      </div>
+                      {fb.submittedAt && (
+                        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                          Submitted: {new Date(fb.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {/* Star Rating Display */}
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            style={{
+                              fontSize: '1.15rem',
+                              color: fb.rating >= star ? '#f59e0b' : '#d1d5db',
+                              lineHeight: 1
+                            }}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#f59e0b' }}>
+                        {fb.rating}/5
+                      </span>
+                      {/* Published Badge */}
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: '700',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '9999px',
+                          background: fb.published !== false ? '#d1fae5' : '#fef9c3',
+                          color: fb.published !== false ? '#065f46' : '#713f12',
+                          border: '1px solid ' + (fb.published !== false ? '#6ee7b7' : '#fde68a'),
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {fb.published !== false ? '✓ Published' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Review Comment */}
+                  {fb.reviewComments && (
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #f1f5f9',
+                        borderRadius: '8px',
+                        padding: '0.75rem 1rem',
+                        fontSize: '0.875rem',
+                        color: '#334155',
+                        lineHeight: '1.55',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      "{fb.reviewComments}"
+                    </div>
+                  )}
+
+                  {/* Service Category */}
+                  {fb.serviceCategory && (
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      Service: <strong style={{ color: '#475569' }}>{fb.serviceCategory.replace(/_/g, ' ')}</strong>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

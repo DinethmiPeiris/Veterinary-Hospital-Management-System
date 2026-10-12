@@ -17,10 +17,11 @@ export function getEpic3Session() {
   const isDoctor = role === 'DOCTOR'
   return {
     ...DEMO,
-    ownerId: (isOwner && u.id) || DEMO.ownerId,
-    ownerName: (isOwner && u.name) || DEMO.ownerName,
-    doctorId: (isDoctor && (u.id || u.email)) || DEMO.doctorId,
-    doctorName: (isDoctor && u.name) || DEMO.doctorName
+    ownerId: (isOwner && (u.id || u._id || u.userId || u.email)) || DEMO.ownerId,
+    ownerEmail: (isOwner && u.email) || '',
+    ownerName: (isOwner && (u.name || u.fullName)) || DEMO.ownerName,
+    doctorId: (isDoctor && (u.id || u._id || u.userId || u.email)) || DEMO.doctorId,
+    doctorName: (isDoctor && (u.name || u.fullName)) || DEMO.doctorName
   }
 }
 

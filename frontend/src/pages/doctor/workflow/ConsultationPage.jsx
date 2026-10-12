@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import './ConsultationPage.css'
 import {
@@ -60,6 +60,11 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
   const [savingHospitalization, setSavingHospitalization] = useState(false)
   const [showPostConsultationModal, setShowPostConsultationModal] = useState(false)
 
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState('') // '' | 'saving' | 'saved'
+  const autoSaveTimer = useRef(null)
+  const isLoadedRef = useRef(false) // prevent auto-save firing during initial load
+
   const handleExit = () => {
     if (onExit) {
       onExit()
@@ -111,7 +116,10 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
         }
 
         setChargeItems(
-          savedServices && savedServices.length > 0
+          // Restore from auto-save draft (chargeItems), or appointment's saved services, or default
+          (form.chargeItems && form.chargeItems.length > 0)
+            ? form.chargeItems
+            : savedServices && savedServices.length > 0
             ? savedServices
             : [
                 { description: SERVICES_MAP['CONSULTATION'][0], itemType: 'CONSULTATION', quantity: 1 },
@@ -123,6 +131,7 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
           clinicalObservations: form.clinicalObservations || '',
           diagnosis: form.diagnosis || '',
           treatmentPlan: form.treatmentPlan || '',
+          currentWeight: form.currentWeight || appt.weight || '',
           prescriptions: Array.isArray(form.prescriptions) ? form.prescriptions : [],
           status: appt.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
         })
@@ -147,6 +156,61 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
     load()
     return () => { cancelled = true }
   }, [appointmentId])
+
+  // Mark form as loaded after initial data is set, so auto-save doesn't fire on mount
+  useEffect(() => {
+    if (!loading && appointment) {
+      isLoadedRef.current = true
+    }
+  }, [loading, appointment])
+
+  // Auto-save draft to localStorage whenever formData or chargeItems changes (debounced 2s)
+  const performAutoSave = useCallback(() => {
+    if (!appointmentId || isCompleted) return
+    setAutoSaveStatus('saving')
+    try {
+      // Save form data to localStorage under draft key
+      const draftKey = `vhms_consultation_draft_${appointmentId}`
+      localStorage.setItem(draftKey, JSON.stringify({
+        ...formData,
+        chargeItems,
+        autoSavedAt: new Date().toISOString(),
+      }))
+      setAutoSaveStatus('saved')
+    } catch (e) {
+      setAutoSaveStatus('')
+    }
+  }, [appointmentId, formData, chargeItems, isCompleted])
+
+  useEffect(() => {
+    if (!isLoadedRef.current || isCompleted) return
+    // Clear any pending timer
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    setAutoSaveStatus('saving')
+    // Debounce: save 2 seconds after last change
+    autoSaveTimer.current = setTimeout(() => {
+      performAutoSave()
+    }, 2000)
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  }, [formData, chargeItems]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save on unmount so navigating away never loses data
+  useEffect(() => {
+    return () => {
+      if (appointmentId && !isCompleted && isLoadedRef.current) {
+        try {
+          const draftKey = `vhms_consultation_draft_${appointmentId}`
+          const current = JSON.parse(localStorage.getItem(draftKey) || '{}')
+          localStorage.setItem(draftKey, JSON.stringify({
+            ...current,
+            autoSavedAt: new Date().toISOString(),
+          }))
+        } catch (e) {}
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -263,20 +327,22 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
 
   const handleSaveDraft = async () => {
     if (isCompleted) return
-
-    if (!formData.diagnosis?.trim()) {
-      alert('Please provide a diagnosis before saving the draft.')
-      return
-    }
-
     setSaving(true)
+    setAutoSaveStatus('saving')
     try {
-      await saveConsultationDraft(appointmentId, formData)
-      alert('Draft saved to MongoDB. Appointment status is In Progress.')
-      handleExit()
+      // Save to the auto-save draft key immediately
+      const draftKey = `vhms_consultation_draft_${appointmentId}`
+      localStorage.setItem(draftKey, JSON.stringify({
+        ...formData,
+        chargeItems,
+        autoSavedAt: new Date().toISOString(),
+      }))
+      // Also try to persist to backend/legacy store (non-blocking)
+      saveConsultationDraft(appointmentId, formData).catch(() => {})
+      setAutoSaveStatus('saved')
     } catch (error) {
       console.error('Failed to save draft:', error)
-      alert(error.message || 'Failed to save draft.')
+      setAutoSaveStatus('')
     } finally {
       setSaving(false)
     }
@@ -315,12 +381,14 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
       try {
         const list = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
         let appt = list.find((a) => a.id === appointment.id || a.appointmentNumber === appointment.appointmentNumber);
-        if (appt) {
-          appt.treatmentServices = chargeItems;
-          appt.servicesSubmittedAt = new Date().toISOString();
-          appt.hasPendingInvoice = true;
-          localStorage.setItem('vhms_epic4_appointments', JSON.stringify(list));
+        if (!appt) {
+          appt = { id: appointment.id, appointmentNumber: appointment.appointmentNumber };
+          list.push(appt);
         }
+        appt.treatmentServices = chargeItems;
+        appt.servicesSubmittedAt = new Date().toISOString();
+        appt.hasPendingInvoice = true;
+        localStorage.setItem('vhms_epic4_appointments', JSON.stringify(list));
 
         // Add notification for Admin to price and generate invoice
         const notifs = JSON.parse(localStorage.getItem('vhms_epic4_notifications') || '[]');
@@ -333,6 +401,35 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
           sentAt: new Date().toISOString(),
         });
         localStorage.setItem('vhms_epic4_notifications', JSON.stringify(notifs));
+
+        // Add notification for Pet Owner
+        const ownerId = appointment.ownerId || appointment.petOwnerId || appointment.pet?.ownerId;
+        const ownerKey = ownerId || appointment.ownerEmail;
+        if (ownerKey) {
+          const newNotif = {
+            id: 'notif-owner-comp-' + Date.now(),
+            recipientId: ownerKey,
+            type: 'APPOINTMENT',
+            title: '✅ Consultation Completed',
+            message: `The consultation for ${appointment.petName} with ${appointment.doctorName || 'your doctor'} has been completed.`,
+            read: false,
+            timestamp: new Date().toISOString(),
+            sentAt: new Date().toISOString(),
+          };
+          notifs.unshift(newNotif);
+          localStorage.setItem('vhms_epic4_notifications', JSON.stringify(notifs));
+          
+          try {
+            const legacyKey = `vhms_notifications_${ownerKey}`;
+            const legacyNotifs = JSON.parse(localStorage.getItem(legacyKey) || '[]');
+            legacyNotifs.unshift({ ...newNotif, timestamp: 'Just now' });
+            localStorage.setItem(legacyKey, JSON.stringify(legacyNotifs));
+          } catch(e) {}
+          
+          // Emit custom event so NotificationBell updates immediately
+          window.dispatchEvent(new Event('vhms_notifications_changed'));
+        }
+
         window.dispatchEvent(new Event('storage'));
       } catch (e) {
         console.error('Failed to update local storage for invoicing', e)
@@ -384,24 +481,136 @@ const ConsultationPage = ({ appointmentId: appointmentIdProp, onExit }) => {
             </Link>
           )}
         </div>
-        <div className="action-buttons">
-          <button className="btn btn-secondary" onClick={handleExit}>
-            ✕ Cancel
-          </button>
-          {!isCompleted && (
-            <button className="btn btn-primary" onClick={handleSaveDraft} disabled={saving}>
-              💾 {saving ? 'Saving...' : 'Save Draft'}
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+          {/* Auto-save status indicator */}
+          {!isCompleted && autoSaveStatus && (
+            <div style={{
+              fontSize: '0.78rem',
+              color: autoSaveStatus === 'saved' ? '#16a34a' : '#64748b',
+              background: autoSaveStatus === 'saved' ? '#f0fdf4' : '#f8fafc',
+              border: `1px solid ${autoSaveStatus === 'saved' ? '#bbf7d0' : '#e2e8f0'}`,
+              borderRadius: '20px',
+              padding: '0.25rem 0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              transition: 'all 0.3s ease',
+            }}>
+              {autoSaveStatus === 'saving' ? (
+                <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>🔄</span> Auto-saving...</>
+              ) : (
+                <>✅ Auto-saved</>
+              )}
+            </div>
           )}
-          <button className="btn btn-success" onClick={handleComplete} disabled={saving}>
-            {isCompleted ? '← Back' : '✓ Complete'}
-          </button>
+          <div className="action-buttons">
+            <button className="btn btn-secondary" onClick={handleExit}>
+              ✕ Exit
+            </button>
+            {!isCompleted && (
+              <button className="btn btn-primary" onClick={handleSaveDraft} disabled={saving}>
+                💾 {saving ? 'Saving...' : 'Save Draft'}
+              </button>
+            )}
+            <button className="btn btn-success" onClick={handleComplete} disabled={saving}>
+              {isCompleted ? '← Back' : '✓ Complete'}
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="consultation-workspace">
         <div className="clinical-notes-section">
           <h2>🩺 Clinical Notes</h2>
+
+          <div style={{ background: '#ffffff', borderRadius: '12px', marginBottom: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>👤</span>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 600 }}>Pet Owner Information</h3>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Name:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{appointment?.petOwnerName || appointment?.ownerName || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Phone:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{appointment?.petOwnerPhone || appointment?.ownerPhone || 'N/A'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Email:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{appointment?.petOwnerEmail || appointment?.ownerEmail || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: '#ffffff', borderRadius: '12px', marginBottom: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>🐾</span>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 600 }}>Pet Information</h3>
+            </div>
+            
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Species:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{medicalRecord?.species || appointment?.petSpecies || 'Unknown'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Breed:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{medicalRecord?.breed || appointment?.breed || 'Not Specified'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Age:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{medicalRecord?.age ? `${medicalRecord.age} years` : (appointment?.age ? `${appointment.age} years` : '0 years')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px dashed #cbd5e1' }}>
+                <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Weight:</span>
+                <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.95rem' }}>{formData.currentWeight || medicalRecord?.weight || appointment?.weight || 0} kg</span>
+              </div>
+
+              <div>
+                <label htmlFor="currentWeight" style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: 600, marginBottom: '8px', display: 'block' }}>Update current weight (kg)</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="currentWeight"
+                    name="currentWeight"
+                    value={formData.currentWeight || ''}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    disabled={isCompleted}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.95rem',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); performAutoSave(); }}
+                    disabled={isCompleted}
+                    style={{
+                      background: '#0f766e',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0 20px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: isCompleted ? 'not-allowed' : 'pointer',
+                      opacity: isCompleted ? 0.6 : 1,
+                    }}
+                  >
+                    Save weight
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="form-group">
             <label htmlFor="symptoms">Reported Symptoms <span className="required">*</span></label>

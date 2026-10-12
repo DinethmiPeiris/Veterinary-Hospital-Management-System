@@ -26,7 +26,35 @@ const PetOwnerMedicalHistory = ({ ownerPets }) => {
                     throw new Error('Failed to fetch medical record');
                 }
                 const data = await response.json();
-                setRecord(data);
+                
+                // Merge with latest Pet profile data to ensure metrics reflect recent updates
+                const petData = ownerPets?.find(p => p.id === selectedPet);
+                
+                // Attempt to load any local consultations as documents
+                const localDocs = [];
+                try {
+                    const localStore = JSON.parse(localStorage.getItem('vhms_consultations_store') || '{}');
+                    Object.values(localStore).forEach(cons => {
+                        if (cons.petId === selectedPet && cons.status === 'COMPLETED') {
+                            localDocs.push({
+                                fileName: `Consultation_Report_${cons.date}.pdf`,
+                                uploadDate: cons.date,
+                                documentType: 'Consultation Report',
+                                isLocal: true,
+                                rawAppt: cons // store original for download handling
+                            });
+                        }
+                    });
+                } catch(e) {}
+                
+                setRecord({
+                    ...data,
+                    species: petData?.species || data.species,
+                    breed: petData?.breed || data.breed,
+                    age: petData?.age || data.age,
+                    weight: petData?.weight || data.weight,
+                    documents: [...(data.documents || []), ...localDocs]
+                });
                 setError(null);
             } catch (err) {
                 console.error('Error fetching medical record:', err);
@@ -40,6 +68,52 @@ const PetOwnerMedicalHistory = ({ ownerPets }) => {
     }, [selectedPet]);
 
     const handleDownloadDocument = (doc) => {
+        if (doc.isLocal && doc.rawAppt) {
+            // Replicate PetOwnerPortal.jsx download behavior for local consultations
+            try {
+                const reportContent = `
+VETERINARY HOSPITAL MANAGEMENT SYSTEM
+==================================================
+OFFICIAL MEDICAL REPORT
+==================================================
+Date: ${doc.rawAppt.date} | Time: ${doc.rawAppt.timeSlot || 'N/A'}
+
+[PATIENT DETAILS]
+Name: ${doc.rawAppt.petName}
+Species: ${doc.rawAppt.petSpecies || doc.rawAppt.species}
+Doctor: Dr. ${doc.rawAppt.doctorName}
+
+[CLINICAL VITALS]
+Temperature: ${doc.rawAppt.vitals?.temperature || 'N/A'} °C
+Weight: ${doc.rawAppt.vitals?.weight || 'N/A'} kg
+Heart Rate: ${doc.rawAppt.vitals?.heartRate || 'N/A'} bpm
+
+[CLINICAL NOTES]
+${doc.rawAppt.clinicalNotes || 'No notes provided.'}
+
+[DIAGNOSIS]
+${doc.rawAppt.diagnosis || 'No formal diagnosis recorded.'}
+
+[TREATMENT & PRESCRIPTION]
+${doc.rawAppt.treatmentPlan || 'N/A'}
+
+==================================================
+* End of Report *
+                `.trim();
+                const blob = new Blob([reportContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Medical_Report_${doc.rawAppt.id || doc.rawAppt.appointmentId}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Could not generate document.');
+            }
+            return;
+        }
         if (doc.fileData) {
             const link = document.createElement('a');
             link.href = doc.fileData;

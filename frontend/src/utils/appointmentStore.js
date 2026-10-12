@@ -159,6 +159,20 @@ export function formatPrescriptions(prescriptions) {
 }
 
 export async function loadConsultationForm(appointmentId) {
+  // 1. Check the auto-save draft first (most recent, includes chargeItems)
+  try {
+    const draftKey = `vhms_consultation_draft_${appointmentId}`
+    const raw = localStorage.getItem(draftKey)
+    if (raw) {
+      const autoSaved = JSON.parse(raw)
+      // Only use auto-save if it has meaningful content
+      if (autoSaved.symptoms || autoSaved.diagnosis || autoSaved.clinicalObservations || autoSaved.treatmentPlan) {
+        return autoSaved
+      }
+    }
+  } catch (e) {}
+
+  // 2. Try backend
   try {
     const consultation = await getConsultationByAppointmentId(appointmentId)
     const ids = readJson(CONSULTATION_IDS_KEY, {})
@@ -176,6 +190,7 @@ export async function loadConsultationForm(appointmentId) {
     saveConsultationData(appointmentId, form)
     return form
   } catch {
+    // 3. Fall back to old localStorage draft
     return getConsultationData(appointmentId)
   }
 }

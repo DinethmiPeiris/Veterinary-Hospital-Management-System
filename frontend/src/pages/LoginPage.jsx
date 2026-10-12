@@ -80,23 +80,7 @@ export default function LoginPage() {
   const performLogin = async (loginId, loginPass, expectedRole) => {
     const cleanId = loginId.trim().toLowerCase()
 
-    if (expectedRole === 'ADMIN' || expectedRole === 'ANY') {
-      if ((cleanId === 'admin@vhms.com' || cleanId === 'admin') && loginPass === 'admin123') {
-        const adminSession = {
-          success: true,
-          id: 'SJAH-ADMIN-001',
-          name: 'System Admin',
-          email: 'admin@vhms.com',
-          role: 'ADMIN',
-          status: 'ACTIVE'
-        }
-        localStorage.setItem('vhms_user', JSON.stringify(adminSession))
-        showToast('🔐 Welcome, System Admin! Redirecting to Admin Dashboard...', 'info')
-        setTimeout(() => navigate('/admin-portal'), 300)
-        return true
-      }
-    }
-
+    // Removed hardcoded admin fallback so all auth relies on MongoDB backend
     if (expectedRole === 'DOCTOR' || expectedRole === 'ANY') {
       try {
         const docSession = await loginDoctor({ identifier: loginId.trim(), password: loginPass })
@@ -144,35 +128,7 @@ export default function LoginPage() {
       }
     }
 
-    if (expectedRole === 'PET_OWNER' || expectedRole === 'ANY') {
-      try {
-        const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
-        const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
-        const regUser = localReg.find(u => (u.email && u.email.toLowerCase() === cleanId) || (u.id && u.id.toLowerCase() === cleanId)) ||
-          localPending.find(u => (u.email && u.email.toLowerCase() === cleanId) || (u.id && u.id.toLowerCase() === cleanId))
-        if (regUser) {
-          if (regUser.password && regUser.password !== loginPass) {
-            showToast('❌ Incorrect password. Please check your credentials.', 'error')
-            return true
-          }
-          if (regUser.status === 'PENDING' || regUser.status === 'PENDING_APPROVAL') {
-            showToast('⏳ Your account is pending Admin approval.', 'error')
-            return true
-          }
-          if (regUser.status === 'REJECTED') {
-            showToast('❌ Your account registration request was declined.', 'error')
-            return true
-          }
-          const ownerSession = { success: true, id: regUser.id, name: regUser.name, email: regUser.email, phone: regUser.phone || '0771234567', address: regUser.address || '', role: 'PET_OWNER', status: 'ACTIVE' }
-          localStorage.setItem('vhms_user', JSON.stringify(ownerSession))
-          localStorage.setItem('vhms_pet_view', 'OVERVIEW')
-          showToast(`🐾 Welcome back, ${regUser.name}! Redirecting to Pet Owner Dashboard...`, 'success')
-          setTimeout(() => navigate('/pets'), 300)
-          return true
-        }
-      } catch { }
-    }
-
+    // Prefer MongoDB login for pet owners so the session always uses the real user id
     try {
       const response = await api.login({ identifier: loginId, password: loginPass })
       if (response && response.success) {
@@ -194,6 +150,26 @@ export default function LoginPage() {
           showToast(`❌ Authorization Error: Your account role is missing or invalid. Please contact the administrator.`, 'error')
           return false
         }
+
+        // Keep local caches aligned with the MongoDB user id/status
+        try {
+          const email = String(response.email || '').toLowerCase()
+          if (email) {
+            const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
+              .filter((u) => String(u.email || '').toLowerCase() !== email)
+            localReg.push({
+              id: response.id,
+              name: response.name,
+              email: response.email,
+              role: response.role,
+              status: response.status,
+            })
+            localStorage.setItem('vhms_registered_users', JSON.stringify(localReg))
+            const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
+              .filter((u) => String(u.email || '').toLowerCase() !== email)
+            localStorage.setItem('vhms_pending_users', JSON.stringify(localPending))
+          }
+        } catch { }
 
         if (response.role === 'ADMIN') {
           showToast(`🔐 Welcome, Admin ${response.name}! Redirecting to Admin Dashboard...`, 'info')
@@ -271,27 +247,53 @@ export default function LoginPage() {
       showToast(`❌ ${errs[Object.keys(errs)[0]]}`, 'error')
       return
     }
-    const newPendingUser = {
-      id: `PO-${Date.now().toString().slice(-4)}`,
-      name: regName.trim(), email: regEmail.trim().toLowerCase(), phone: regPhone, address: regAddress, password: regPass,
-      role: 'PET_OWNER', status: 'PENDING_APPROVAL', createdAt: new Date().toISOString()
-    }
+
+    const email = regEmail.trim().toLowerCase()
     try {
-      const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
-      if (!localPending.some(u => u.email === newPendingUser.email)) {
-        localPending.push(newPendingUser)
+      const response = await api.register({
+        name: regName.trim(),
+        phone: regPhone,
+        email,
+        address: regAddress,
+        password: regPass,
+      })
+
+      if (!response || response.success === false) {
+        showToast(`❌ ${response?.message || 'Registration failed. Please try again.'}`, 'error')
+        return
+      }
+
+      // Always store the real MongoDB user id so admin approval updates the same document
+      const pendingUser = {
+        id: response.id,
+        name: response.name || regName.trim(),
+        email: response.email || email,
+        phone: regPhone,
+        address: regAddress,
+        password: regPass,
+        role: response.role || 'PET_OWNER',
+        status: response.status || 'PENDING_APPROVAL',
+        createdAt: new Date().toISOString(),
+      }
+
+      try {
+        const localPending = JSON.parse(localStorage.getItem('vhms_pending_users') || '[]')
+          .filter((u) => String(u.email || '').toLowerCase() !== email)
+        localPending.push(pendingUser)
         localStorage.setItem('vhms_pending_users', JSON.stringify(localPending))
-      }
-      const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
-      if (!localReg.some(u => u.email === newPendingUser.email)) {
-        localReg.push(newPendingUser)
+
+        const localReg = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]')
+          .filter((u) => String(u.email || '').toLowerCase() !== email)
+        localReg.push(pendingUser)
         localStorage.setItem('vhms_registered_users', JSON.stringify(localReg))
-      }
-    } catch { }
-    try { await api.register({ name: regName, phone: regPhone, email: regEmail, address: regAddress, password: regPass }) } catch (err) { }
-    setRegName(''); setRegPhone(''); setRegEmail(''); setRegAddress(''); setRegPass(''); setRegPassConfirm(''); setRegErrors({})
-    showToast('🎉 Registration submitted! Your account is pending Admin approval.', 'success')
-    setViewMode('signin')
+      } catch { }
+
+      setRegName(''); setRegPhone(''); setRegEmail(''); setRegAddress(''); setRegPass(''); setRegPassConfirm(''); setRegErrors({})
+      showToast('🎉 Registration submitted! Your account is pending Admin approval.', 'success')
+      setViewMode('signin')
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Could not reach the server. Registration was not saved.'}`, 'error')
+    }
   }
 
   const handleDoctorRegister = async (e) => {
@@ -314,7 +316,7 @@ export default function LoginPage() {
     if (!forgotEmail) { showToast('Enter your registered email.', 'error'); return }
     setAuthBusy(true)
     try {
-      await requestPasswordReset(forgotEmail)
+      await api.forgotPassword({ email: forgotEmail })
       showToast('Reset code sent! Check your email inbox.', 'info')
       setViewMode('reset')
     } catch (err) { showToast(err.message || 'Unable to start password reset.', 'error') }
@@ -328,7 +330,7 @@ export default function LoginPage() {
     if (resetNewPass !== resetConfirmPass) { showToast('Passwords do not match.', 'error'); return }
     setAuthBusy(true)
     try {
-      await resetDoctorPassword({ email: forgotEmail, resetToken: resetCode, newPassword: resetNewPass })
+      await api.resetPassword({ email: forgotEmail, resetToken: resetCode, newPassword: resetNewPass })
       showToast('Password updated. Please sign in.', 'success')
       setViewMode('signin'); setLoginId(forgotEmail); setLoginPass(''); setResetCode(''); setResetNewPass(''); setResetConfirmPass('')
     } catch (err) { showToast(err.message || 'Password reset failed.', 'error') }

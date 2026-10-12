@@ -7,6 +7,8 @@ import com.vhms.vhms.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.vhms.vhms.dto.ForgotPasswordRequest;
+import com.vhms.vhms.dto.ResetPasswordRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -32,5 +34,23 @@ public class AuthController {
             return ResponseEntity.ok(response);
         }
         return ResponseEntity.status(403).body(response);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<AuthResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        AuthResponse response = authService.forgotPassword(request);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(400).body(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<AuthResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
+        AuthResponse response = authService.resetPassword(request);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(400).body(response);
     }
 }

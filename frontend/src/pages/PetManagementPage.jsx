@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PawPrint, Calendar, ShieldCheck, Heart, Plus, ChevronDown, ChevronRight, ArrowRight, Shield, Bell, Check, CheckCheck, Trash2, Filter, Search, Mail, Info, AlertCircle, X, Clock } from 'lucide-react';
 import { api } from '../services/api';
+import { notificationService } from '../services/notificationService';
 import PetOwnerConsultations from './petowner/PetOwnerConsultations';
 import PetOwnerMedicalHistory from './petowner/PetOwnerMedicalHistory';
 import PetOwnerAdmissionsPage from './PetOwnerAdmissionsPage';
@@ -92,7 +93,7 @@ const PortalHeader = ({
                                     <button
                                         type="button"
                                         className="btn-text-action"
-                                        onClick={() => markAllAsRead && markAllAsRead()}
+                                        onClick={() => handleMarkAllAsRead && handleMarkAllAsRead()}
                                     >
                                         Mark all read
                                     </button>
@@ -107,23 +108,24 @@ const PortalHeader = ({
                                 ) : (
                                     notifications.slice(0, 4).map((n) => {
                                         const isUnread = !n.read;
+                                        const isHosp = n.type === 'HOSPITALIZATION' || n.type === 'HOSPITALIZATION_APPROVED' || n.type === 'HOSPITALIZATION_RECOMMENDED' || n.type === 'HOSPITALIZATION_REJECTED' || n.referenceType === 'ADMISSION' || n.referenceType === 'HOSPITALIZATION' || (n.title && (n.title.toLowerCase().includes('discharge') || n.title.toLowerCase().includes('hospitaliz') || n.title.toLowerCase().includes('admission')));
                                         return (
                                             <div
                                                 key={n.id}
                                                 className={`notif-dropdown-item ${isUnread ? 'unread' : ''}`}
                                                 onClick={() => {
-                                                    if (markAsRead && isUnread) markAsRead(n.id);
+                                                    if (handleMarkAsRead && isUnread) handleMarkAsRead(n.id);
                                                     if (setSelectedNotifDetail) setSelectedNotifDetail(n);
                                                     if (setIsNotifDropdownOpen) setIsNotifDropdownOpen(false);
                                                 }}
                                             >
-                                                <div className={`notif-item-icon ${n.type === 'APPOINTMENT' ? 'type-bg-appointment' : n.type === 'VACCINE' ? 'type-bg-vaccine' : n.type === 'PET_PROFILE' ? 'type-bg-pet' : 'type-bg-system'}`}>
-                                                    {n.type === 'APPOINTMENT' ? '📅' : n.type === 'VACCINE' ? '💉' : n.type === 'PET_PROFILE' ? '🐾' : '⚙️'}
+                                                <div className={`notif-item-icon ${n.type === 'APPOINTMENT' ? 'type-bg-appointment' : n.type === 'VACCINE' ? 'type-bg-vaccine' : n.type === 'PET_PROFILE' ? 'type-bg-pet' : (n.type === 'PAYMENT_REMINDER' || n.type === 'INVOICE' || n.type === 'INVOICE_GENERATED' || n.referenceType === 'INVOICE') ? 'type-bg-system' : isHosp ? 'type-bg-system' : 'type-bg-system'}`}>
+                                                    {n.type === 'APPOINTMENT' ? '📅' : n.type === 'VACCINE' ? '💉' : n.type === 'PET_PROFILE' ? '🐾' : (n.type === 'PAYMENT_REMINDER' || n.type === 'INVOICE' || n.type === 'INVOICE_GENERATED' || n.referenceType === 'INVOICE') ? '💳' : isHosp ? '🏥' : '⚙️'}
                                                 </div>
                                                 <div className="notif-item-content">
                                                     <h5 className="notif-item-title">{n.title}</h5>
                                                     <p className="notif-item-msg">{n.message}</p>
-                                                    <span className="notif-item-time">{n.timestamp}</span>
+                                                    <span className="notif-item-time">{n.timestamp || (n.sentAt ? new Date(n.sentAt).toLocaleString() : (n.createdAt ? new Date(n.createdAt).toLocaleString() : 'Just now'))}</span>
                                                 </div>
                                                 {isUnread && <div className="notif-unread-dot"></div>}
                                             </div>
@@ -546,26 +548,47 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                 if (Array.isArray(fetched)) {
                     apiDocs = fetched
                         .filter(u => u.email !== 'john.test@vhms.com' && !(u.name || '').toLowerCase().includes('john test') && !(u.name || '').toLowerCase().includes('dr. john'))
-                        .map(u => ({
-                            id: u.id || `DOC-${u.email}`,
-                            name: u.name.startsWith('Dr.') ? u.name : `Dr. ${u.name}`,
-                            email: u.email,
-                            phone: u.phone || '0770000000',
-                            specialization: u.specialization || u.address || 'Veterinary Surgery & Medicine',
-                            services: Array.isArray(u.services) ? u.services : (u.services ? u.services.split(',').map(s => s.trim()) : ['General Care', 'Consultation', 'Vaccination']),
-                            status: 'AVAILABLE',
-                            experience: u.experience || 'Registered Specialist',
-                            bio: u.bio || `Hospital veterinarian specializing in ${u.specialization || u.address || 'Veterinary Care'}.`,
-                            availableHours: u.availableHours || 'Mon - Fri | 08:00 AM - 05:00 PM',
-                            photoUrl: u.photoUrl || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-                        }));
+                        .map(u => {
+                            const servicesList = (Array.isArray(u.availableServices) && u.availableServices.length > 0)
+                                ? u.availableServices
+                                : (Array.isArray(u.services) && u.services.length > 0)
+                                    ? u.services
+                                    : (u.services ? String(u.services).split(',').map(s => s.trim()) : ['General Care', 'Consultation', 'Vaccination']);
+                            const docName = u.name || u.fullName || 'Doctor';
+                            return {
+                                id: u.id || `DOC-${u.email}`,
+                                name: docName.startsWith('Dr.') ? docName : `Dr. ${docName}`,
+                                fullName: u.fullName || u.name || docName,
+                                email: u.email,
+                                phone: u.phone || '0770000000',
+                                specialization: u.specialization || u.address || 'Veterinary Surgery & Medicine',
+                                services: servicesList,
+                                availableServices: Array.isArray(u.availableServices) && u.availableServices.length > 0 ? u.availableServices : servicesList,
+                                availableSlots: u.availableSlots || [],
+                                availableHours: u.availableHours || 'Mon - Fri | 08:00 AM - 05:00 PM',
+                                workingDays: u.workingDays || 'Mon - Fri',
+                                status: u.status || 'AVAILABLE',
+                                experience: u.experience || 'Registered Specialist',
+                                bio: u.bio || `Hospital veterinarian specializing in ${u.specialization || u.address || 'Veterinary Care'}.`,
+                                photoUrl: u.photoUrl || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
+                            };
+                        });
                 }
             } catch { }
 
             const merged = [];
             // First pass: add API docs, but override with custom doc data if a match exists
             apiDocs.forEach(d => {
-                if (!merged.some(m => m.email === d.email || m.id === d.id)) {
+                // Deduplicate by email, id, OR normalized name (prevents duplicate entries for
+                // same real doctor who exists in both users collection and doctors directory
+                // with slightly different emails, e.g. natasharuth255@ vs natasharuth25@)
+                const dNameNorm = (d.name || '').toLowerCase().trim();
+                const alreadyExists = merged.some(m =>
+                    m.email === d.email ||
+                    m.id === d.id ||
+                    (dNameNorm && (m.name || '').toLowerCase().trim() === dNameNorm)
+                );
+                if (!alreadyExists) {
                     const customMatch = customDocs.find(cd =>
                         (cd.email && d.email && cd.email.toLowerCase() === d.email.toLowerCase()) ||
                         (cd.id && d.id && String(cd.id) === String(d.id)) ||
@@ -586,7 +609,9 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                     if (savedSt && savedSt !== 'default') base.status = savedSt;
                     const isChanna = (base.name && base.name.toLowerCase().includes('channa')) || (base.email && base.email.toLowerCase().includes('channa'));
                     base.availableHours = base.availableHours || (isChanna ? 'Mon - Sun | 11:00 AM - 02:00 PM' : 'Mon - Sun | 11:00 AM - 02:00 PM, 03:00 PM - 08:00 PM');
-                    base.services = Array.isArray(base.services) && base.services.length > 0 ? base.services : ['General Care', 'Consultation', 'Vaccination'];
+                    base.services = Array.isArray(base.services) && base.services.length > 0
+                        ? base.services
+                        : (Array.isArray(base.availableServices) && base.availableServices.length > 0 ? base.availableServices : ['General Care', 'Consultation', 'Vaccination']);
                     merged.push(base);
                 }
             });
@@ -795,7 +820,11 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         try {
             const userKey = currentUser?.id || currentUser?.email || 'default';
             const stored = localStorage.getItem(`${NOTIF_STORAGE_PREFIX}${userKey}`);
-            if (stored) return JSON.parse(stored);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (!Array.isArray(parsed)) return [];
+                return parsed.filter((n) => !/^NOTIF-10[1-8]$/.test(String(n.id || '')));
+            }
         } catch { }
         return [];
     });
@@ -805,135 +834,211 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         return notifications.filter(n => !n.read).length;
     }, [notifications]);
 
-    // Seed default realistic notifications if user has none
+    // Load only real notifications for this owner — never seed fake Buddy/invoice alerts
     useEffect(() => {
         if (!currentUser) return;
         const userKey = currentUser.id || currentUser.email || 'default';
         const key = `${NOTIF_STORAGE_PREFIX}${userKey}`;
 
-        const loadOrSeedNotifs = async () => {
-            // Try backend API first
-            let fetched = await api.getNotifications(currentUser.id, currentUser.email);
-            if (fetched && Array.isArray(fetched) && fetched.length > 0) {
-                setNotifications(fetched);
-                try { localStorage.setItem(key, JSON.stringify(fetched)); } catch { }
-                return;
+        const loadNotificationsForUser = async () => {
+            const userAliases = new Set([
+                currentUser.id && String(currentUser.id),
+                currentUser._id && String(currentUser._id),
+                currentUser.email && String(currentUser.email).toLowerCase(),
+                'USR-5001',
+                'usr-5001',
+                'owner@example.com',
+            ].filter(Boolean));
+
+            let fetched = [];
+            try {
+                if (typeof api.getNotifications === 'function') {
+                    fetched = await api.getNotifications(currentUser.id, currentUser.email) || [];
+                }
+            } catch {}
+
+            let epic4Fetched = [];
+            try {
+                const res = await notificationService.getNotifications(currentUser.id || currentUser.email);
+                if (res && res.success && Array.isArray(res.data)) {
+                    epic4Fetched = res.data;
+                }
+            } catch {}
+
+            let ownOnly = [];
+            const allRemote = [...(Array.isArray(fetched) ? fetched : []), ...epic4Fetched];
+            if (allRemote.length > 0) {
+                ownOnly = allRemote.filter((n) => {
+                    if (!n) return false;
+                    const rid = String(n.recipientId || n.userId || '');
+                    const email = String(n.userEmail || n.recipientEmail || '').toLowerCase();
+                    const rRole = String(n.recipientRole || '').toUpperCase();
+                    const nType = String(n.type || n.notificationType || '').toUpperCase();
+                    const nTitle = String(n.title || '').toUpperCase();
+                    return (
+                        userAliases.has(rid) ||
+                        userAliases.has(email) ||
+                        userAliases.has(rid.toLowerCase()) ||
+                        rid.toUpperCase() === 'ALL' ||
+                        rRole === 'PET_OWNER' ||
+                        nType.includes('INVOICE') ||
+                        nType.includes('PAYMENT') ||
+                        nTitle.includes('INVOICE') ||
+                        nTitle.includes('BILL') ||
+                        nTitle.includes('PAYMENT') ||
+                        nTitle.includes('HOSPITALIZ') ||
+                        nTitle.includes('ADMISSION') ||
+                        nTitle.includes('DISCHARGE')
+                    );
+                });
             }
 
-            // Fallback to local storage
+            let stored = [];
+            const storageKeys = new Set([key]);
+            if (currentUser.id) storageKeys.add(`${NOTIF_STORAGE_PREFIX}${currentUser.id}`);
+            if (currentUser.email) storageKeys.add(`${NOTIF_STORAGE_PREFIX}${currentUser.email}`);
+            storageKeys.add(`${NOTIF_STORAGE_PREFIX}USR-5001`);
+            storageKeys.add(`${NOTIF_STORAGE_PREFIX}usr-5001`);
+            storageKeys.add(`${NOTIF_STORAGE_PREFIX}owner@example.com`);
+
+            storageKeys.forEach((k) => {
+                try {
+                    const rawStored = localStorage.getItem(k);
+                    if (rawStored) {
+                        const parsed = JSON.parse(rawStored);
+                        if (Array.isArray(parsed)) {
+                            stored.push(...parsed.filter((n) => !/^NOTIF-10[1-8]$/.test(String(n.id || ''))));
+                        }
+                    }
+                } catch {}
+            });
+
             try {
-                const stored = localStorage.getItem(key);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setNotifications(parsed);
-                        return;
+                const epic4Raw = localStorage.getItem('vhms_epic4_notifications');
+                if (epic4Raw) {
+                    const parsedEpic4 = JSON.parse(epic4Raw);
+                    if (Array.isArray(parsedEpic4)) {
+                        parsedEpic4.forEach((n) => {
+                            if (!n) return;
+                            const rid = String(n.recipientId || n.userId || '');
+                            const email = String(n.userEmail || n.recipientEmail || '').toLowerCase();
+                            const rRole = String(n.recipientRole || '').toUpperCase();
+                            const nType = String(n.type || n.notificationType || '').toUpperCase();
+                            const nTitle = String(n.title || '').toUpperCase();
+                            if (
+                                userAliases.has(rid) ||
+                                userAliases.has(email) ||
+                                userAliases.has(rid.toLowerCase()) ||
+                                rid.toUpperCase() === 'ALL' ||
+                                rRole === 'PET_OWNER' ||
+                                nType.includes('INVOICE') ||
+                                nType.includes('PAYMENT') ||
+                                nTitle.includes('INVOICE') ||
+                                nTitle.includes('BILL') ||
+                                nTitle.includes('PAYMENT') ||
+                                nTitle.includes('HOSPITALIZ') ||
+                                nTitle.includes('ADMISSION') ||
+                                nTitle.includes('DISCHARGE')
+                            ) {
+                                stored.push(n);
+                            }
+                        });
                     }
                 }
-            } catch { }
+            } catch {}
 
-            // Default seed notifications for Pet Owner
-            const petName = (pets && pets.length > 0) ? pets[0].name : 'Buddy';
-            const now = new Date();
-            const fmtTime = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const fmtDate = (d) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            const seed = [
-                {
-                    id: 'NOTIF-101',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Appointment Request Received 📅',
-                    message: `Your consultation booking for ${petName} with Dr. Sirimath Channa Molligoda is currently under review by our hospital desk.`,
-                    type: 'APPOINTMENT',
-                    read: false,
-                    timestamp: 'Just now',
-                    relatedId: 'APT-1001'
-                },
-                {
-                    id: 'NOTIF-102',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Annual Rabies Vaccination Due 💉',
-                    message: `Annual booster immunization for ${petName} is due this month. Please schedule a visit to ensure full health compliance.`,
-                    type: 'VACCINE',
-                    read: false,
-                    timestamp: '2 hours ago',
-                    relatedId: (pets && pets.length > 0) ? pets[0].id : ''
-                },
-                {
-                    id: 'NOTIF-104',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Invoice Ready for Payment 💳',
-                    message: `Invoice INV-2024-009 for ${petName}'s OPD consultation has been generated. Amount due: LKR 4,500. Please visit the Invoices section to pay.`,
-                    type: 'BILLING',
-                    read: false,
-                    timestamp: 'Today at 08:15 AM',
-                    relatedId: 'INV-2024-009'
-                },
-                {
-                    id: 'NOTIF-105',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Annual Health Checkup Reminder 🩺',
-                    message: `${petName}'s annual physical examination is due next week. Early detection of health issues can significantly improve treatment outcomes.`,
-                    type: 'REMINDER',
-                    read: false,
-                    timestamp: 'Yesterday at 10:00 AM',
-                    relatedId: (pets && pets.length > 0) ? pets[0].id : ''
-                },
-                {
-                    id: 'NOTIF-106',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Appointment Approved ✅',
-                    message: `Great news! Your consultation appointment (APT-1001) for ${petName} on ${fmtDate(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000))} has been approved by the hospital. Please arrive 10 minutes early with your pet's vaccination booklet.`,
-                    type: 'APPOINTMENT',
-                    read: true,
-                    timestamp: 'Yesterday at 03:45 PM',
-                    relatedId: 'APT-1001'
-                },
-                {
-                    id: 'NOTIF-107',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Payment Confirmed 🎉',
-                    message: `Payment of LKR 3,200 for Invoice INV-2024-007 (${petName} – General Consultation) has been received and confirmed. Thank you!`,
-                    type: 'BILLING',
-                    read: true,
-                    timestamp: '2 days ago',
-                    relatedId: 'INV-2024-007'
-                },
-                {
-                    id: 'NOTIF-108',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Discharge Reminder 🏥',
-                    message: `${petName}'s estimated discharge date from the hospital ward is approaching. Please coordinate with the front desk to arrange pickup and follow-up care.`,
-                    type: 'REMINDER',
-                    read: true,
-                    timestamp: '3 days ago',
-                    relatedId: ''
-                },
-                {
-                    id: 'NOTIF-103',
-                    userId: currentUser.id || 'usr-1',
-                    userEmail: currentUser.email || 'user@vhms.com',
-                    title: 'Welcome to VHMS Pet Owner Portal 🐾',
-                    message: 'Welcome to Sri Jayawardenapura Animal Hospital! Manage your pets, book doctor visits, track invoices, and view medical records all in one place.',
-                    type: 'SYSTEM',
-                    read: true,
-                    timestamp: 'Yesterday at 09:30 AM',
-                    relatedId: ''
+            let readIds = new Set();
+            let unreadIds = new Set();
+            try {
+                const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+                if (Array.isArray(storedRead)) readIds = new Set(storedRead.map(String));
+                const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+                if (Array.isArray(storedUnread)) unreadIds = new Set(storedUnread.map(String));
+            } catch {}
+
+            const determineReadState = (item) => {
+                if (!item) return false;
+                const itemId = item.id ? String(item.id) : '';
+                if (itemId && unreadIds.has(itemId)) return false;
+                if (itemId && readIds.has(itemId)) return true;
+                return Boolean(item.read === true || item.isRead === true);
+            };
+
+            // Merge keeping unique ones by ID or title+message
+            const merged = [...stored, ...ownOnly].reduce((acc, curr) => {
+                if (!curr) return acc;
+                const existing = acc.find(
+                    (n) => (n.id && curr.id && String(n.id) === String(curr.id)) ||
+                           (n.title === curr.title && n.message === curr.message)
+                );
+                const currReadState = determineReadState(curr);
+                if (!existing) {
+                    acc.push({
+                        ...curr,
+                        read: currReadState,
+                        isRead: currReadState,
+                    });
+                } else {
+                    const existingId = existing.id ? String(existing.id) : '';
+                    const currId = curr.id ? String(curr.id) : '';
+                    const isExplicitlyUnread = (existingId && unreadIds.has(existingId)) || (currId && unreadIds.has(currId));
+                    const isExplicitlyRead = (existingId && readIds.has(existingId)) || (currId && readIds.has(currId));
+
+                    let finalReadState;
+                    if (isExplicitlyUnread) {
+                        finalReadState = false;
+                    } else if (isExplicitlyRead) {
+                        finalReadState = true;
+                    } else {
+                        finalReadState = Boolean(existing.read || existing.isRead || currReadState);
+                    }
+                    existing.read = finalReadState;
+                    existing.isRead = finalReadState;
+                    if (curr.id && !existing.id) existing.id = curr.id;
+                    if (curr.sentAt && !existing.sentAt) existing.sentAt = curr.sentAt;
+                    if (curr.createdAt && !existing.createdAt) existing.createdAt = curr.createdAt;
                 }
-            ];
+                return acc;
+            }, []);
+            
+            // Sort unread first, then by latest timestamp
+            merged.sort((a, b) => {
+                const aRead = Boolean(a.read || a.isRead);
+                const bRead = Boolean(b.read || b.isRead);
+                
+                if (aRead !== bRead) {
+                    return aRead ? 1 : -1;
+                }
 
-            setNotifications(seed);
-            try { localStorage.setItem(key, JSON.stringify(seed)); } catch { }
+                const timeA = a.timestamp || a.sentAt || a.createdAt;
+                const timeB = b.timestamp || b.sentAt || b.createdAt;
+
+                if (!timeA && !timeB) return 0;
+                if (!timeA) return 1;
+                if (!timeB) return -1;
+                if (timeA === 'Just now') return -1;
+                if (timeB === 'Just now') return 1;
+
+                return new Date(timeB) - new Date(timeA);
+            });
+
+            setNotifications(merged);
+            try { localStorage.setItem(key, JSON.stringify(merged)); } catch {}
         };
 
-        loadOrSeedNotifs();
-    }, [currentUser, pets]);
+        loadNotificationsForUser();
+        const interval = setInterval(loadNotificationsForUser, 2500);
+        
+        const handleStorageChange = () => loadNotificationsForUser();
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('vhms_notifications_changed', handleStorageChange);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('vhms_notifications_changed', handleStorageChange);
+        };
+    }, [currentUser]);
 
     // Save helper to persist notification updates locally and sync to API
     const saveNotifications = (newList) => {
@@ -941,6 +1046,33 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         try {
             const userKey = currentUser?.id || currentUser?.email || 'default';
             localStorage.setItem(`${NOTIF_STORAGE_PREFIX}${userKey}`, JSON.stringify(newList));
+            if (currentUser?.id) localStorage.setItem(`${NOTIF_STORAGE_PREFIX}${currentUser.id}`, JSON.stringify(newList));
+            if (currentUser?.email) localStorage.setItem(`${NOTIF_STORAGE_PREFIX}${currentUser.email}`, JSON.stringify(newList));
+            localStorage.setItem(`${NOTIF_STORAGE_PREFIX}USR-5001`, JSON.stringify(newList));
+            localStorage.setItem(`${NOTIF_STORAGE_PREFIX}owner@example.com`, JSON.stringify(newList));
+
+            const epicRaw = localStorage.getItem('vhms_epic4_notifications');
+            if (epicRaw) {
+                const parsed = JSON.parse(epicRaw);
+                if (Array.isArray(parsed)) {
+                    let changed = false;
+                    parsed.forEach(n => {
+                        if (!n) return;
+                        const match = newList.find(item =>
+                            (item.id && n.id && String(item.id) === String(n.id)) ||
+                            (item.title === n.title && item.message === n.message)
+                        );
+                        if (match && (n.read !== match.read || n.isRead !== match.read)) {
+                            n.read = match.read;
+                            n.isRead = match.read;
+                            changed = true;
+                        }
+                    });
+                    if (changed) {
+                        localStorage.setItem('vhms_epic4_notifications', JSON.stringify(parsed));
+                    }
+                }
+            }
         } catch { }
     };
 
@@ -967,10 +1099,27 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
     // Mark single notification as read (US 1.28)
     const handleMarkAsRead = async (id) => {
-        const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+        const target = notifications.find(n => n.id === id);
+        const updated = notifications.map(n => n.id === id ? { ...n, read: true, isRead: true } : n);
         saveNotifications(updated);
+
+        try {
+            const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+            const set = new Set(storedRead.map(String));
+            if (id) set.add(String(id));
+            if (target?.id) set.add(String(target.id));
+            localStorage.setItem('vhms_read_notification_ids', JSON.stringify(Array.from(set)));
+
+            const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+            const unreadFiltered = storedUnread.filter(x => x !== String(id) && (!target?.id || x !== String(target.id)));
+            localStorage.setItem('vhms_unread_notification_ids', JSON.stringify(unreadFiltered));
+        } catch {}
+
         try {
             await api.markNotificationRead(id);
+        } catch { }
+        try {
+            await notificationService.markAsRead(id, target);
         } catch { }
     };
 
@@ -979,20 +1128,60 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         const target = notifications.find(n => n.id === id);
         if (!target) return;
         const newReadStatus = !target.read;
-        const updated = notifications.map(n => n.id === id ? { ...n, read: newReadStatus } : n);
+        const updated = notifications.map(n => n.id === id ? { ...n, read: newReadStatus, isRead: newReadStatus } : n);
         saveNotifications(updated);
         if (newReadStatus) {
+            try {
+                const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+                const set = new Set(storedRead.map(String));
+                if (id) set.add(String(id));
+                if (target?.id) set.add(String(target.id));
+                localStorage.setItem('vhms_read_notification_ids', JSON.stringify(Array.from(set)));
+
+                const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+                const unreadFiltered = storedUnread.filter(x => x !== String(id) && (!target?.id || x !== String(target.id)));
+                localStorage.setItem('vhms_unread_notification_ids', JSON.stringify(unreadFiltered));
+            } catch {}
             try { await api.markNotificationRead(id); } catch { }
+            try { await notificationService.markAsRead(id, target); } catch { }
+        } else {
+            try {
+                const storedUnread = JSON.parse(localStorage.getItem('vhms_unread_notification_ids') || '[]');
+                const set = new Set(storedUnread.map(String));
+                if (id) set.add(String(id));
+                if (target?.id) set.add(String(target.id));
+                localStorage.setItem('vhms_unread_notification_ids', JSON.stringify(Array.from(set)));
+
+                const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+                const readFiltered = storedRead.filter(x => x !== String(id) && (!target?.id || x !== String(target.id)));
+                localStorage.setItem('vhms_read_notification_ids', JSON.stringify(readFiltered));
+            } catch {}
+            try { await api.markNotificationUnread(id); } catch { }
+            try { await notificationService.markAsUnread(id, target); } catch { }
         }
     };
 
     // Mark all notifications as read (US 1.28)
     const handleMarkAllAsRead = async () => {
-        const updated = notifications.map(n => ({ ...n, read: true }));
+        const updated = notifications.map(n => ({ ...n, read: true, isRead: true }));
         saveNotifications(updated);
         showToast('All notifications marked as read! ✓', 'success');
+
+        try {
+            const storedRead = JSON.parse(localStorage.getItem('vhms_read_notification_ids') || '[]');
+            const set = new Set(storedRead.map(String));
+            notifications.forEach(n => {
+                if (n.id) set.add(String(n.id));
+            });
+            localStorage.setItem('vhms_read_notification_ids', JSON.stringify(Array.from(set)));
+            localStorage.setItem('vhms_unread_notification_ids', JSON.stringify([]));
+        } catch {}
+
         try {
             await api.markAllNotificationsRead(currentUser?.id, currentUser?.email);
+        } catch { }
+        try {
+            await notificationService.markAllAsRead(currentUser?.id || currentUser?.email);
         } catch { }
     };
 
@@ -1022,7 +1211,8 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
     // =========================================================================
     const [knownApptStatuses, setKnownApptStatuses] = useState(() => {
         try {
-            const s = localStorage.getItem('vhms_known_appt_statuses');
+            const userKey = currentUser?.id || currentUser?.email || 'default';
+            const s = localStorage.getItem(`vhms_known_appt_statuses_${userKey}`);
             return s ? JSON.parse(s) : {};
         } catch { return {}; }
     });
@@ -1080,7 +1270,10 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
         if (changed) {
             setKnownApptStatuses(updatedStatuses);
-            try { localStorage.setItem('vhms_known_appt_statuses', JSON.stringify(updatedStatuses)); } catch { }
+            try {
+                const userKey = currentUser?.id || currentUser?.email || 'default';
+                localStorage.setItem(`vhms_known_appt_statuses_${userKey}`, JSON.stringify(updatedStatuses));
+            } catch { }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [appointments, currentUser]);
@@ -1323,13 +1516,18 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             ? DEFAULT_PHOTO
             : (photoUrl || DEFAULT_PHOTO);
 
+        const parseAgeToInt = (ageStr) => {
+            if (!ageStr) return 0;
+            const match = String(ageStr).match(/\d+/);
+            return match ? parseInt(match[0], 10) : 0;
+        };
         const petData = {
             ownerId: currentUser ? currentUser.id : 'GUEST_OWNER',
             name,
             species,
             breed: breed || 'Not Specified',
             dateOfBirth,
-            age: parseInt(age, 10) || 0,
+            age: parseAgeToInt(age),
             weight: parseFloat(weight),
             gender,
             photoUrl: safePhotoUrl,
@@ -1406,40 +1604,78 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
     // Doctor Search & Category Filter Logic
     const filteredDoctors = doctors.filter((doc) => {
-        const dName = (doc.name || '').toLowerCase();
-        const dSpec = (doc.specialization || doc.address || 'Veterinary Surgery & Medicine').toLowerCase();
-        const dServices = Array.isArray(doc.services) ? doc.services : [];
-        const query = (doctorSearch || '').toLowerCase();
+        const query = (doctorSearch || '').trim().toLowerCase();
 
-        const matchesSearch =
-            dName.includes(query) ||
-            dSpec.includes(query) ||
-            dServices.some(s => String(s).toLowerCase().includes(query));
+        let matchesSearch = true;
+        if (query) {
+            // Build a search blob from name, specialization, and services ONLY.
+            // Bio/experience/email are intentionally excluded to prevent false positives.
+            const norm = (str) => (str || '').toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ');
 
-        if (specFilter === 'ALL') return matchesSearch;
+            const dName = norm(doc.name);
+            const dSpec = norm(doc.specialization || doc.address || '');
+            // Combine services + availableServices and deduplicate to avoid doubling
+            const serviceSet = new Set([
+                ...(Array.isArray(doc.services) ? doc.services : []),
+                ...(Array.isArray(doc.availableServices) ? doc.availableServices : [])
+            ]);
+            const dServices = Array.from(serviceSet).map(norm).join(' ');
+            const dEmail = norm(doc.email);
+
+            const doctorBlob = `${dName} ${dSpec} ${dServices} ${dEmail}`;
+
+            // Tokenize query — split by spaces/punctuation, ignore empty parts
+            const queryTokens = query.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').split(/\s+/).filter(Boolean);
+
+            matchesSearch = queryTokens.every(token => {
+                // Skip common doctor title tokens — they apply to all and are not meaningful filters
+                if (token === 'dr' || token === 'doctor') return true;
+
+                // Direct substring match (name, spec, services, email)
+                if (doctorBlob.includes(token)) return true;
+
+                // Clinical word stem: 'surgeon' and 'surgery' both mean 'surg'
+                if ((token === 'surgeon' || token === 'surg') && dSpec.includes('surg')) return true;
+                // Eye / ophthalmology synonym
+                if ((token === 'eye' || token === 'ophthalmology') && (dSpec.includes('eye') || dSpec.includes('ophthalm') || dServices.includes('eye') || dServices.includes('ophthalm'))) return true;
+
+                return false;
+            });
+        }
+
+        if (!matchesSearch) return false;
+
+        if (specFilter === 'ALL') return true;
+
+        // Build specialization/services blob for category filter
+        const specBlob = [
+            doc.specialization || doc.address || '',
+            ...(doc.services || []),
+            ...(doc.availableServices || [])
+        ].join(' ').toLowerCase();
+
         if (specFilter === 'OPD') {
-            return matchesSearch && (
-                dSpec.includes('opd') ||
-                dSpec.includes('outpatient') ||
-                dSpec.includes('medicine') ||
-                dSpec.includes('general') ||
-                dSpec.includes('care')
+            return (
+                specBlob.includes('opd') ||
+                specBlob.includes('outpatient') ||
+                specBlob.includes('medicine') ||
+                specBlob.includes('general')
             );
         }
         if (specFilter === 'Surgery') {
-            return matchesSearch && (
-                dSpec.includes('surg') ||
-                dSpec.includes('trauma') ||
-                dSpec.includes('operation')
+            return (
+                specBlob.includes('surg') ||
+                specBlob.includes('trauma') ||
+                specBlob.includes('operation')
             );
         }
         if (specFilter === 'Eye') {
-            return matchesSearch && (
-                dSpec.includes('eye') ||
-                dSpec.includes('ophthalm')
+            return (
+                specBlob.includes('eye') ||
+                specBlob.includes('ophthalm')
             );
         }
-        return matchesSearch && dSpec.includes(specFilter.toLowerCase());
+        return specBlob.includes(specFilter.toLowerCase());
     });
 
     const openBookingModal = (doctor = null) => {
@@ -1507,7 +1743,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             date: bookingData.date,
             timeSlot: bookingData.timeSlot,
             reason: bookingData.reason || 'General Health Consultation',
-            status: 'PENDING_APPROVAL',
+            status: 'REQUESTED',
         };
 
         const finalAppt = await api.createAppointment({
@@ -1526,7 +1762,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
             date: bookingData.date,
             timeSlot: bookingData.timeSlot,
             reason: bookingData.reason || 'General Health Consultation',
-            status: 'PENDING_APPROVAL',
+            status: 'REQUESTED',
         }).catch(err => {
             console.warn("Error creating appointment in backend API", err);
             return newAppointment;
@@ -1594,11 +1830,9 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
         if (!user) return false;
         const ownerId = appt.petOwnerId || appt.ownerId;
         const ownerEmail = appt.petOwnerEmail || appt.ownerEmail;
-        const ownerName = appt.petOwnerName || appt.ownerName;
 
         if (ownerId && user.id && String(ownerId) === String(user.id)) return true;
         if (ownerEmail && user.email && ownerEmail.toLowerCase().trim() === user.email.toLowerCase().trim()) return true;
-        if (ownerName && user.name && ownerName.toLowerCase().trim() === user.name.toLowerCase().trim()) return true;
 
         return false;
     };
@@ -2545,19 +2779,54 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                 </div>
                             </div>
 
-                            <form onSubmit={(e) => {
+                            <form key={(currentUser?.name || '') + (currentUser?.phone || '') + (currentUser?.address || '')} onSubmit={(e) => {
                                 e.preventDefault();
-                                if (newPassword) {
-                                    const passErr = validatePasswordComplexity(newPassword);
-                                    if (passErr) {
-                                        showToast(`❌ ${passErr}`, 'error');
-                                        return;
-                                    }
-                                    if (newPassword !== confirmPassword) {
-                                        showToast('❌ Passwords do not match.', 'error');
-                                        return;
-                                    }
+                                
+                                const formData = new FormData(e.target);
+                                const phone = formData.get('phone');
+                                
+                                if (phone && !/^\d{10}$/.test(phone.trim())) {
+                                    showToast('❌ Phone number must be exactly 10 digits.', 'error');
+                                    return;
                                 }
+
+                                const updatedUser = {
+                                    ...currentUser,
+                                    name: formData.get('name') || currentUser?.name,
+                                    phone: formData.get('phone') || currentUser?.phone,
+                                    address: formData.get('address') || currentUser?.address
+                                };
+                                
+                                setCurrentUser(updatedUser);
+                                showToast('✅ Profile updated successfully!', 'success');
+                                try {
+                                    localStorage.setItem('vhms_user', JSON.stringify(updatedUser));
+                                    
+                                    // Update owner map cache if exists
+                                    const allUsersStr = localStorage.getItem('vhms_all_users_cache');
+                                    if (allUsersStr) {
+                                        let allUsers = JSON.parse(allUsersStr);
+                                        const idx = allUsers.findIndex(u => u.email === updatedUser.email || String(u.id) === String(updatedUser.id));
+                                        if (idx !== -1) {
+                                            allUsers[idx] = updatedUser;
+                                            localStorage.setItem('vhms_all_users_cache', JSON.stringify(allUsers));
+                                        }
+                                    }
+
+                                    const regUsersStr = localStorage.getItem('vhms_registered_users');
+                                    if (regUsersStr) {
+                                        let regUsers = JSON.parse(regUsersStr);
+                                        const idx = regUsers.findIndex(u => u.email === updatedUser.email || String(u.id) === String(updatedUser.id));
+                                        if (idx !== -1) {
+                                            regUsers[idx] = updatedUser;
+                                            localStorage.setItem('vhms_registered_users', JSON.stringify(regUsers));
+                                        }
+                                    }
+                                    window.dispatchEvent(new Event('storage'));
+                                } catch (err) {
+                                    console.error('Failed to save updated profile to local storage', err);
+                                }
+
                                 showToast('Profile details updated successfully!', 'success');
                                 setNewPassword('');
                                 setConfirmPassword('');
@@ -2568,7 +2837,8 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Full Name *</label>
                                         <input
                                             type="text"
-                                            defaultValue={currentUser?.name || 'Dinethmi Peiris'}
+                                            name="name"
+                                            defaultValue={currentUser?.name || ''}
                                             required
                                             style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
                                         />
@@ -2578,7 +2848,8 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Email Address (Account Identifier)</label>
                                         <input
                                             type="email"
-                                            defaultValue={currentUser?.email || 'thinupeiris04@gmail.com'}
+                                            name="email"
+                                            defaultValue={currentUser?.email || ''}
                                             disabled
                                             style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontSize: '0.92rem' }}
                                         />
@@ -2590,7 +2861,8 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Phone Number *</label>
                                         <input
                                             type="tel"
-                                            defaultValue="0771234567"
+                                            name="phone"
+                                            defaultValue={currentUser?.phone || ''}
                                             placeholder="e.g. 0771234567"
                                             required
                                             style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
@@ -2601,63 +2873,15 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Residential Address</label>
                                         <input
                                             type="text"
-                                            defaultValue="No. 45, Rajagiriya Road, Colombo"
+                                            name="address"
+                                            defaultValue={currentUser?.address || ''}
                                             placeholder="e.g. 123 Main St, City"
                                             style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.92rem' }}
                                         />
                                     </div>
                                 </div>
 
-                                {/* Password Change Box */}
-                                <div className="password-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '16px', marginTop: '10px' }}>
-                                    <h4 style={{ margin: '0 0 6px', fontSize: '0.95rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>🔒 Account Security & Password</h4>
-                                    <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#64748b' }}>Update your secret password to keep your pet records secure.</p>
 
-                                    <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                                        <div className="form-group">
-                                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>New Password</label>
-                                            <input
-                                                type="password"
-                                                placeholder="Enter new secret password"
-                                                value={newPassword}
-                                                onChange={(e) => setNewPassword(e.target.value)}
-                                                style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Confirm New Password</label>
-                                            <input
-                                                type="password"
-                                                placeholder="Confirm new password"
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                                style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }}
-                                            />
-                                        </div>
-                                    </div>
-                                    {newPassword && (
-                                        <div style={{ marginTop: '12px', padding: '10px 12px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.78rem', color: '#475569' }}>
-                                            <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1e293b' }}>Password Requirements:</div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '4px' }}>
-                                                <span style={{ color: newPassword.length >= 6 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                    {newPassword.length >= 6 ? '✓' : '✗'} Min. 6 characters
-                                                </span>
-                                                <span style={{ color: /[A-Z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                    {/[A-Z]/.test(newPassword) ? '✓' : '✗'} Uppercase (A-Z)
-                                                </span>
-                                                <span style={{ color: /[a-z]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                    {/[a-z]/.test(newPassword) ? '✓' : '✗'} Lowercase (a-z)
-                                                </span>
-                                                <span style={{ color: /[0-9]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                    {/[0-9]/.test(newPassword) ? '✓' : '✗'} Number (0-9)
-                                                </span>
-                                                <span style={{ color: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                                    {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '✗'} Special character (!@#...)
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
 
                                 <div className="form-actions-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
                                     <button type="button" onClick={() => setCurrentView('OVERVIEW')} style={{ padding: '10px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
@@ -3257,7 +3481,17 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                     >
                                         <span>💳</span>
                                         <span>Billing</span>
-                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'BILLING').length}</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'BILLING' || n.type === 'PAYMENT_REMINDER' || n.type === 'INVOICE' || n.referenceType === 'INVOICE' || (n.title && (n.title.toLowerCase().includes('invoice') || n.title.toLowerCase().includes('bill') || n.title.toLowerCase().includes('payment')))).length}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`filter-pill-btn ${notifFilter === 'HOSPITALIZATION' ? 'active' : ''}`}
+                                        onClick={() => setNotifFilter('HOSPITALIZATION')}
+                                    >
+                                        <span>🏥</span>
+                                        <span>Hospitalization</span>
+                                        <span className="pill-count-tag">{notifications.filter(n => n.type === 'HOSPITALIZATION' || n.referenceType === 'ADMISSION' || n.referenceType === 'HOSPITALIZATION' || (n.title && (n.title.toLowerCase().includes('hospitaliz') || n.title.toLowerCase().includes('admission') || n.title.toLowerCase().includes('discharge')))).length}</span>
                                     </button>
 
                                     <button
@@ -3307,10 +3541,11 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                                 notifFilter === 'UNREAD' ? !n.read :
                                                     notifFilter === 'APPOINTMENTS' ? n.type === 'APPOINTMENT' :
                                                         notifFilter === 'VACCINES' ? n.type === 'VACCINE' :
-                                                            notifFilter === 'REMINDERS' ? n.type === 'REMINDER' :
-                                                                notifFilter === 'BILLING' ? n.type === 'BILLING' :
-                                                                    notifFilter === 'PETS' ? n.type === 'PET_PROFILE' :
-                                                                        n.type === 'SYSTEM';
+                                                            notifFilter === 'REMINDERS' ? (n.type === 'REMINDER' || n.type === 'PAYMENT_REMINDER') :
+                                                                notifFilter === 'BILLING' ? (n.type === 'BILLING' || n.type === 'PAYMENT_REMINDER' || n.type === 'INVOICE' || n.type === 'INVOICE_GENERATED' || n.referenceType === 'INVOICE' || (n.title && (n.title.toLowerCase().includes('invoice') || n.title.toLowerCase().includes('bill') || n.title.toLowerCase().includes('payment')))) :
+                                                                    notifFilter === 'HOSPITALIZATION' ? (n.type === 'HOSPITALIZATION' || n.type === 'HOSPITALIZATION_APPROVED' || n.type === 'HOSPITALIZATION_REJECTED' || n.referenceType === 'ADMISSION' || n.referenceType === 'HOSPITALIZATION' || (n.title && (n.title.toLowerCase().includes('hospitaliz') || n.title.toLowerCase().includes('admission') || n.title.toLowerCase().includes('discharge')))) :
+                                                                        notifFilter === 'PETS' ? n.type === 'PET_PROFILE' :
+                                                                            n.type === 'SYSTEM';
 
                                         const query = notifSearch.toLowerCase().trim();
                                         const matchesSearch = !query ||
@@ -3341,14 +3576,15 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
                                             n.type === 'APPOINTMENT' ? '📅' :
                                                 n.type === 'VACCINE' ? '💉' :
                                                     n.type === 'PET_PROFILE' ? '🐾' :
-                                                        n.type === 'REMINDER' ? '🔔' :
-                                                            n.type === 'BILLING' ? '💳' : '⚙️';
+                                                        (n.type === 'REMINDER' || n.type === 'PAYMENT_REMINDER') ? '🔔' :
+                                                            (n.type === 'BILLING' || n.type === 'INVOICE' || n.type === 'INVOICE_GENERATED' || n.referenceType === 'INVOICE') ? '💳' :
+                                                                (n.type === 'HOSPITALIZATION' || n.type === 'HOSPITALIZATION_APPROVED' || n.type === 'HOSPITALIZATION_RECOMMENDED' || n.type === 'HOSPITALIZATION_REJECTED' || n.referenceType === 'ADMISSION' || n.referenceType === 'HOSPITALIZATION' || (n.title && (n.title.toLowerCase().includes('discharge') || n.title.toLowerCase().includes('hospitaliz')))) ? '🏥' : '⚙️';
                                         const iconClass =
                                             n.type === 'APPOINTMENT' ? 'type-bg-appointment' :
                                                 n.type === 'VACCINE' ? 'type-bg-vaccine' :
                                                     n.type === 'PET_PROFILE' ? 'type-bg-pet' :
-                                                        n.type === 'REMINDER' ? 'type-bg-reminder' :
-                                                            n.type === 'BILLING' ? 'type-bg-billing' : 'type-bg-system';
+                                                        (n.type === 'REMINDER' || n.type === 'PAYMENT_REMINDER') ? 'type-bg-reminder' :
+                                                            (n.type === 'BILLING' || n.type === 'INVOICE' || n.type === 'INVOICE_GENERATED' || n.referenceType === 'INVOICE') ? 'type-bg-billing' : 'type-bg-system';
 
                                         return (
                                             <div key={n.id} className={`notif-card-item ${isUnread ? 'unread' : ''}`}>
@@ -3387,7 +3623,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
                                                     <div className="notif-card-meta-row">
                                                         <span className="notif-timestamp-tag">
-                                                            🕒 {n.timestamp}
+                                                            🕒 {n.timestamp || (n.sentAt ? new Date(n.sentAt).toLocaleString() : (n.createdAt ? new Date(n.createdAt).toLocaleString() : 'Recent'))}
                                                         </span>
 
                                                         <div className="notif-actions-group">
@@ -3721,7 +3957,7 @@ export default function PetManagementPage({ initialView = null, hideHeader = fal
 
                     {currentView === 'CONSULTATIONS' && (
                         <section style={{ padding: '0' }}>
-                            <PetOwnerConsultations />
+                            <PetOwnerConsultations ownerPets={pets} />
                         </section>
                     )}
 

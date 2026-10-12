@@ -218,6 +218,7 @@ export default function PetOwnerAdmissionsPage({ hideHeader = false }) {
       // 6. RECOMMENDED (Doctor recommended hospitalization)
       return {
         id: `update-rec-${item.id}`,
+        rawId: item.id,
         type: 'RECOMMENDED',
         icon: '📋',
         statusBadge: 'Recommendation',
@@ -264,6 +265,20 @@ export default function PetOwnerAdmissionsPage({ hideHeader = false }) {
       loadAdmissions()
     } catch (err) {
       setToast({ message: err.message || 'Failed to submit admission request', type: 'error' })
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  const handleRejectAdmission = async (id) => {
+    setActionId(id)
+    setToast({ message: '', type: '' })
+    try {
+      await epic3Service.rejectAdmission(id, 'Rejected by Pet Owner')
+      setToast({ message: 'Admission request rejected successfully.', type: 'success' })
+      loadAdmissions()
+    } catch (err) {
+      setToast({ message: err.message || 'Failed to reject admission request', type: 'error' })
     } finally {
       setActionId(null)
     }
@@ -358,6 +373,26 @@ export default function PetOwnerAdmissionsPage({ hideHeader = false }) {
                               {update.detail && (
                                 <div className="notif-item-detail">{update.detail}</div>
                               )}
+                              {update.type === 'RECOMMENDED' && (
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                  <button
+                                    className="btn-action request"
+                                    style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '6px', fontWeight: 'bold' }}
+                                    onClick={(e) => { e.stopPropagation(); handleRequestAdmission(update.rawId); }}
+                                    disabled={actionId === update.rawId}
+                                  >
+                                    {actionId === update.rawId ? 'Requesting...' : 'Approve'}
+                                  </button>
+                                  <button
+                                    className="btn-action reject"
+                                    style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '6px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                    onClick={(e) => { e.stopPropagation(); handleRejectAdmission(update.rawId); }}
+                                    disabled={actionId === update.rawId}
+                                  >
+                                    {actionId === update.rawId ? 'Rejecting...' : 'Reject'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </li>
                         ))}
@@ -430,13 +465,23 @@ export default function PetOwnerAdmissionsPage({ hideHeader = false }) {
                       </td>
                       <td>
                         {item.status === 'RECOMMENDED' ? (
-                          <button
-                            className="btn-action request"
-                            onClick={() => handleRequestAdmission(item.id)}
-                            disabled={actionId === item.id}
-                          >
-                            {actionId === item.id ? 'Requesting...' : 'Request Admission'}
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              className="btn-action request"
+                              onClick={() => handleRequestAdmission(item.id)}
+                              disabled={actionId === item.id}
+                            >
+                              {actionId === item.id ? 'Requesting...' : 'Request Admission'}
+                            </button>
+                            <button
+                              className="btn-action reject"
+                              style={{ backgroundColor: '#ef4444', color: 'white' }}
+                              onClick={() => handleRejectAdmission(item.id)}
+                              disabled={actionId === item.id}
+                            >
+                              {actionId === item.id ? 'Rejecting...' : 'Reject'}
+                            </button>
+                          </div>
                         ) : item.status === 'REQUESTED' ? (
                           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pending Admin Processing</span>
                         ) : item.status === 'ADMITTED' ? (

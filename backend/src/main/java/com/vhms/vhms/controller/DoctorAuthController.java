@@ -12,6 +12,7 @@ import com.vhms.vhms.dto.DoctorAuthResponse;
 import com.vhms.vhms.dto.DoctorLoginRequest;
 import com.vhms.vhms.dto.DoctorRegisterRequest;
 import com.vhms.vhms.dto.ForgotPasswordRequest;
+import com.vhms.vhms.dto.ChangePasswordRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import com.vhms.vhms.model.Doctor;
 import com.vhms.vhms.repository.DoctorRepository;
@@ -48,6 +49,11 @@ public class DoctorAuthController {
     @PostMapping("/reset-password")
     public ResponseEntity<DoctorAuthResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(doctorAuthService.resetPassword(request));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<DoctorAuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return ResponseEntity.ok(doctorAuthService.changePassword(request));
     }
 
     @GetMapping("/force-reset")

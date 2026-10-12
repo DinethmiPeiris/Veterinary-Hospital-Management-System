@@ -3,6 +3,7 @@ import { epic3Service } from '../services/epic3Service'
 import { getEpic3Session } from '../services/demoConfig'
 import { API_BASE_URL } from '../config/api'
 import { api } from '../services/api'
+import { notificationService } from '../services/notificationService'
 import './ModuleStyles.css'
 
 export default function DoctorRecommendPage() {
@@ -86,13 +87,26 @@ export default function DoctorRecommendPage() {
       })
   }, [])
 
+  useEffect(() => {
+    if (selectedPet) {
+      const resolvedOwnerName = ownerMap[selectedPet.ownerId || selectedPet.petOwnerId] 
+        || (selectedPet.ownerEmail && ownerMap[selectedPet.ownerEmail]) 
+        || selectedPet.ownerName 
+        || selectedPet.ownerId || selectedPet.petOwnerId || form.ownerName;
+      if (resolvedOwnerName && resolvedOwnerName !== form.ownerName) {
+        setForm(f => ({ ...f, ownerName: resolvedOwnerName }));
+      }
+    }
+  }, [selectedPet, ownerMap]);
+
   const handlePetSelect = (petId) => {
     const pet = pets.find((p) => p.id === petId) || null
     setSelectedPet(pet)
     if (pet) {
-      const resolvedOwnerName = (pet.ownerEmail && ownerMap[pet.ownerEmail]) 
-        || ownerMap[pet.ownerId] 
-        || pet.ownerId;
+      const resolvedOwnerName = ownerMap[pet.ownerId || pet.petOwnerId] 
+        || (pet.ownerEmail && ownerMap[pet.ownerEmail]) 
+        || pet.ownerName 
+        || pet.ownerId || pet.petOwnerId;
         
       setForm((f) => ({
         ...f,
@@ -126,7 +140,7 @@ export default function DoctorRecommendPage() {
     setSubmitting(true)
     setToast({ message: '', type: '' })
     try {
-      await epic3Service.recommendAdmission({
+      const created = await epic3Service.recommendAdmission({
         petId: selectedPet?.id || getEpic3Session().petId,
         petOwnerId: selectedPet?.ownerId || getEpic3Session().ownerId,
         doctorId: getEpic3Session().doctorId,
@@ -137,6 +151,27 @@ export default function DoctorRecommendPage() {
         ownerName: form.ownerName,
         doctorName: form.doctorName
       })
+      
+      // Dispatch notification to Pet Owner
+      try {
+        const ownerId = selectedPet?.ownerId || getEpic3Session().ownerId;
+        const ownerEmail = selectedPet?.ownerEmail || form.ownerEmail || '';
+        if (ownerId) {
+          await notificationService.sendNotification({
+            recipientId: ownerId,
+            recipientEmail: ownerEmail,
+            recipientRole: 'PET_OWNER',
+            type: 'HOSPITALIZATION',
+            title: '⚠️ Hospitalization Recommended',
+            message: `Dr. ${form.doctorName} has recommended hospitalization for ${form.petName}. Reason: ${form.recommendationReason}. Please review and approve/reject this request.`,
+            referenceType: 'ADMISSION',
+            referenceId: created?.data?.id || created?.id || '',
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to dispatch hospitalization notification', err);
+      }
+
       setToast({ message: 'Hospitalization recommendation submitted successfully! The pet owner will be notified.', type: 'success' })
       setForm({
         petName: getEpic3Session().petName,
@@ -274,7 +309,7 @@ export default function DoctorRecommendPage() {
                         <br />
                         <small style={{ color: 'var(--text-muted)' }}>{item.petSpecies}</small>
                       </td>
-                      <td>{item.ownerName || 'Owner'}</td>
+                      <td>{ownerMap[item.ownerId] || ownerMap[item.petOwnerId] || item.ownerName || 'Owner'}</td>
                       <td>{item.doctorName || 'Doctor'}</td>
                       <td>{item.recommendationReason}</td>
                       <td>

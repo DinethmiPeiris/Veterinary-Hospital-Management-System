@@ -14,6 +14,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
+import java.security.SecureRandom;
+import com.vhms.vhms.dto.ForgotPasswordRequest;
+import com.vhms.vhms.dto.ResetPasswordRequest;
 
 @Service
 public class AuthService {
@@ -24,7 +28,8 @@ public class AuthService {
     @Autowired
     private DoctorRepository doctorRepository;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private EmailService emailService;
 
     @PostConstruct
     public void initDefaultAdmin() {
@@ -35,7 +40,7 @@ public class AuthService {
                     "admin@vhms.com",
                     "0771234567",
                     "Colombo 07, Sri Lanka",
-                    passwordEncoder.encode("admin123"),
+                    "Admin@VHMS$2026!",
                     "ADMIN",
                     "ACTIVE");
             admin.setId("SJAH-ADMIN-001");
@@ -43,11 +48,11 @@ public class AuthService {
             System.out.println("✅ Default Admin account seeded: admin@vhms.com / admin123");
         } else {
             User admin = adminOpt.get();
-            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setPassword("Admin@VHMS$2026!");
             admin.setRole("ADMIN");
             admin.setStatus("ACTIVE");
             userRepository.save(admin);
-            System.out.println("✅ Default Admin account refreshed: admin@vhms.com / admin123");
+            System.out.println("✅ Default Admin account refreshed: admin@vhms.com / Admin@VHMS$2026!");
         }
 
         // Auto-sync all existing Doctor users from 'users' collection to 'doctors'
@@ -124,7 +129,7 @@ public class AuthService {
                 request.getEmail(),
                 request.getPhone(),
                 request.getAddress(),
-                passwordEncoder.encode(request.getPassword()),
+                request.getPassword(),
                 "PET_OWNER",
                 "PENDING_APPROVAL");
 
@@ -149,15 +154,13 @@ public class AuthService {
                 ? request.getPassword()
                 : "Doctor@123";
 
-        String encodedPassword = passwordEncoder.encode(rawPassword);
-
         User doctorUser = new User(
                 request.getName(),
                 request.getEmail(),
                 request.getPhone(),
                 request.getAddress() != null && !request.getAddress().isEmpty() ? request.getAddress()
                         : "Hospital Staff",
-                encodedPassword,
+                rawPassword,
                 "DOCTOR",
                 "ACTIVE");
 
@@ -171,7 +174,7 @@ public class AuthService {
                     request.getName(),
                     request.getEmail(),
                     request.getPhone(),
-                    encodedPassword,
+                    rawPassword,
                     request.getAddress() != null && !request.getAddress().isEmpty() ? request.getAddress()
                             : "Veterinary Surgery");
             doctorRepository.save(docEntity);
@@ -211,7 +214,7 @@ public class AuthService {
         if (userOpt.isEmpty()
                 && ("admin@vhms.com".equalsIgnoreCase(identifier) || "SJAH-ADMIN-001".equalsIgnoreCase(identifier))) {
             User admin = new User("System Admin", "admin@vhms.com", "0771234567", "Colombo 07",
-                    passwordEncoder.encode("admin123"), "ADMIN", "ACTIVE");
+                    "Admin@VHMS$2026!", "ADMIN", "ACTIVE");
             admin.setId("SJAH-ADMIN-001");
             userOpt = Optional.of(userRepository.save(admin));
         }
@@ -222,13 +225,16 @@ public class AuthService {
 
         User user = userOpt.get();
 
-        // Password matching check (supports BCrypt or plain fallback)
-        boolean passwordMatches = passwordEncoder.matches(rawPassword, user.getPassword())
-                || rawPassword.equals(user.getPassword());
+        // Password matching check (plaintext or BCrypt)
+        boolean passwordMatches = rawPassword.equals(user.getPassword());
+        if (!passwordMatches && user.getPassword() != null && user.getPassword().startsWith("$2a$")) {
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+            passwordMatches = encoder.matches(rawPassword, user.getPassword());
+        }
 
         // Special case for default admin
-        if (!passwordMatches && "admin@vhms.com".equalsIgnoreCase(user.getEmail()) && "admin123".equals(rawPassword)) {
-            user.setPassword(passwordEncoder.encode("admin123"));
+        if (!passwordMatches && "admin@vhms.com".equalsIgnoreCase(user.getEmail()) && "Admin@VHMS$2026!".equals(rawPassword)) {
+            user.setPassword("Admin@VHMS$2026!");
             userRepository.save(user);
             passwordMatches = true;
         }
@@ -284,7 +290,7 @@ public class AuthService {
     }
 
     public AuthResponse approveUser(String id) {
-        Optional<User> userOpt = userRepository.findById(id);
+        Optional<User> userOpt = findUserForAdminAction(id);
         if (userOpt.isEmpty()) {
             return new AuthResponse(false, "User not found!");
         }
@@ -293,11 +299,18 @@ public class AuthService {
         user.setStatus("ACTIVE");
         userRepository.save(user);
 
-        return new AuthResponse(true, "User " + user.getName() + " has been approved successfully!");
+        return new AuthResponse(
+                true,
+                "User " + user.getName() + " has been approved successfully!",
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getStatus());
     }
 
     public AuthResponse rejectUser(String id) {
-        Optional<User> userOpt = userRepository.findById(id);
+        Optional<User> userOpt = findUserForAdminAction(id);
         if (userOpt.isEmpty()) {
             return new AuthResponse(false, "User not found!");
         }
@@ -306,7 +319,33 @@ public class AuthService {
         user.setStatus("REJECTED");
         userRepository.save(user);
 
-        return new AuthResponse(true, "User " + user.getName() + " has been rejected!");
+        return new AuthResponse(
+                true,
+                "User " + user.getName() + " has been rejected!",
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getStatus());
+    }
+
+    /** Resolve by Mongo id, or by email when a stale local PO-* id is sent. */
+    private Optional<User> findUserForAdminAction(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<User> byId = userRepository.findById(id);
+        if (byId.isPresent()) {
+            return byId;
+        }
+        if (id.contains("@")) {
+            Optional<User> byEmail = userRepository.findByEmail(id.toLowerCase());
+            if (byEmail.isPresent()) {
+                return byEmail;
+            }
+            return userRepository.findByEmail(id);
+        }
+        return Optional.empty();
     }
 
     public AuthResponse deleteUser(String id) {
@@ -351,5 +390,84 @@ public class AuthService {
         }
 
         return new AuthResponse(true, "User status updated to " + user.getStatus());
+    }
+
+    public AuthResponse forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim();
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email.toLowerCase());
+        }
+        if (userOpt.isEmpty()) {
+            // Return success even if not found to prevent email enumeration
+            return new AuthResponse(true, "If an account exists with that email, a reset code has been sent.");
+        }
+        
+        User user = userOpt.get();
+        SecureRandom secureRandom = new SecureRandom();
+        String resetToken = String.format("%06d", secureRandom.nextInt(1_000_000));
+        Instant expiry = Instant.now().plusSeconds(15 * 60);
+        
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(expiry);
+        userRepository.save(user);
+
+        // Also sync reset token to doctors collection if account is a doctor
+        try {
+            doctorRepository.findFirstByEmailIgnoreCase(email).ifPresent(doc -> {
+                doc.setResetToken(resetToken);
+                doc.setResetTokenExpiry(expiry);
+                doctorRepository.save(doc);
+            });
+        } catch (Exception ignored) { }
+        
+        emailService.sendPasswordResetEmail(
+                user.getEmail(),
+                user.getName(),
+                resetToken
+        );
+        
+        return new AuthResponse(true, "A 6-digit reset code has been sent to your email. Check your inbox.");
+    }
+
+    public AuthResponse resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim();
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email.toLowerCase());
+        }
+        if (userOpt.isEmpty()) {
+            return new AuthResponse(false, "No account found for that email.");
+        }
+        
+        User user = userOpt.get();
+        
+        if (user.getResetToken() == null || user.getResetTokenExpiry() == null) {
+            return new AuthResponse(false, "No active reset request. Please use Forgot Password first.");
+        }
+        if (user.getResetTokenExpiry().isBefore(Instant.now())) {
+            return new AuthResponse(false, "Reset code has expired. Please request a new one.");
+        }
+        if (!user.getResetToken().equals(request.getResetToken().trim())) {
+            return new AuthResponse(false, "Invalid reset code.");
+        }
+        
+        String newPassword = request.getNewPassword();
+        user.setPassword(newPassword);
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+
+        // Synchronize password update to doctors collection in MongoDB
+        try {
+            doctorRepository.findFirstByEmailIgnoreCase(email).ifPresent(doc -> {
+                doc.setPassword(newPassword);
+                doc.setResetToken(null);
+                doc.setResetTokenExpiry(null);
+                doctorRepository.save(doc);
+            });
+        } catch (Exception ignored) { }
+        
+        return new AuthResponse(true, "Password updated successfully. You can now sign in.");
     }
 }

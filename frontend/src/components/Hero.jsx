@@ -180,7 +180,7 @@ export default function Hero() {
               </div>
               <div className="hero-stat-divider"></div>
               <div className="hero-stat">
-                <strong><CountUp target={5} /></strong>
+                <strong><CountUp target={7} /></strong>
                 <span className="hero-stat-label">Expert Vets</span>
               </div>
               <div className="hero-stat-divider"></div>

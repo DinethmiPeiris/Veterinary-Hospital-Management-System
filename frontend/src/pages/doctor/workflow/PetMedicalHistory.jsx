@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import StatusBadge from '../../shared/StatusBadge'
-import { getMedicalRecordByPetId, updatePetWeight } from '../../../utils/appointmentStore'
+import { getMedicalRecordByPetId } from '../../../utils/appointmentStore'
 import './PetMedicalHistory.css'
 
 const PetMedicalHistory = () => {
@@ -11,9 +11,6 @@ const PetMedicalHistory = () => {
   const [record, setRecord] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [weightInput, setWeightInput] = useState('')
-  const [savingWeight, setSavingWeight] = useState(false)
-  const [weightMessage, setWeightMessage] = useState('')
   const [viewerDocument, setViewerDocument] = useState(null)
 
   useEffect(() => {
@@ -24,7 +21,6 @@ const PetMedicalHistory = () => {
         const id = petId || 'PET-101'
         const data = await getMedicalRecordByPetId(id)
         setRecord(data)
-        setWeightInput(data.weight != null ? String(data.weight) : '')
       } catch (err) {
         console.error('Error fetching medical history', err)
         setError(err.message || 'Unable to load medical history from MongoDB.')
@@ -36,27 +32,6 @@ const PetMedicalHistory = () => {
 
     fetchHistory()
   }, [petId])
-
-  const saveCurrentWeight = async (e) => {
-    e.preventDefault()
-    const nextWeight = Number(weightInput)
-    if (!Number.isFinite(nextWeight) || nextWeight <= 0) {
-      setWeightMessage('Enter a realistic weight in kg (for example 30.5).')
-      return
-    }
-    setSavingWeight(true)
-    setWeightMessage('')
-    try {
-      const updated = await updatePetWeight(record.petId, nextWeight)
-      setRecord(updated)
-      setWeightInput(updated.weight != null ? String(updated.weight) : String(nextWeight))
-      setWeightMessage('Current weight saved to the medical record.')
-    } catch (err) {
-      setWeightMessage(err.message || 'Could not update weight.')
-    } finally {
-      setSavingWeight(false)
-    }
-  }
 
   if (loading) {
     return <div className="loading-state">Loading medical history...</div>
@@ -90,48 +65,6 @@ const PetMedicalHistory = () => {
       </header>
 
       <div className="history-grid">
-        <div className="pet-info-card">
-          <div className="card-header">
-            <span className="card-icon">🐾</span>
-            <h2>Pet Information</h2>
-          </div>
-          <div className="card-body">
-            <div className="info-row">
-              <span className="label">Species:</span>
-              <span className="value">{record.species}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Breed:</span>
-              <span className="value">{record.breed || '—'}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Age:</span>
-              <span className="value">{record.age != null ? `${record.age} years` : '—'}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Weight:</span>
-              <span className="value">{record.weight != null ? `${record.weight} kg` : '—'}</span>
-            </div>
-            <form className="weight-update" onSubmit={saveCurrentWeight}>
-              <label htmlFor="current-weight">Update current weight (kg)</label>
-              <div className="weight-row">
-                <input
-                  id="current-weight"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={weightInput}
-                  onChange={(e) => setWeightInput(e.target.value)}
-                  placeholder="e.g. 30.5"
-                />
-                <button type="submit" disabled={savingWeight}>
-                  {savingWeight ? 'Saving...' : 'Save weight'}
-                </button>
-              </div>
-              {weightMessage && <p className="weight-message">{weightMessage}</p>}
-            </form>
-          </div>
-        </div>
 
         <div className="past-consultations-card">
           <div className="card-header">

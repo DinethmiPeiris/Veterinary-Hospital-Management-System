@@ -18,6 +18,8 @@ public class User {
     private String role; // PET_OWNER, DOCTOR, ADMIN
     private String status; // PENDING_APPROVAL, ACTIVE, REJECTED
     private LocalDateTime createdAt;
+    private String resetToken;
+    private java.time.Instant resetTokenExpiry;
 
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -104,5 +106,21 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getResetToken() {
+        return resetToken;
+    }
+
+    public void setResetToken(String resetToken) {
+        this.resetToken = resetToken;
+    }
+
+    public java.time.Instant getResetTokenExpiry() {
+        return resetTokenExpiry;
+    }
+
+    public void setResetTokenExpiry(java.time.Instant resetTokenExpiry) {
+        this.resetTokenExpiry = resetTokenExpiry;
     }
 }

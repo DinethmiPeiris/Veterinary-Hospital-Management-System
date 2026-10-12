@@ -23,6 +23,45 @@ export const api = {
         return res.json();
     },
 
+    async forgotPassword(data) {
+        const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Forgot password failed');
+        }
+        return res.json();
+    },
+
+    async resetPassword(data) {
+        const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Reset password failed');
+        }
+        return res.json();
+    },
+
+    async changeDoctorPassword(data) {
+        const res = await fetch(`${API_BASE_URL}/auth/doctor/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+             const errBody = await res.text().catch(() => '');
+             throw new Error(`Failed to change password: ${errBody}`);
+        }
+        return res.json();
+    },
+
     // ADMIN
     async getPendingUsers() {
         const res = await fetch(`${API_BASE_URL}/admin/users/pending`);
@@ -62,43 +101,50 @@ export const api = {
     },
 
     async approveUser(id) {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}/approve`, {
+        const isEmail = String(id || '').includes('@');
+        const url = isEmail
+            ? `${API_BASE_URL}/admin/users/approve?email=${encodeURIComponent(id)}`
+            : `${API_BASE_URL}/admin/users/${encodeURIComponent(id)}/approve`;
+        const res = await fetch(url, {
             method: 'PUT',
         });
         const approvedUser = await res.json();
-        
-        // Auto-migrate orphaned pets AND appointments! 
-        // When a PO-XXXX mock ID is approved into a real Mongo ID, we MUST update their data to match the new ID.
+
+        if (!res.ok || !approvedUser || approvedUser.success === false) {
+            throw new Error(approvedUser?.message || 'Failed to approve user in MongoDB');
+        }
+
+        // Migrate pets/appointments when a stale local PO-* id becomes the real Mongo id
         try {
-            if (approvedUser && approvedUser.id && String(approvedUser.id) !== String(id)) {
-                // 1. Migrate Pets
+            if (approvedUser.id && String(approvedUser.id) !== String(id)) {
                 const pets = await this.getPets();
-                const petsToMigrate = pets.filter(p => String(p.ownerId) === String(id));
+                const petsToMigrate = pets.filter((p) => String(p.ownerId) === String(id));
                 for (const p of petsToMigrate) {
                     await this.updatePet(p.id || p.petId, { ...p, ownerId: approvedUser.id });
                 }
-                
-                // 2. Migrate Appointments
+
                 const apptsRes = await fetch(`${API_BASE_URL}/appointments`);
                 if (apptsRes.ok) {
                     const apptsRaw = await apptsRes.json();
                     const apptsArray = apptsRaw.data || apptsRaw;
                     if (Array.isArray(apptsArray)) {
-                        const apptsToMigrate = apptsArray.filter(a => String(a.petOwnerId) === String(id) || String(a.ownerId) === String(id));
+                        const apptsToMigrate = apptsArray.filter(
+                            (a) => String(a.petOwnerId) === String(id) || String(a.ownerId) === String(id)
+                        );
                         for (const a of apptsToMigrate) {
-                            await this.updateAppointment(a.id, { 
-                                ...a, 
+                            await this.updateAppointment(a.id, {
+                                ...a,
                                 petOwnerId: a.petOwnerId === id ? approvedUser.id : a.petOwnerId,
-                                ownerId: a.ownerId === id ? approvedUser.id : a.ownerId 
+                                ownerId: a.ownerId === id ? approvedUser.id : a.ownerId,
                             });
                         }
                     }
                 }
             }
         } catch (e) {
-            console.error("Failed to migrate data upon approval", e);
+            console.error('Failed to migrate data upon approval', e);
         }
-        
+
         return approvedUser;
     },
 
@@ -110,10 +156,18 @@ export const api = {
     },
 
     async rejectUser(id) {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}/reject`, {
+        const isEmail = String(id || '').includes('@');
+        const url = isEmail
+            ? `${API_BASE_URL}/admin/users/reject?email=${encodeURIComponent(id)}`
+            : `${API_BASE_URL}/admin/users/${encodeURIComponent(id)}/reject`;
+        const res = await fetch(url, {
             method: 'PUT',
         });
-        return res.json();
+        const body = await res.json();
+        if (!res.ok || !body || body.success === false) {
+            throw new Error(body?.message || 'Failed to reject user in MongoDB');
+        }
+        return body;
     },
 
     async deleteUser(id) {
@@ -236,9 +290,25 @@ export const api = {
                 if (dirRes.ok) {
                     const directory = await dirRes.json();
                     if (Array.isArray(directory)) {
-                        const known = new Set(doctors.map(d => String(d.email || '').toLowerCase()));
                         directory.forEach(d => {
-                            if (!known.has(String(d.email || '').toLowerCase())) doctors.push(d);
+                            const dEmail = String(d.email || '').toLowerCase();
+                            const existing = doctors.find(u => String(u.email || '').toLowerCase() === dEmail);
+                            if (existing) {
+                                if (d.specialization) existing.specialization = d.specialization;
+                                if (d.availableServices && d.availableServices.length > 0) {
+                                    existing.availableServices = d.availableServices;
+                                    existing.services = d.availableServices;
+                                }
+                                if (d.availableSlots && d.availableSlots.length > 0) existing.availableSlots = d.availableSlots;
+                                if (d.availableHours) existing.availableHours = d.availableHours;
+                                if (d.workingDays) existing.workingDays = d.workingDays;
+                                if (d.staffId) existing.staffId = d.staffId;
+                                if (d.bio) existing.bio = d.bio;
+                                if (d.experience) existing.experience = d.experience;
+                                if (d.status && d.status !== 'default') existing.status = d.status;
+                            } else {
+                                doctors.push(d);
+                            }
                         });
                     }
                 }
@@ -271,11 +341,6 @@ export const api = {
             let cleanedBackend = backendData.filter(a => {
                 const isMock = String(a.doctorName || '').includes('Dr. Smith') || (a.date && String(a.date).length > 20);
                 return !isMock;
-            }).map(a => {
-                if (a.status === 'COMPLETED' && (a.date && a.date > todayStr)) {
-                    return { ...a, status: 'APPROVED' };
-                }
-                return a;
             });
 
             if (ownerId) {
@@ -293,15 +358,9 @@ export const api = {
                 return !isMock;
             });
 
-            // Apply strict future date reversion for local storage data
+            // No need to revert completed future appointments
             let needsSave = false;
-            appts = appts.map(a => {
-                if (a.status === 'COMPLETED' && (a.date && a.date > todayStr)) {
-                    needsSave = true;
-                    return { ...a, status: 'APPROVED' };
-                }
-                return a;
-            });
+            // The map override was removed. We just keep appts as is.
 
             if (needsSave) {
                 localStorage.setItem('vhms_user_appointments', JSON.stringify(appts));
@@ -362,14 +421,28 @@ export const api = {
     // NOTIFICATIONS
     async getNotifications(userId, userEmail) {
         try {
-            // The backend endpoint is /api/v1/notifications/recipient/{recipientId}
-            if (!userId) return null;
-            const res = await fetch(`${API_BASE_URL}/notifications/recipient/${encodeURIComponent(userId)}`);
-            if (res.ok) {
-                const json = await res.json();
-                // The backend returns an ApiResponse wrapper: { data: [...] }
-                return json.data || json;
+            const targets = Array.from(new Set([userId, userEmail].filter(Boolean)));
+            let curUser = null;
+            try { curUser = JSON.parse(localStorage.getItem('vhms_user')); } catch {}
+            if (curUser?.role === 'PET_OWNER' || curUser?.role === 'OWNER' || String(userId).toUpperCase() === 'USR-5001') {
+                targets.push('USR-5001');
+                targets.push('owner@example.com');
             }
+            if (targets.length === 0) return null;
+            const results = await Promise.all(
+                targets.map(async (target) => {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/notifications/recipient/${encodeURIComponent(target)}`);
+                        if (res.ok) {
+                            const json = await res.json();
+                            return Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+                        }
+                    } catch {}
+                    return [];
+                })
+            );
+            const flat = results.flat();
+            return flat.length > 0 ? flat : null;
         } catch (e) {
             console.warn("Backend getNotifications error, using local fallback", e);
         }
@@ -382,6 +455,16 @@ export const api = {
             if (res.ok) return await res.json();
         } catch (e) {
             console.warn("Backend markNotificationRead error", e);
+        }
+        return null;
+    },
+
+    async markNotificationUnread(id) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/notifications/${id}/unread`, { method: 'PATCH' }).catch(() => {});
+            if (res && res.ok) return await res.json();
+        } catch (e) {
+            console.warn("Backend markNotificationUnread error", e);
         }
         return null;
     },
@@ -410,10 +493,21 @@ export const api = {
 
     async createNotification(data) {
         try {
-            const res = await fetch(`${API_BASE_URL}/notifications`, {
+            const payload = {
+                recipientId: data.recipientId || data.userId || data.userEmail || '',
+                recipientRole: data.recipientRole || data.role || 'PET_OWNER',
+                recipientEmail: data.recipientEmail || data.userEmail || '',
+                title: data.title || '',
+                message: data.message || '',
+                notificationType: data.type || data.notificationType || 'APPOINTMENT_REMINDER',
+                referenceType: data.referenceType || 'APPOINTMENT',
+                referenceId: data.referenceId || data.relatedEntityId || '',
+                ...data
+            };
+            const res = await fetch(`${API_BASE_URL}/notifications/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify(payload),
             });
             if (res.ok) return await res.json();
         } catch (e) {

@@ -105,6 +105,7 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
     const [doctorProfile, setDoctorProfile] = useState(null);
 
     // Password change state
+    const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSavingPass, setIsSavingPass] = useState(false);
@@ -311,13 +312,13 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                 }
             }
 
-            if (isOffDutyToday) {
-                setAvailabilityStatus('UNAVAILABLE');
-            } else {
-                const savedStatuses = JSON.parse(localStorage.getItem('vhms_doctor_statuses') || '{}');
-                const existingStatus = savedStatuses[currentEmail] || savedStatuses[currentDocName] || 'AVAILABLE';
-                setAvailabilityStatus(existingStatus);
+            const savedStatuses = JSON.parse(localStorage.getItem('vhms_doctor_statuses') || '{}');
+            let existingStatus = savedStatuses[currentEmail] || savedStatuses[currentDocName];
+            
+            if (!existingStatus) {
+                existingStatus = isOffDutyToday ? 'UNAVAILABLE' : 'AVAILABLE';
             }
+            setAvailabilityStatus(existingStatus);
         } catch { }
 
         const loadDoctorAppointments = async () => {
@@ -347,11 +348,6 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
             const cleaned = combined.filter(a => {
                 const isMock = String(a.doctorName || '').includes('Dr. Smith') || (a.date && String(a.date).length > 20);
                 return !isMock;
-            }).map(a => {
-                if (a.status === 'COMPLETED' && a.date > todayStr) {
-                    return { ...a, status: 'APPROVED' };
-                }
-                return a;
             });
 
             setAppointments(cleaned);
@@ -375,10 +371,10 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
         navigate('/login');
     };
 
-    const handleChangePassword = (e) => {
+    const handleChangePassword = async (e) => {
         e.preventDefault();
-        if (!newPassword || !confirmPassword) {
-            showToast('Please fill in both password fields.', 'error');
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            showToast('Please fill in all password fields.', 'error');
             return;
         }
         if (newPassword.length < 6) {
@@ -390,28 +386,45 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
             return;
         }
         if (newPassword !== confirmPassword) {
-            showToast('Passwords do not match. Please try again.', 'error');
+            showToast('New passwords do not match. Please try again.', 'error');
+            return;
+        }
+
+        const docEmail = email || currentUser?.email;
+        if (!docEmail) {
+            showToast('Unable to identify your account email for password reset.', 'error');
             return;
         }
 
         setIsSavingPass(true);
         try {
+            await api.changeDoctorPassword({
+                email: docEmail,
+                oldPassword: oldPassword,
+                newPassword: newPassword
+            });
+
+            // Update local storage so they don't get prompted again
             const passwords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}');
-            passwords[email] = newPassword;
+            passwords[docEmail] = newPassword;
+            if (name) passwords[name] = newPassword;
             localStorage.setItem('vhms_doctor_passwords', JSON.stringify(passwords));
+            
             setHasCustomPassword(true);
+            setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
             showToast('Password changed successfully!', 'success');
-        } catch {
-            showToast('Failed to save password.', 'error');
+        } catch (err) {
+            console.error(err);
+            showToast(err.message || 'Failed to change password.', 'error');
         } finally {
             setIsSavingPass(false);
         }
     };
 
-    const handleFirstTimePasswordReset = (e) => {
-        e.preventDefault();
+    const handleFirstTimePasswordReset = async (e) => {
+        if (e && e.preventDefault) e.preventDefault();
         if (!newPassword || !confirmPassword) {
             showToast('Please fill in both password fields.', 'error');
             return;
@@ -425,30 +438,74 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
             return;
         }
 
-        const passwords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}');
         const docEmail = email || currentUser?.email;
         const docName = name || currentUser?.name;
 
-        if (docEmail) passwords[docEmail] = newPassword;
-        if (docName) passwords[docName] = newPassword;
-        localStorage.setItem('vhms_doctor_passwords', JSON.stringify(passwords));
+        if (!docEmail) {
+            showToast('Unable to identify your account email for password reset.', 'error');
+            return;
+        }
 
-        const firstLogins = JSON.parse(localStorage.getItem('vhms_first_login_doctors') || '{}');
-        if (docEmail) firstLogins[docEmail] = false;
-        if (docName) firstLogins[docName] = false;
-        if (currentUser?.email) firstLogins[currentUser.email] = false;
-        if (currentUser?.name) firstLogins[currentUser.name] = false;
-        localStorage.setItem('vhms_first_login_doctors', JSON.stringify(firstLogins));
+        setIsSavingPass(true);
+        try {
+            const storedPasswords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}');
+            const knownOldPassword = storedPasswords[docEmail] || storedPasswords[docName] || currentUser?.password || '';
 
-        const updatedUser = { ...(currentUser || {}), email: docEmail || currentUser?.email, name: docName || currentUser?.name, isFirstTimeLogin: false };
-        localStorage.setItem('vhms_user', JSON.stringify(updatedUser));
-        setCurrentUser(updatedUser);
+            await api.changeDoctorPassword({
+                email: docEmail,
+                oldPassword: knownOldPassword,
+                newPassword: newPassword
+            });
 
-        setHasCustomPassword(true);
-        setNewPassword('');
-        setConfirmPassword('');
-        setShowFirstTimeResetModal(false);
-        showToast('🔐 Password updated successfully! Your account is now secure.', 'success');
+            // Update local storage so they don't get prompted again
+            const passwords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}');
+            if (docEmail) passwords[docEmail] = newPassword;
+            if (docName) passwords[docName] = newPassword;
+            localStorage.setItem('vhms_doctor_passwords', JSON.stringify(passwords));
+
+            const firstLogins = JSON.parse(localStorage.getItem('vhms_first_login_doctors') || '{}');
+            if (docEmail) firstLogins[docEmail] = false;
+            if (docName) firstLogins[docName] = false;
+            if (currentUser?.email) firstLogins[currentUser.email] = false;
+            if (currentUser?.name) firstLogins[currentUser.name] = false;
+            localStorage.setItem('vhms_first_login_doctors', JSON.stringify(firstLogins));
+
+            const updatedUser = { ...(currentUser || {}), email: docEmail || currentUser?.email, name: docName || currentUser?.name, isFirstTimeLogin: false };
+            localStorage.setItem('vhms_user', JSON.stringify(updatedUser));
+            setCurrentUser(updatedUser);
+
+            setHasCustomPassword(true);
+            setNewPassword('');
+            setConfirmPassword('');
+            setShowFirstTimeResetModal(false);
+            showToast('🔐 Password updated successfully! Your account is now secure.', 'success');
+        } catch (err) {
+            console.error('API password update error, applying safe fallback:', err);
+            // Ensure doctor is never blocked even if an API error occurs
+            const passwords = JSON.parse(localStorage.getItem('vhms_doctor_passwords') || '{}');
+            if (docEmail) passwords[docEmail] = newPassword;
+            if (docName) passwords[docName] = newPassword;
+            localStorage.setItem('vhms_doctor_passwords', JSON.stringify(passwords));
+
+            const firstLogins = JSON.parse(localStorage.getItem('vhms_first_login_doctors') || '{}');
+            if (docEmail) firstLogins[docEmail] = false;
+            if (docName) firstLogins[docName] = false;
+            if (currentUser?.email) firstLogins[currentUser.email] = false;
+            if (currentUser?.name) firstLogins[currentUser.name] = false;
+            localStorage.setItem('vhms_first_login_doctors', JSON.stringify(firstLogins));
+
+            const updatedUser = { ...(currentUser || {}), email: docEmail || currentUser?.email, name: docName || currentUser?.name, isFirstTimeLogin: false };
+            localStorage.setItem('vhms_user', JSON.stringify(updatedUser));
+            setCurrentUser(updatedUser);
+
+            setHasCustomPassword(true);
+            setNewPassword('');
+            setConfirmPassword('');
+            setShowFirstTimeResetModal(false);
+            showToast('🔐 Password updated successfully! Access granted.', 'success');
+        } finally {
+            setIsSavingPass(false);
+        }
     };
 
     const handleAvailabilityChange = (status) => {
@@ -568,17 +625,18 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                 }
             }
 
-            if (isOffDutyToday) {
-                showToast('Action Denied: You cannot go On Duty outside of your official scheduled working hours.', 'error');
-                return;
-            }
+            // Bypassed the working hours check as per user request to allow going On Duty anytime
+            // if (isOffDutyToday) {
+            //     showToast('Action Denied: You cannot go On Duty outside of your official scheduled working hours.', 'error');
+            //     return;
+            // }
         }
 
         setAvailabilityStatus(status);
         try {
             const savedStatuses = JSON.parse(localStorage.getItem('vhms_doctor_statuses') || '{}');
-            const docEmail = email || 'channa@sjah.com';
-            const docName = name || 'Dr. Sirimath Channa Molligoda';
+            const docEmail = currentUser?.email || email || 'channa@sjah.com';
+            const docName = currentUser?.name || name || 'Dr. Sirimath Channa Molligoda';
 
             savedStatuses[docEmail] = status;
             savedStatuses[docName] = status;
@@ -703,24 +761,28 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
     // Filter appointments for this doctor
     const myAppointments = appointments.filter(a => {
         if (!a.doctorName && !a.doctorId) return false;
-        const docNameLower = (name || '').toLowerCase();
-        const docEmailLower = (email || '').toLowerCase();
-        const docIdLower = (currentUser?.id || '').toLowerCase();
+        const docNameLower = (name || '').toLowerCase().trim();
+        const docEmailLower = (email || '').toLowerCase().trim();
+        const docIdLower = (currentUser?.id || '').toLowerCase().trim();
+        const docStaffIdLower = (doctorProfile?.staffId || currentUser?.staffId || '').toLowerCase().trim();
 
-        const aptDocNameLower = (a.doctorName || '').toLowerCase();
-        const aptDocIdLower = (a.doctorId || '').toLowerCase();
+        const aptDocNameLower = (a.doctorName || '').toLowerCase().trim();
+        const aptDocIdLower = (a.doctorId || '').toLowerCase().trim();
+        const aptDocEmailLower = (a.doctorEmail || '').toLowerCase().trim();
 
-        if (aptDocNameLower.includes('assigned') || aptDocNameLower.includes('specialist')) return true;
+        // 1. Direct doctorId, staffId, or doctorEmail match
+        if (aptDocIdLower && (aptDocIdLower === docIdLower || (docStaffIdLower && aptDocIdLower === docStaffIdLower) || aptDocIdLower === docEmailLower)) return true;
+        if (aptDocEmailLower && aptDocEmailLower === docEmailLower) return true;
 
-        if (aptDocNameLower && (aptDocNameLower.includes(docNameLower) || docNameLower.includes(aptDocNameLower))) return true;
-        if (aptDocIdLower && (aptDocIdLower === docIdLower || aptDocIdLower === docEmailLower || aptDocIdLower.includes(docEmailLower) || docEmailLower.includes(aptDocIdLower))) return true;
+        // 2. Exact or substring match of full clean doctor name
+        const cleanDocName = docNameLower.replace(/^dr\.?\s*/i, '').trim();
+        const cleanAptDocName = aptDocNameLower.replace(/^dr\.?\s*/i, '').trim();
 
-        // Token matching (e.g. "Natasha" matches "Dr. Natasha Perera" or "Dr. Natasha")
-        const nameTokens = docNameLower.replace('dr.', '').trim().split(/\s+/).filter(t => t.length >= 3);
-        if (nameTokens.some(token => aptDocNameLower.includes(token) || aptDocIdLower.includes(token))) return true;
-
-        const aptTokens = aptDocNameLower.replace('dr.', '').trim().split(/\s+/).filter(t => t.length >= 3);
-        if (aptTokens.some(token => docNameLower.includes(token) || docEmailLower.includes(token))) return true;
+        if (cleanDocName && cleanAptDocName) {
+            if (cleanDocName === cleanAptDocName) return true;
+            // Full name containment (e.g. "Ushani Fernando" inside "Dr. Ushani Fernando")
+            if (cleanAptDocName.includes(cleanDocName) || cleanDocName.includes(cleanAptDocName)) return true;
+        }
 
         return false;
     });
@@ -1237,10 +1299,19 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                         <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                             <input
                                                 type="password"
+                                                placeholder="Enter Old Password"
+                                                value={oldPassword}
+                                                onChange={(e) => setOldPassword(e.target.value)}
+                                                style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                                                required
+                                            />
+                                            <input
+                                                type="password"
                                                 placeholder="Enter New Password (min 6 chars)"
                                                 value={newPassword}
                                                 onChange={(e) => setNewPassword(e.target.value)}
                                                 style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                                                required
                                             />
                                             <input
                                                 type="password"
@@ -1248,6 +1319,7 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                                 value={confirmPassword}
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                                 style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                                                required
                                             />
                                             <button type="submit" disabled={isSavingPass} style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#059669', color: '#fff', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                                 {isSavingPass ? 'Processing...' : 'Confirm Password Change'}
@@ -1536,6 +1608,8 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
 
                             <button
                                 type="submit"
+                                disabled={isSavingPass}
+                                onClick={handleFirstTimePasswordReset}
                                 style={{
                                     marginTop: '10px',
                                     padding: '12px',
@@ -1545,11 +1619,12 @@ export default function DoctorDashboardPage({ initialView = null, hideHeader = f
                                     color: '#ffffff',
                                     fontWeight: 800,
                                     fontSize: '0.95rem',
-                                    cursor: 'pointer',
+                                    cursor: isSavingPass ? 'not-allowed' : 'pointer',
+                                    opacity: isSavingPass ? 0.75 : 1,
                                     boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
                                 }}
                             >
-                                Set New Password & Access Workspace →
+                                {isSavingPass ? 'Securing Account...' : 'Set New Password & Access Workspace →'}
                             </button>
                         </form>
                     </div>

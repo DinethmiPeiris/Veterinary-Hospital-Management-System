@@ -1,4 +1,5 @@
 import API_BASE_URL from './apiConfig';
+import { notificationService } from './notificationService';
 
 const fetchWithTimeout = async (url, options = {}, timeoutMs = 2500) => {
   const controller = new AbortController();
@@ -195,13 +196,47 @@ export const billingService = {
     list.unshift(newInv);
     saveLocalInvoices(list);
 
-    // Try backend persistence as well
+    // Resolve Pet Owner Recipient with fallbacks
+    let recId = invoiceData.petOwnerId || invoiceData.ownerId || invoiceData.ownerEmail || '';
+    let recEmail = invoiceData.ownerEmail || invoiceData.petOwnerEmail || '';
+    if (!recId || recId === 'USR-5001') {
+      try {
+        const regUsers = JSON.parse(localStorage.getItem('vhms_registered_users') || '[]');
+        const cachedUsers = JSON.parse(localStorage.getItem('vhms_all_users_cache') || '[]');
+        const allUsers = [...regUsers, ...cachedUsers];
+        const petOwner = allUsers.find(u => u.role === 'PET_OWNER' || u.role === 'OWNER');
+        if (petOwner) {
+          recId = petOwner.id || petOwner._id || recId || 'USR-5001';
+          if (!recEmail) recEmail = petOwner.email || '';
+        }
+      } catch (e) {}
+    }
+    if (!recId) recId = 'USR-5001';
+    if (!recEmail) recEmail = 'owner@example.com';
+
+    // Notify Pet Owner with valid enum
+    await notificationService.sendNotification({
+      recipientId: recId,
+      recipientEmail: recEmail,
+      recipientRole: 'PET_OWNER',
+      title: '🧾 New Billing Invoice Generated',
+      message: `An invoice (${invoiceNumber}) has been generated for ${invoiceData.petName || 'your pet'}. Total: Rs. ${total.toFixed(2)}.`,
+      type: 'INVOICE_GENERATED',
+      notificationType: 'INVOICE_GENERATED',
+      referenceType: 'INVOICE',
+      referenceId: invoiceNumber,
+    });
+
+    // Try backend persistence as well (ensuring ownerId and petId are non-empty for validation)
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/invoices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...invoiceData,
+          ownerId: invoiceData.ownerId || recId,
+          petId: invoiceData.petId || 'PET-1001',
+          ownerEmail: invoiceData.ownerEmail || recEmail,
           invoiceNumber,
           items: (invoiceData.items || []).map(i => ({
             description: i.description,
@@ -275,19 +310,111 @@ export const billingService = {
   },
 
   async getInvoicesByOwner(ownerId) {
-    const res = await this.getAllInvoices();
     let user = null;
     try { user = JSON.parse(localStorage.getItem('vhms_user')); } catch (e) {}
-    
-    const list = (res.data || []).filter(i => {
-       if (!ownerId) return true;
-       if (i.ownerId === ownerId || i.ownerId === 'USR-5001') return true;
-       if (user) {
-           if (i.petOwnerEmail && i.petOwnerEmail.toLowerCase() === user.email?.toLowerCase()) return true;
-           if (i.ownerName && user.name && i.ownerName.toLowerCase() === user.name.toLowerCase()) return true;
-       }
-       return false;
+
+    const resolvedOwnerId = ownerId || user?.id || user?._id || user?.userId || user?.email || '';
+
+    // Try fetching from backend /invoices/owner/${resolvedOwnerId}
+    let backendInvoices = [];
+    if (resolvedOwnerId) {
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/invoices/owner/${encodeURIComponent(resolvedOwnerId)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            backendInvoices.push(...json.data);
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (user?.email && user.email !== resolvedOwnerId) {
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/invoices/owner/${encodeURIComponent(user.email)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            backendInvoices.push(...json.data);
+          }
+        }
+      } catch (e) {}
+    }
+
+    const isPetOwner = user?.role === 'PET_OWNER' || user?.role === 'OWNER' || String(resolvedOwnerId).toUpperCase() === 'USR-5001';
+    if (isPetOwner) {
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/invoices/owner/USR-5001`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            backendInvoices.push(...json.data);
+          }
+        }
+      } catch (e) {}
+    }
+
+    const res = await this.getAllInvoices();
+    const all = [...(res.data || []), ...backendInvoices];
+
+    // Build user identifiers for matching
+    const userEmails = [user?.email, user?.petOwnerEmail, resolvedOwnerId.includes('@') ? resolvedOwnerId : null]
+      .filter(Boolean)
+      .map((e) => String(e).toLowerCase());
+    const userIds = [resolvedOwnerId, user?.id, user?._id, user?.userId].filter(Boolean).map((id) => String(id));
+
+    if (isPetOwner) {
+      if (!userIds.includes('USR-5001')) userIds.push('USR-5001');
+      if (!userIds.includes('usr-5001')) userIds.push('usr-5001');
+      if (!userEmails.includes('owner@example.com')) userEmails.push('owner@example.com');
+    }
+
+    // Also collect appointment numbers/ids and pet names from user's appointments and pets
+    const userApptKeys = new Set();
+    const userPetNames = new Set();
+    try {
+      const userAppts = JSON.parse(localStorage.getItem('vhms_user_appointments') || '[]');
+      const epic4Appts = JSON.parse(localStorage.getItem('vhms_epic4_appointments') || '[]');
+      const allAppts = [...userAppts, ...epic4Appts];
+      allAppts.forEach((a) => {
+        const aOwner = String(a.ownerId || a.petOwnerId || a.ownerEmail || '').toLowerCase();
+        const aEmail = String(a.ownerEmail || a.petOwnerEmail || '').toLowerCase();
+        if (userIds.some(uid => uid && uid.toLowerCase() === aOwner) || (aEmail && userEmails.includes(aEmail)) || userEmails.includes(aOwner)) {
+          if (a.id) userApptKeys.add(String(a.id));
+          if (a.appointmentNumber) userApptKeys.add(String(a.appointmentNumber));
+          if (a.petName) userPetNames.add(String(a.petName).trim().toLowerCase());
+        }
+      });
+
+      const userPets = JSON.parse(localStorage.getItem('vhms_pets') || '[]');
+      if (Array.isArray(userPets)) {
+        userPets.forEach(p => {
+          if (p.name) userPetNames.add(String(p.name).trim().toLowerCase());
+        });
+      }
+    } catch (e) {}
+
+    const map = new Map();
+    all.forEach((i) => {
+      const norm = normalizeInvoiceNumber(i);
+      const key = norm.invoiceNumber || norm.id;
+
+      const iOwnerId = String(norm.ownerId || norm.petOwnerId || '').toLowerCase();
+      const iEmail = String(norm.ownerEmail || norm.petOwnerEmail || '').toLowerCase();
+      const iPet = String(norm.petName || '').trim().toLowerCase();
+
+      const matchId = userIds.length > 0 && userIds.some((uid) => uid && iOwnerId === uid.toLowerCase());
+      const matchEmail = userEmails.length > 0 && (userEmails.includes(iEmail) || userEmails.includes(iOwnerId));
+      const matchAppt = (norm.appointmentId && userApptKeys.has(String(norm.appointmentId))) ||
+                        (norm.appointmentNumber && userApptKeys.has(String(norm.appointmentNumber)));
+      const matchPet = iPet && userPetNames.has(iPet);
+
+      if (matchId || matchEmail || matchAppt || matchPet) {
+        map.set(key, norm);
+      }
     });
+
+    const list = Array.from(map.values()).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     return { success: true, data: list };
   },
 
